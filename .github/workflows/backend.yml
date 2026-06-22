@@ -36,7 +36,10 @@ jobs:
       - name: Verify modules tidy
         run: |
           go mod tidy
-          git diff --exit-code go.mod go.sum
+          # Only diff files that exist (go.sum is absent while there are no deps).
+          files="go.mod"
+          [ -f go.sum ] && files="$files go.sum"
+          git diff --exit-code -- $files
 
       - name: gofmt
         run: |
