@@ -8,6 +8,13 @@ dist/
 build/
 **/build/
 
+# Go: air hot-reload build output & binaries
+tmp/
+**/tmp/
+*.exe
+*.exe~
+/bin/
+
 # Vite cache
 .vite/
 

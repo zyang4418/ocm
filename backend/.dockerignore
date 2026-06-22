@@ -1,0 +1,12 @@
+tmp
+*.log
+.git
+.gitignore
+Dockerfile*
+docker-compose*.yml
+.air.toml
+.env
+.env.*
+.DS_Store
+.idea
+.vscode
