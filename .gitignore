@@ -14,6 +14,8 @@ tmp/
 *.exe
 *.exe~
 /bin/
+coverage*.out
+backend/ocm-backend
 
 # Vite cache
 .vite/

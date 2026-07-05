@@ -60,10 +60,10 @@ jobs:
         run: go test -race -coverprofile=coverage.out -v ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           working-directory: backend
-          version: latest
+          version: v2.12.2
 
   docker:
     name: Prod image
