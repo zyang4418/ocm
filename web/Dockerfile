@@ -1,15 +1,31 @@
-FROM node:24-alpine
+# --- Build stage ---
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
-# Install dependencies first for better layer caching
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci || npm install
 
-# Source mounts in via docker-compose; copy as a fallback for one-off builds
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
+# --- Runtime stage ---
+FROM nginx:stable-alpine AS runtime
 
-# --host exposes the dev server outside the container
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Static assets
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# SPA fallback so client-side routes work
+RUN printf 'server {\n\
+  listen 80;\n\
+  server_name _;\n\
+  root /usr/share/nginx/html;\n\
+  index index.html;\n\
+  location / {\n\
+    try_files $uri $uri/ /index.html;\n\
+  }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
