@@ -6,11 +6,15 @@ on:
       - 'backend/**'
       - '.github/workflows/backend.yml'
       - '.gitignore'
+      - 'docker-compose.yml'
+      - 'docker-compose.prod.yml'
   pull_request:
     paths:
       - 'backend/**'
       - '.github/workflows/backend.yml'
       - '.gitignore'
+      - 'docker-compose.yml'
+      - 'docker-compose.prod.yml'
   workflow_dispatch:
 
 concurrency:
