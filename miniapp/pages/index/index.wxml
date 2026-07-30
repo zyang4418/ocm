@@ -1,0 +1,3 @@
+<view class="container">
+  <text class="hello">Hello World!</text>
+</view>

@@ -37,3 +37,22 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# AI tools
+.workbuddy/
+.cursor/
+.claude/
+.codex/
+.continue/
+.aider*
+.codeium/
+Windsurf/
+.tabnine/
+.copilot/
+
+# WeChat Mini Program
+miniprogram_npm/
+**/miniprogram_npm/
+project.private.config.json
+# TypeScript compiled JS (devtools auto-generates from .ts)
+miniapp/pages/**/*.js
