@@ -1,4 +1,24 @@
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: ocm-mysql-dev
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=ocm
+      - MYSQL_USER=ocm
+      - MYSQL_PASSWORD=ocm
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
@@ -11,6 +31,14 @@ services:
       - /app/tmp
     environment:
       - PORT=8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=ocm
+      - DB_PASSWORD=ocm
+      - DB_NAME=ocm
+    depends_on:
+      mysql:
+        condition: service_healthy
     command: air
 
   web:
@@ -27,3 +55,6 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
     command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  mysql_dev_data:
