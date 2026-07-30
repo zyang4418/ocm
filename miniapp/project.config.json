@@ -41,7 +41,7 @@
     "swc": false,
     "disableSWC": true,
     "disableUseStrict": false,
-    "useCompilerPlugins": false
+    "useCompilerPlugins": ["typescript"]
   },
   "compileType": "miniprogram",
   "libVersion": "3.6.3",
