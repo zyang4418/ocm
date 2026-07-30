@@ -1,17 +1,25 @@
-FROM golang:1.26-alpine
+# --- Build stage ---
+FROM golang:1.26-alpine AS build
 
-WORKDIR /app
+WORKDIR /src
 
-# Hot-reload during development
-RUN go install github.com/air-verse/air@latest
-
-# Cache module downloads (no external deps yet, but ready for future use)
 COPY go.mod go.sum* ./
 RUN go mod download
 
-# Source is mounted in via docker-compose for live reload
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/server ./...
+
+# --- Runtime stage ---
+FROM alpine:3.20 AS runtime
+
+# Non-root user for the running process
+RUN adduser -D -u 10001 appuser
+
+WORKDIR /app
+COPY --from=build /out/server /app/server
+
+USER appuser
 
 EXPOSE 8080
 
-CMD ["air"]
+ENTRYPOINT ["/app/server"]
