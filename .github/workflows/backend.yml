@@ -94,7 +94,7 @@ jobs:
       - name: Build
         run: docker build -f backend/Dockerfile -t ocm-backend:ci backend/
 
-      - name: Run & health check
+      - name: Run & readiness check
         run: |
           docker run -d --name ocm-backend-ci --network host \
             -e DB_HOST=127.0.0.1 \
@@ -104,10 +104,10 @@ jobs:
             -e DB_NAME=ocm \
             ocm-backend:ci
           for i in $(seq 1 40); do
-            if curl -sf http://localhost:8080/healthz; then echo; break; fi
+            if curl -sf http://localhost:8080/readyz; then echo; break; fi
             sleep 0.5
           done
-          curl -sf http://localhost:8080/healthz | grep -q ok || { docker logs ocm-backend-ci; exit 1; }
+          curl -sf http://localhost:8080/readyz | grep -q ok || { docker logs ocm-backend-ci; exit 1; }
           docker stop ocm-backend-ci
 
       - name: Verify non-root runtime
