@@ -1,4 +1,24 @@
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: ocm-mysql-dev
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=ocm
+      - MYSQL_USER=ocm
+      - MYSQL_PASSWORD=ocm
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
@@ -11,12 +31,23 @@ services:
       - /app/tmp
     environment:
       - PORT=8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=ocm
+      - DB_PASSWORD=ocm
+      - DB_NAME=ocm
+      - JWT_SECRET=${JWT_SECRET:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
     command: air
 
   web:
     build:
       context: ./web
       dockerfile: Dockerfile.dev
+    image: ocm-web:dev
     container_name: ocm-web-dev
     ports:
       - "5173:5173"
@@ -26,4 +57,12 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      # vite dev server runs in this container; the backend is reachable by
+      # its compose service name on the internal network.
+      - VITE_API_PROXY_TARGET=http://backend:8080
+      # Optional ICP filing number, inlined by the vite dev server.
+      - VITE_ICP_NUMBER=${ICP_NUMBER:-}
     command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  mysql_dev_data:
