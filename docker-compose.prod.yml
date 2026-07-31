@@ -1,7 +1,7 @@
 # Production compose. Provide credentials via a .env file or the real
 # environment, e.g.:
-#   MYSQL_ROOT_PASSWORD=...  DB_PASSWORD=...  DB_USER=...  DB_NAME=...
-# DB_PASSWORD, MYSQL_ROOT_PASSWORD and JWT_SECRET are required and will fail fast if unset.
+#   MYSQL_ROOT_PASSWORD=...  DB_PASSWORD=...  JWT_SECRET=...  ADMIN_PASSWORD=...
+# DB_PASSWORD, MYSQL_ROOT_PASSWORD, JWT_SECRET and ADMIN_PASSWORD are required and will fail fast if unset.
 services:
   mysql:
     image: mysql:8.0
@@ -37,7 +37,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD}
       - DB_NAME=${DB_NAME:-ocm}
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
     depends_on:
       mysql:
         condition: service_healthy
