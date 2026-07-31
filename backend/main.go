@@ -28,7 +28,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("database: %v", err)
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			log.Printf("database close: %v", err)
+		}
+	}()
 
 	mux := http.NewServeMux()
 
