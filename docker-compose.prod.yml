@@ -31,6 +31,7 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8080
+      - APP_ENV=production
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=${DB_USER:-ocm}
