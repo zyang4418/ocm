@@ -16,6 +16,10 @@ import (
 )
 
 func main() {
+	// Container platforms often surface only stdout; route logs there so a
+	// crash-looping or startup-blocked process stays diagnosable.
+	log.SetOutput(os.Stdout)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -23,6 +27,29 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	mux := http.NewServeMux()
+
+	// Liveness probe - the process is up. Registered before the database is
+	// opened so the port binds immediately: liveness reflects process health,
+	// not DB availability, and a slow/blocked DB start no longer causes the
+	// platform to restart us before 8080 is bound.
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
+
+	go func() {
+		log.Printf("ocm-backend listening on :%s", port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
 
 	database, err := openDB(ctx)
 	if err != nil {
@@ -34,21 +61,15 @@ func main() {
 		}
 	}()
 
-	mux := http.NewServeMux()
-
 	authStore := auth.NewStore(database)
 	if err := authStore.Migrate(ctx); err != nil {
 		log.Fatalf("auth migration: %v", err)
 	}
 	auth.NewHandler(authStore, auth.NewTokenService()).RegisterRoutes(mux)
 
-	// Liveness probe - the process is up.
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
-
 	// Readiness probe - the process can serve requests (database reachable).
+	// Registered after the DB is connected so it only reports ready once the
+	// app can actually serve auth traffic; until then it 404s (not ready).
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
@@ -66,18 +87,6 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"service":"ocm-backend","status":"running"}`))
 	})
-
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
-	}
-
-	go func() {
-		log.Printf("ocm-backend listening on :%s", port)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
-		}
-	}()
 
 	<-ctx.Done()
 	stop() // restore default signal handling for a second interrupt to force-exit.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -66,6 +67,14 @@ func (c Config) DSN() string {
 // pinging until ctx is cancelled. Callers should pass a context with a timeout
 // so startup fails fast when the database is unreachable.
 func New(ctx context.Context, cfg Config) (*sql.DB, error) {
+	// Refuse to silently fall back to localhost outside development. Every
+	// real environment (compose, CI, serverless) sets DB_HOST; a missing value
+	// means a misconfigured deployment that would otherwise hang retrying
+	// localhost. Dev opts out via APP_ENV=development.
+	if os.Getenv("DB_HOST") == "" && appEnv() != "development" {
+		return nil, fmt.Errorf("DB_HOST is required in production (APP_ENV=%q); refusing localhost fallback", appEnv())
+	}
+
 	d, err := sql.Open("mysql", cfg.DSN())
 	if err != nil {
 		return nil, fmt.Errorf("open mysql: %w", err)
@@ -94,6 +103,7 @@ func pingWithRetry(ctx context.Context, d *sql.DB) error {
 			return nil
 		} else {
 			lastErr = err
+			log.Printf("db: not reachable yet, retrying in %s: %v", pingInterval, err)
 		}
 
 		select {
@@ -112,6 +122,13 @@ func envOrDefault(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// appEnv returns the deployment mode, defaulting to "production" so a
+// deployment that forgets to set APP_ENV gets strict fail-fast behavior.
+// Development environments opt in with APP_ENV=development.
+func appEnv() string {
+	return envOrDefault("APP_ENV", "production")
 }
 
 func envIntOrDefault(key string, def int) int {
