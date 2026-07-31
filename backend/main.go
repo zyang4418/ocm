@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"ocm-backend/internal/auth"
 	"ocm-backend/internal/db"
 )
 
@@ -30,6 +31,12 @@ func main() {
 	defer database.Close()
 
 	mux := http.NewServeMux()
+
+	authStore := auth.NewStore(database)
+	if err := authStore.Migrate(ctx); err != nil {
+		log.Fatalf("auth migration: %v", err)
+	}
+	auth.NewHandler(authStore, auth.NewTokenService()).RegisterRoutes(mux)
 
 	// Liveness probe - the process is up.
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {

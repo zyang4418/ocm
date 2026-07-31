@@ -7,6 +7,9 @@ COPY package.json package-lock.json* ./
 RUN npm ci || npm install
 
 COPY . .
+# Optional ICP filing number, inlined into the bundle by vite build.
+ARG VITE_ICP_NUMBER=
+ENV VITE_ICP_NUMBER=${VITE_ICP_NUMBER}
 RUN npm run build
 
 # --- Runtime stage ---
@@ -21,6 +24,14 @@ RUN printf 'server {\n\
   server_name _;\n\
   root /usr/share/nginx/html;\n\
   index index.html;\n\
+  resolver 127.0.0.11 valid=5s;\n\
+  location /api/ {\n\
+    set $upstream http://backend:8080;\n\
+    proxy_pass $upstream;\n\
+    proxy_set_header Host $host;\n\
+    proxy_set_header X-Real-IP $remote_addr;\n\
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+  }\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\

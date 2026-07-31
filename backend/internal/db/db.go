@@ -50,11 +50,14 @@ func ConfigFromEnv() Config {
 }
 
 // DSN renders a MySQL data source name. utf8mb4 enables full Unicode support
-// (including emoji), parseTime maps MySQL timestamps to time.Time, and
-// allowPublicKeyRetrieval lets caching_sha2_password auth work over plain TCP.
+// (including emoji) and parseTime maps MySQL timestamps to time.Time.
+// caching_sha2_password over plain TCP needs no extra flag: driver v1.10+
+// fetches the server public key automatically (the old
+// allowPublicKeyRetrieval parameter was removed and now fails as an unknown
+// system variable).
 func (c Config) DSN() string {
 	return fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local&allowPublicKeyRetrieval=true",
+		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
 		c.User, c.Password, c.Host, c.Port, c.Name,
 	)
 }

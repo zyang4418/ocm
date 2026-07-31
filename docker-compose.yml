@@ -36,6 +36,8 @@ services:
       - DB_USER=ocm
       - DB_PASSWORD=ocm
       - DB_NAME=ocm
+      - JWT_SECRET=${JWT_SECRET:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -45,6 +47,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile.dev
+    image: ocm-web:dev
     container_name: ocm-web-dev
     ports:
       - "5173:5173"
@@ -54,6 +57,11 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      # vite dev server runs in this container; the backend is reachable by
+      # its compose service name on the internal network.
+      - VITE_API_PROXY_TARGET=http://backend:8080
+      # Optional ICP filing number, inlined by the vite dev server.
+      - VITE_ICP_NUMBER=${ICP_NUMBER:-}
     command: npm run dev -- --host 0.0.0.0
 
 volumes:

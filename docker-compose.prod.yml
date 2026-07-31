@@ -1,7 +1,7 @@
 # Production compose. Provide credentials via a .env file or the real
 # environment, e.g.:
 #   MYSQL_ROOT_PASSWORD=...  DB_PASSWORD=...  DB_USER=...  DB_NAME=...
-# DB_PASSWORD and MYSQL_ROOT_PASSWORD are required and will fail fast if unset.
+# DB_PASSWORD, MYSQL_ROOT_PASSWORD and JWT_SECRET are required and will fail fast if unset.
 services:
   mysql:
     image: mysql:8.0
@@ -36,6 +36,8 @@ services:
       - DB_USER=${DB_USER:-ocm}
       - DB_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD}
       - DB_NAME=${DB_NAME:-ocm}
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -44,6 +46,9 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        # Baked into the static bundle at image build time.
+        VITE_ICP_NUMBER: ${ICP_NUMBER:-}
     container_name: ocm-web-prod
     ports:
       - "80:80"
