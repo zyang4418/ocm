@@ -1,3 +1,124 @@
-<view class="container">
-  <text class="hello">Hello World!</text>
+<view class="page" style="padding-top: {{statusBarHeight}}px">
+
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-left">
+      <image class="nav-scan-icon" src="/assets/icons/nav_scan.png" mode="aspectFit" />
+    </view>
+    <text class="nav-title">首页</text>
+    <view class="nav-right"></view>
+  </view>
+
+  <scroll-view type="custom" scroll-y class="scroll-content">
+
+    <!-- 搜索栏 -->
+    <view class="search-section">
+      <view class="search-bar">
+        <view class="search-icon">
+          <view class="search-circle"></view>
+          <view class="search-handle"></view>
+        </view>
+        <text class="search-placeholder">搜索课程 / 教室 / 学生</text>
+      </view>
+    </view>
+
+    <!-- 4 顶部快入口 -->
+    <view class="quick-section">
+      <view class="quick-grid">
+        <view class="quick-card" data-type="课表查询" bindtap="onTapAction">
+          <image class="quick-icon-img" src="/assets/icons/quick_calendar.png" mode="aspectFit" />
+          <text class="quick-label">课表查询</text>
+        </view>
+        <view class="quick-card" data-type="教室预约" bindtap="onTapAction">
+          <image class="quick-icon-img" src="/assets/icons/quick_door.png" mode="aspectFit" />
+          <text class="quick-label">教室预约</text>
+        </view>
+        <view class="quick-card" data-type="设备控制" bindtap="onTapAction">
+          <image class="quick-icon-img" src="/assets/icons/quick_device.png" mode="aspectFit" />
+          <text class="quick-label">设备控制</text>
+        </view>
+        <view class="quick-card" data-type="签到中心" bindtap="onTapAction">
+          <image class="quick-icon-img" src="/assets/icons/quick_check.png" mode="aspectFit" />
+          <text class="quick-label">签到中心</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 5x2 功能网格 -->
+    <view class="grid-section">
+      <view class="grid-container">
+        <block wx:for="{{gridItems}}" wx:key="name">
+          <view class="grid-item" data-name="{{item.name}}" bindtap="onTapGrid">
+            <image class="grid-icon" src="{{item.icon}}" mode="aspectFit" />
+            <text class="grid-label">{{item.name}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 通知卡片 -->
+    <view class="notice-section">
+      <view class="notice-card">
+        <view class="notice-icon-circle">
+          <image class="notice-icon-img" src="/assets/icons/notice_megaphone.png" mode="aspectFit" />
+        </view>
+        <view class="notice-content">
+          <text class="notice-title">系统通知</text>
+          <text class="notice-desc">OCM v1.0 全新智慧教室管理体验已上线</text>
+        </view>
+        <view class="notice-arrow"></view>
+      </view>
+    </view>
+
+    <!-- 产品体验卡 -->
+    <view class="product-section">
+      <view class="product-header">
+        <text class="product-title">智能教学中心</text>
+        <view class="product-more">
+          <text>查看更多</text>
+          <view class="more-arrow"></view>
+        </view>
+      </view>
+      <view class="product-card">
+        <view class="product-card-left">
+          <image class="product-icon-img" src="/assets/icons/product_engine.png" mode="aspectFit" />
+          <view class="product-card-content">
+            <text class="product-card-title">智能排课引擎</text>
+            <text class="product-card-desc">一键导出多维度排课方案，灵活适配教学场景</text>
+          </view>
+        </view>
+        <view class="product-card-arrow"></view>
+      </view>
+    </view>
+
+    <!-- 今日课程 -->
+    <view class="schedule-section">
+      <view class="schedule-header">
+        <text class="schedule-title">今日课程</text>
+        <view class="schedule-more">
+          <text>查看完整课表</text>
+          <view class="more-arrow"></view>
+        </view>
+      </view>
+      <view class="schedule-card">
+        <block wx:for="{{todayClasses}}" wx:key="time">
+          <view class="schedule-row {{index === 0 ? 'row-first' : ''}}">
+            <view class="schedule-time">
+              <text class="time-start">{{item.time}}</text>
+              <text class="time-end">{{item.end}}</text>
+            </view>
+            <view class="schedule-info">
+              <text class="schedule-subject">{{item.subject}}</text>
+              <view class="schedule-meta">
+                <text class="schedule-room">{{item.room}}</text>
+                <view class="meta-dot"></view>
+                <text class="schedule-teacher">{{item.teacher}}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+  </scroll-view>
 </view>

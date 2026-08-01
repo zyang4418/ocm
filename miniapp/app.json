@@ -1,10 +1,27 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/console/console",
+    "pages/ai/ai",
+    "pages/messages/messages",
+    "pages/profile/profile"
   ],
   "window": {
     "navigationBarTitleText": "OCM",
     "navigationStyle": "custom"
+  },
+  "tabBar": {
+    "color": "#8F959E",
+    "selectedColor": "#2B5FF6",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页", "iconPath": "assets/tabbar/home.png", "selectedIconPath": "assets/tabbar/home_active.png" },
+      { "pagePath": "pages/console/console", "text": "控制台", "iconPath": "assets/tabbar/console.png", "selectedIconPath": "assets/tabbar/console_active.png" },
+      { "pagePath": "pages/ai/ai", "text": "AI助手", "iconPath": "assets/tabbar/ai.png", "selectedIconPath": "assets/tabbar/ai_active.png" },
+      { "pagePath": "pages/messages/messages", "text": "消息", "iconPath": "assets/tabbar/messages.png", "selectedIconPath": "assets/tabbar/messages_active.png" },
+      { "pagePath": "pages/profile/profile", "text": "我的", "iconPath": "assets/tabbar/profile.png", "selectedIconPath": "assets/tabbar/profile_active.png" }
+    ]
   },
   "themeLocation": "theme.json",
   "sitemapLocation": "sitemap.json",
