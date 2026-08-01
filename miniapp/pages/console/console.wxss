@@ -1,0 +1,3 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #fff; }
+.nav-bar { display: flex; align-items: center; justify-content: center; height: 88rpx; }
+.nav-title { font-size: 34rpx; font-weight: 700; }

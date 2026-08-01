@@ -1,12 +1,411 @@
-.container {
+/* ── 页面基础 ── */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+/* ── 导航栏 ── */
+.nav-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 var(--space-md);
+  background: #FFFFFF;
+}
+
+.nav-left, .nav-right {
+  width: 120rpx;
+}
+
+.nav-title {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.nav-scan-icon {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+/* ── 搜索栏 ── */
+.search-section {
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: #FFFFFF;
+}
+
+.search-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 80rpx;
+  padding: 0 28rpx;
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  gap: var(--space-sm);
+}
+
+.search-icon {
+  position: relative;
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.search-circle {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 20rpx;
+  height: 20rpx;
+  border: 3rpx solid var(--color-text-tertiary);
+  border-radius: 50%;
+}
+
+.search-handle {
+  position: absolute;
+  top: 24rpx;
+  left: 22rpx;
+  width: 10rpx;
+  height: 3rpx;
+  background: var(--color-text-tertiary);
+  border-radius: 2rpx;
+  transform: rotate(45deg);
+}
+
+.search-placeholder {
+  font-size: var(--font-md);
+  color: var(--color-text-tertiary);
+}
+
+/* ── 顶部快入口 ── */
+.quick-section {
+  padding: 0 var(--space-md) var(--space-md);
+  background: #FFFFFF;
+}
+
+.quick-grid {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+}
+
+.quick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+}
+
+.quick-icon-img {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: var(--radius-md);
+}
+
+.quick-label {
+  font-size: var(--font-xs);
+  color: var(--color-text);
+}
+
+/* ── 功能网格 ── */
+.grid-section {
+  padding: var(--space-sm) 0 var(--space-md);
+  background: var(--color-bg);
+}
+
+.grid-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding: 0 var(--space-md);
+}
+
+.grid-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  gap: 14rpx;
+  width: 20%;
+  height: 172rpx;
 }
 
-.hello {
-  font-size: 48rpx;
-  font-weight: bold;
+.grid-icon {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+.grid-label {
+  font-size: var(--font-xs);
+  color: var(--color-text);
+}
+
+/* ── 通知卡片 ── */
+.notice-section {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg);
+}
+
+.notice-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  gap: var(--space-sm);
+}
+
+.notice-icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(43, 95, 246, 0.08);
+}
+
+.notice-icon-img {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.notice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  flex: 1;
+}
+
+.notice-title {
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.notice-desc {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.notice-arrow {
+  width: 16rpx;
+  height: 16rpx;
+  border: solid var(--color-text-secondary);
+  border-width: 2rpx 2rpx 0 0;
+  transform: rotate(45deg);
+}
+
+/* ── 产品体验卡 ── */
+.product-section {
+  padding: var(--space-md) var(--space-md);
+  background: var(--color-bg);
+}
+
+.product-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.product-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.product-more {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.more-arrow {
+  width: 12rpx;
+  height: 12rpx;
+  border: solid var(--color-text-secondary);
+  border-width: 2rpx 2rpx 0 0;
+  transform: rotate(45deg);
+}
+
+.product-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: var(--space-md);
+  background: #FFFFFF;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  gap: var(--space-sm);
+}
+
+.product-card-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+.product-icon-img {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.product-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.product-card-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.product-card-desc {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-card-arrow {
+  width: 16rpx;
+  height: 16rpx;
+  border: solid var(--color-primary);
+  border-width: 2rpx 2rpx 0 0;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+
+/* ── 今日课程 ── */
+.schedule-section {
+  padding: 0 var(--space-md) 48rpx;
+  background: var(--color-bg);
+}
+
+.schedule-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.schedule-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.schedule-more {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.schedule-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.schedule-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: var(--space-md);
+  gap: var(--space-md);
+  border-bottom: 1rpx solid var(--color-border);
+}
+
+.schedule-row:last-child {
+  border-bottom: none;
+}
+
+.row-first {
+  border-left: 6rpx solid var(--color-primary);
+  padding-left: 26rpx;
+}
+
+.schedule-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 110rpx;
+}
+
+.time-start {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.3;
+}
+
+.time-end {
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  line-height: 1.3;
+}
+
+.schedule-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-subject {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.schedule-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.schedule-room, .schedule-teacher {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.meta-dot {
+  width: 4rpx;
+  height: 4rpx;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+}
+
+/* ── 滚动区 ── */
+.scroll-content {
+  flex: 1;
 }

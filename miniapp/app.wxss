@@ -1,1 +1,43 @@
-/* Empty scaffold — add global styles here */
+/* OCM 助手 — 全局设计系统 */
+
+page {
+  --color-primary: #2B5FF6;
+  --color-primary-light: #E8F0FF;
+  --color-accent: #00C49A;
+  --color-accent-light: #E0F7F0;
+  --color-cta: #FF7A45;
+  --color-bg: #F5F7FA;
+  --color-card: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text: #1F2329;
+  --color-text-secondary: #646A73;
+  --color-text-tertiary: #8F959E;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --font-xs: 22rpx;
+  --font-sm: 24rpx;
+  --font-md: 28rpx;
+  --font-lg: 34rpx;
+  --font-xl: 44rpx;
+
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* 安全区适配 */
+.safe-padding-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-padding-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

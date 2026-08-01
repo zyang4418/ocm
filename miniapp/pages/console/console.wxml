@@ -1,0 +1,5 @@
+<view class="page" style="padding-top: {{statusBarHeight}}px">
+  <view class="nav-bar">
+    <text class="nav-title">控制台</text>
+  </view>
+</view>
