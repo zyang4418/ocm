@@ -1,1 +1,5 @@
-{"renderer":"skyline","componentFramework":"glass-easel","usingComponents":{}}
+{
+  "renderer": "skyline",
+  "componentFramework": "glass-easel",
+  "usingComponents": {}
+}
