@@ -100,19 +100,12 @@ func (s *Store) Create(ctx context.Context, in CreateUserInput) (User, error) {
 }
 
 func (s *Store) Update(ctx context.Context, id int64, in UpdateUserInput) (User, error) {
-	res, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE users SET display_name = ?, role = ? WHERE id = ?`,
 		in.DisplayName, in.Role, id,
 	)
 	if err != nil {
 		return User{}, fmt.Errorf("update user: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return User{}, fmt.Errorf("update user rows affected: %w", err)
-	}
-	if n == 0 {
-		return User{}, ErrNotFound
 	}
 	return s.GetByID(ctx, id)
 }

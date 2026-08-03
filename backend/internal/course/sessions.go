@@ -111,7 +111,7 @@ func (s *Store) CreateSession(ctx context.Context, in SessionInput) (SessionView
 }
 
 func (s *Store) UpdateSession(ctx context.Context, id int64, in SessionInput) (SessionView, error) {
-	res, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE course_sessions SET offering_id = ?, classroom_id = ?, date = ?, period_index = ?, note = ? WHERE id = ?`,
 		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note, id,
 	)
@@ -120,13 +120,6 @@ func (s *Store) UpdateSession(ctx context.Context, id int64, in SessionInput) (S
 			return SessionView{}, ErrClassroomConflict
 		}
 		return SessionView{}, fmt.Errorf("update session: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return SessionView{}, fmt.Errorf("update session rows affected: %w", err)
-	}
-	if n == 0 {
-		return SessionView{}, ErrSessionNotFound
 	}
 	return s.GetSession(ctx, id)
 }

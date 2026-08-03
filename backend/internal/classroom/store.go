@@ -111,7 +111,7 @@ func (s *Store) Create(ctx context.Context, in ClassroomInput) (Classroom, error
 }
 
 func (s *Store) Update(ctx context.Context, id int64, in ClassroomInput) (Classroom, error) {
-	res, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE classrooms SET name = ?, building = ?, capacity = ?, type = ?, status = ?, description = ? WHERE id = ?`,
 		in.Name, in.Building, in.Capacity, in.Type, in.Status, in.Description, id,
 	)
@@ -120,13 +120,6 @@ func (s *Store) Update(ctx context.Context, id int64, in ClassroomInput) (Classr
 			return Classroom{}, ErrNameTaken
 		}
 		return Classroom{}, fmt.Errorf("update classroom: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return Classroom{}, fmt.Errorf("update classroom rows affected: %w", err)
-	}
-	if n == 0 {
-		return Classroom{}, ErrNotFound
 	}
 	return s.GetByID(ctx, id)
 }

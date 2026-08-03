@@ -121,7 +121,7 @@ func (s *Store) CreateCatalog(ctx context.Context, in CatalogInput) (CatalogCour
 }
 
 func (s *Store) UpdateCatalog(ctx context.Context, id int64, in CatalogInput) (CatalogCourse, error) {
-	res, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE course_catalog SET name = ?, code = ?, description = ? WHERE id = ?`,
 		in.Name, in.Code, in.Description, id,
 	)
@@ -130,13 +130,6 @@ func (s *Store) UpdateCatalog(ctx context.Context, id int64, in CatalogInput) (C
 			return CatalogCourse{}, ErrNameTaken
 		}
 		return CatalogCourse{}, fmt.Errorf("update catalog: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return CatalogCourse{}, fmt.Errorf("update catalog rows affected: %w", err)
-	}
-	if n == 0 {
-		return CatalogCourse{}, ErrCatalogNotFound
 	}
 	return s.GetCatalog(ctx, id)
 }
@@ -233,7 +226,7 @@ func (s *Store) CreateOffering(ctx context.Context, in OfferingInput) (OfferingV
 }
 
 func (s *Store) UpdateOffering(ctx context.Context, id int64, in OfferingInput) (OfferingView, error) {
-	res, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE course_offerings SET catalog_id = ?, class_name = ?, teacher = ?, semester = ?, note = ? WHERE id = ?`,
 		in.CatalogID, in.ClassName, in.Teacher, in.Semester, in.Note, id,
 	)
@@ -242,13 +235,6 @@ func (s *Store) UpdateOffering(ctx context.Context, id int64, in OfferingInput) 
 			return OfferingView{}, ErrOfferingTaken
 		}
 		return OfferingView{}, fmt.Errorf("update offering: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return OfferingView{}, fmt.Errorf("update offering rows affected: %w", err)
-	}
-	if n == 0 {
-		return OfferingView{}, ErrOfferingNotFound
 	}
 	return s.GetOffering(ctx, id)
 }

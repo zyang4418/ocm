@@ -117,7 +117,7 @@ func (s *Store) CreateRegime(ctx context.Context, in RegimeInput) (Regime, error
 }
 
 func (s *Store) UpdateRegime(ctx context.Context, id int64, in RegimeInput) (Regime, error) {
-	res, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		`UPDATE schedule_regimes SET name = ?, effective_month = ?, effective_day = ? WHERE id = ?`,
 		in.Name, in.EffectiveMonth, in.EffectiveDay, id,
 	)
@@ -126,13 +126,6 @@ func (s *Store) UpdateRegime(ctx context.Context, id int64, in RegimeInput) (Reg
 			return Regime{}, ErrNameTaken
 		}
 		return Regime{}, fmt.Errorf("update regime: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return Regime{}, fmt.Errorf("update regime rows affected: %w", err)
-	}
-	if n == 0 {
-		return Regime{}, ErrRegimeNotFound
 	}
 	return s.GetRegime(ctx, id)
 }
