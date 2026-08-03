@@ -13,7 +13,9 @@ import (
 
 	"ocm-backend/internal/auth"
 	"ocm-backend/internal/classroom"
+	"ocm-backend/internal/course"
 	"ocm-backend/internal/db"
+	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/user"
 )
 
@@ -82,6 +84,17 @@ func main() {
 		log.Fatalf("classroom migration: %v", err)
 	}
 	classroom.NewHandler(classroomStore).RegisterRoutes(mux, authenticate)
+	scheduleStore := schedule.NewStore(database)
+	if err := scheduleStore.Migrate(ctx); err != nil {
+		log.Fatalf("schedule migration: %v", err)
+	}
+	schedule.NewHandler(scheduleStore).RegisterRoutes(mux, authenticate)
+
+	courseStore := course.NewStore(database)
+	if err := courseStore.Migrate(ctx); err != nil {
+		log.Fatalf("course migration: %v", err)
+	}
+	course.NewHandler(courseStore, scheduleStore).RegisterRoutes(mux, authenticate)
 
 	// Readiness probe - the process can serve requests (database reachable).
 	// Registered after the DB is connected so it only reports ready once the

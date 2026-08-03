@@ -5,6 +5,9 @@ import AppShell from './components/AppShell.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ClassroomsPage from './pages/ClassroomsPage.jsx'
+import CourseManagementPage from './pages/CourseManagementPage.jsx'
+import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
+import TimetablePage from './pages/TimetablePage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 
 function RequireAuth({ children }) {
@@ -41,6 +44,9 @@ export default function App() {
           >
             <Route path="/" element={<DashboardPage />} />
             <Route path="/classrooms" element={<ClassroomsPage />} />
+            <Route path="/courses" element={<CourseManagementPage />} />
+            <Route path="/schedule-config" element={<ScheduleConfigPage />} />
+            <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/users" element={<UsersPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

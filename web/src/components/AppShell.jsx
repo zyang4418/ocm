@@ -18,6 +18,7 @@ import {
 import {
   Building,
   Dashboard,
+  Education,
   Logout,
   Notification,
   Settings,
@@ -38,6 +39,10 @@ export default function AppShell({ children }) {
   const isActive = (path) => location.pathname === path
   const inUsers = location.pathname.startsWith('/users')
   const inClassrooms = location.pathname.startsWith('/classrooms')
+  const inCourses =
+    location.pathname.startsWith('/courses') ||
+    location.pathname.startsWith('/timetable') ||
+    location.pathname.startsWith('/schedule-config')
 
   return (
     <HeaderContainer
@@ -106,6 +111,34 @@ export default function AppShell({ children }) {
                       onClick={go('/classrooms')}
                     >
                       教室列表
+                    </SideNavMenuItem>
+                  </SideNavMenu>
+                  <SideNavMenu
+                    key={`course-${inCourses}`}
+                    renderIcon={Education}
+                    title="教学管理"
+                    defaultExpanded={inCourses}
+                  >
+                    <SideNavMenuItem
+                      href="/courses"
+                      isActive={isActive('/courses')}
+                      onClick={go('/courses')}
+                    >
+                      课程管理
+                    </SideNavMenuItem>
+                    <SideNavMenuItem
+                      href="/timetable"
+                      isActive={isActive('/timetable')}
+                      onClick={go('/timetable')}
+                    >
+                      教室课表
+                    </SideNavMenuItem>
+                    <SideNavMenuItem
+                      href="/schedule-config"
+                      isActive={isActive('/schedule-config')}
+                      onClick={go('/schedule-config')}
+                    >
+                      作息设置
                     </SideNavMenuItem>
                   </SideNavMenu>
                   <SideNavMenu
