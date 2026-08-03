@@ -13,6 +13,7 @@ import (
 
 	"ocm-backend/internal/auth"
 	"ocm-backend/internal/db"
+	"ocm-backend/internal/user"
 )
 
 func main() {
@@ -61,11 +62,16 @@ func main() {
 		}
 	}()
 
+	tokenService := auth.NewTokenService()
+
 	authStore := auth.NewStore(database)
 	if err := authStore.Migrate(ctx); err != nil {
 		log.Fatalf("auth migration: %v", err)
 	}
-	auth.NewHandler(authStore, auth.NewTokenService()).RegisterRoutes(mux)
+	auth.NewHandler(authStore, tokenService).RegisterRoutes(mux)
+
+	userStore := user.NewStore(database)
+	user.NewHandler(userStore).RegisterRoutes(mux, auth.Middleware(tokenService))
 
 	// Readiness probe - the process can serve requests (database reachable).
 	// Registered after the DB is connected so it only reports ready once the

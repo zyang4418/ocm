@@ -14,7 +14,6 @@ import {
   UserMultiple,
   WarningAlt,
 } from '@carbon/icons-react'
-import AppShell from '../components/AppShell.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 const metrics = [
@@ -35,8 +34,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
 
   return (
-    <AppShell>
-      <Grid fullWidth className="dashboard">
+    <Grid fullWidth className="dashboard">
         <Column sm={4} md={8} lg={16}>
           <Breadcrumb noTrailingSlash aria-label="面包屑导航">
             <BreadcrumbItem href="/">首页</BreadcrumbItem>
@@ -78,6 +76,5 @@ export default function DashboardPage() {
           </Column>
         ))}
       </Grid>
-    </AppShell>
   )
 }
