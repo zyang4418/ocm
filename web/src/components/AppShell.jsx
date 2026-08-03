@@ -35,6 +35,7 @@ export default function AppShell({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const isAdmin = user?.role === 'admin'
 
   const isActive = (path) => location.pathname === path
   const inUsers = location.pathname.startsWith('/users')
@@ -44,7 +45,8 @@ export default function AppShell({ children }) {
   const inCourses =
     location.pathname.startsWith('/courses') ||
     location.pathname.startsWith('/timetable') ||
-    location.pathname.startsWith('/schedule-config')
+    location.pathname.startsWith('/schedule-config') ||
+    location.pathname.startsWith('/imports')
 
   return (
     <HeaderContainer
@@ -149,6 +151,15 @@ export default function AppShell({ children }) {
                     >
                       作息设置
                     </SideNavMenuItem>
+                    {isAdmin && (
+                      <SideNavMenuItem
+                        href="/imports"
+                        isActive={isActive('/imports')}
+                        onClick={go('/imports')}
+                      >
+                        课表导入
+                      </SideNavMenuItem>
+                    )}
                   </SideNavMenu>
                   <SideNavMenu
                     key={`org-${inUsers}`}

@@ -9,6 +9,7 @@ import ClassroomsPage from './pages/ClassroomsPage.jsx'
 import CourseManagementPage from './pages/CourseManagementPage.jsx'
 import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
 import TimetablePage from './pages/TimetablePage.jsx'
+import ImportsPage from './pages/ImportsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 
 function RequireAuth({ children }) {
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/courses" element={<CourseManagementPage />} />
             <Route path="/schedule-config" element={<ScheduleConfigPage />} />
             <Route path="/timetable" element={<TimetablePage />} />
+            <Route path="/imports" element={<ImportsPage />} />
             <Route path="/users" element={<UsersPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

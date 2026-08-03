@@ -23,6 +23,12 @@ export default defineConfig({
           ],
         },
         {
+          text: '使用',
+          items: [
+            { text: '课表导入', link: '/guide/import' },
+          ],
+        },
+        {
           text: '开发',
           items: [
             { text: '小程序', link: '/guide/miniapp' },
