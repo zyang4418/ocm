@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -50,6 +50,13 @@ export default function LoginPage() {
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const passwordRef = useRef(null)
+  useEffect(() => {
+    if (step === 'password') {
+      passwordRef.current?.focus()
+    }
+  }, [step])
+
   if (user) {
     return <Navigate to="/" replace />
   }
@@ -82,12 +89,12 @@ export default function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await login(username.trim(), password)
       if (rememberId) {
         localStorage.setItem(REMEMBER_KEY, username.trim())
       } else {
         localStorage.removeItem(REMEMBER_KEY)
       }
+      await login(username.trim(), password)
       const target = location.state?.from?.pathname || '/'
       navigate(target, { replace: true })
     } catch (err) {
@@ -231,7 +238,7 @@ export default function LoginPage() {
                   showPasswordLabel="Show password"
                   hidePasswordLabel="Hide password"
                   size="lg"
-                  autoFocus={step === 'password'}
+                  ref={passwordRef}
                   tabIndex={step === 'id' ? -1 : 0}
                 />
                 <div className="login__button-row">
