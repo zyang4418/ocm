@@ -38,7 +38,9 @@ export default function AppShell({ children }) {
 
   const isActive = (path) => location.pathname === path
   const inUsers = location.pathname.startsWith('/users')
-  const inClassrooms = location.pathname.startsWith('/classrooms')
+  const inClassrooms =
+    location.pathname.startsWith('/classrooms') ||
+    location.pathname.startsWith('/bookings')
   const inCourses =
     location.pathname.startsWith('/courses') ||
     location.pathname.startsWith('/timetable') ||
@@ -111,6 +113,13 @@ export default function AppShell({ children }) {
                       onClick={go('/classrooms')}
                     >
                       教室列表
+                    </SideNavMenuItem>
+                    <SideNavMenuItem
+                      href="/bookings"
+                      isActive={isActive('/bookings')}
+                      onClick={go('/bookings')}
+                    >
+                      教室预约
                     </SideNavMenuItem>
                   </SideNavMenu>
                   <SideNavMenu

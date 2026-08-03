@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
 import AppShell from './components/AppShell.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import BookingsPage from './pages/BookingsPage.jsx'
 import ClassroomsPage from './pages/ClassroomsPage.jsx'
 import CourseManagementPage from './pages/CourseManagementPage.jsx'
 import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
@@ -44,6 +45,7 @@ export default function App() {
           >
             <Route path="/" element={<DashboardPage />} />
             <Route path="/classrooms" element={<ClassroomsPage />} />
+            <Route path="/bookings" element={<BookingsPage />} />
             <Route path="/courses" element={<CourseManagementPage />} />
             <Route path="/schedule-config" element={<ScheduleConfigPage />} />
             <Route path="/timetable" element={<TimetablePage />} />
