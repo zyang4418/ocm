@@ -1,8 +1,14 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, Outlet, useLocation } from 'react-router-dom'
 import { Loading } from '@carbon/react'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
+import AppShell from './components/AppShell.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import ClassroomsPage from './pages/ClassroomsPage.jsx'
+import CourseManagementPage from './pages/CourseManagementPage.jsx'
+import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
+import TimetablePage from './pages/TimetablePage.jsx'
+import UsersPage from './pages/UsersPage.jsx'
 
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
@@ -28,13 +34,21 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/"
             element={
               <RequireAuth>
-                <DashboardPage />
+                <AppShell>
+                  <Outlet />
+                </AppShell>
               </RequireAuth>
             }
-          />
+          >
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/classrooms" element={<ClassroomsPage />} />
+            <Route path="/courses" element={<CourseManagementPage />} />
+            <Route path="/schedule-config" element={<ScheduleConfigPage />} />
+            <Route path="/timetable" element={<TimetablePage />} />
+            <Route path="/users" element={<UsersPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

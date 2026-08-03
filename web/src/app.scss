@@ -421,3 +421,274 @@
   color: var(--cds-text-secondary);
   margin-block-start: $spacing-03;
 }
+
+// --- Users page -------------------------------------------------------------
+.users-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.users-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.users-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.users-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.users-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.users-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.users-page__confirm-text {
+  @include type-style('body-01');
+}
+
+.classrooms-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.classrooms-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.classrooms-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.classrooms-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.classrooms-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.classrooms-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.classrooms-page__confirm-text {
+  @include type-style('body-01');
+}
+
+/* ---- course / schedule / timetable shared ---- */
+.courses-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.courses-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.courses-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.courses-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.courses-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.courses-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.courses-page__confirm-text {
+  @include type-style('body-01');
+}
+
+.courses-page__add {
+  margin-block-end: $spacing-05;
+}
+
+/* ---- regime cards ---- */
+.schedule-regime {
+  margin-block-end: $spacing-05;
+}
+
+.schedule-regime__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+}
+
+.schedule-regime__date {
+  color: var(--cds-text-secondary);
+  @include type-style('body-01');
+}
+
+.schedule-regime__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-02;
+}
+
+.schedule-regime__periods {
+  width: 100%;
+  margin-block-start: $spacing-04;
+  border-collapse: collapse;
+
+  th,
+  td {
+    text-align: left;
+    padding: $spacing-02 $spacing-04;
+    border-block-end: 1px solid var(--cds-border-subtle);
+  }
+}
+
+.schedule-regime__empty {
+  color: var(--cds-text-secondary);
+  margin-block-start: $spacing-03;
+}
+
+.schedule-periods__hint {
+  color: var(--cds-text-secondary);
+  @include type-style('body-01');
+}
+
+.schedule-periods__row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 40px;
+  align-items: end;
+  gap: $spacing-03;
+}
+
+/* ---- timetable grid ---- */
+.timetable__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: $spacing-05;
+  flex-wrap: wrap;
+  margin-block-end: $spacing-05;
+}
+
+.timetable__select {
+  min-inline-size: 16rem;
+}
+
+.timetable__week {
+  display: flex;
+  align-items: center;
+  gap: $spacing-03;
+}
+
+.timetable__week-label {
+  @include type-style('body-01');
+}
+
+.timetable__scroll {
+  overflow-x: auto;
+}
+
+.timetable__grid {
+  border-collapse: collapse;
+  min-width: 100%;
+
+  th,
+  td {
+    border: 1px solid var(--cds-border-subtle);
+    padding: $spacing-02 $spacing-03;
+    vertical-align: top;
+  }
+
+  thead th {
+    text-align: center;
+    background: var(--cds-layer-01);
+  }
+}
+
+.timetable__corner {
+  min-inline-size: 6rem;
+}
+
+.timetable__date {
+  display: block;
+  color: var(--cds-text-secondary);
+  @include type-style('label-01');
+}
+
+.timetable__regime {
+  display: block;
+  color: var(--cds-text-secondary);
+  @include type-style('label-01');
+}
+
+.timetable__period {
+  text-align: center;
+  background: var(--cds-layer-01);
+}
+
+.timetable__time {
+  display: block;
+  color: var(--cds-text-secondary);
+  @include type-style('label-01');
+}
+
+.timetable__cell {
+  min-inline-size: 8rem;
+  min-block-size: 3.5rem;
+  cursor: default;
+}
+
+.timetable__cell--filled {
+  cursor: pointer;
+  background: var(--cds-layer-01);
+}
+
+.timetable__cell--filled:hover {
+  background: var(--cds-layer-hover);
+}
+
+.timetable__session {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  span {
+    color: var(--cds-text-secondary);
+    @include type-style('label-01');
+  }
+}
+
+.timetable__add {
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+}
+
+.timetable__delete {
+  margin-block-start: $spacing-05;
+}
