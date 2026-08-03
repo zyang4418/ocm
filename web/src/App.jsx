@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
 import AppShell from './components/AppShell.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import ClassroomsPage from './pages/ClassroomsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 
 function RequireAuth({ children }) {
@@ -39,6 +40,7 @@ export default function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/classrooms" element={<ClassroomsPage />} />
             <Route path="/users" element={<UsersPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

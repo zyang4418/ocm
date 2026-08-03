@@ -457,3 +457,38 @@
 .users-page__confirm-text {
   @include type-style('body-01');
 }
+
+.classrooms-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.classrooms-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.classrooms-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.classrooms-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.classrooms-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.classrooms-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.classrooms-page__confirm-text {
+  @include type-style('body-01');
+}

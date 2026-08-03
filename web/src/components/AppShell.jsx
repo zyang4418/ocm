@@ -16,6 +16,7 @@ import {
   Theme,
 } from '@carbon/react'
 import {
+  Building,
   Dashboard,
   Logout,
   Notification,
@@ -36,6 +37,7 @@ export default function AppShell({ children }) {
 
   const isActive = (path) => location.pathname === path
   const inUsers = location.pathname.startsWith('/users')
+  const inClassrooms = location.pathname.startsWith('/classrooms')
 
   return (
     <HeaderContainer
@@ -92,6 +94,20 @@ export default function AppShell({ children }) {
                   >
                     概览
                   </SideNavLink>
+                  <SideNavMenu
+                    key={`cls-${inClassrooms}`}
+                    renderIcon={Building}
+                    title="教室管理"
+                    defaultExpanded={inClassrooms}
+                  >
+                    <SideNavMenuItem
+                      href="/classrooms"
+                      isActive={isActive('/classrooms')}
+                      onClick={go('/classrooms')}
+                    >
+                      教室列表
+                    </SideNavMenuItem>
+                  </SideNavMenu>
                   <SideNavMenu
                     key={`org-${inUsers}`}
                     renderIcon={UserMultiple}
