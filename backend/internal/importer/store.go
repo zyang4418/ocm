@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS import_jobs (
 		`ALTER TABLE import_jobs ADD COLUMN preview LONGTEXT NULL DEFAULT NULL AFTER error_report`,
 	); err != nil {
 		var mysqlErr *mysql.MySQLError
-		if !(errors.As(err, &mysqlErr) && mysqlErr.Number == 1060) {
+		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
 			return fmt.Errorf("add preview column: %w", err)
 		}
 	}
