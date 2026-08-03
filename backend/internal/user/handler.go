@@ -1,7 +1,6 @@
 package user
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 	"strings"
 
 	"ocm-backend/internal/auth"
+	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
 )
 
@@ -20,18 +20,19 @@ func NewHandler(store *Store) *Handler {
 	return &Handler{store: store}
 }
 
-// RegisterRoutes mounts the user-management endpoints on mux. All routes are
-// protected by authMw (token validation) followed by an admin-only check.
-func (h *Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
-	wrap := func(handler http.HandlerFunc) http.Handler {
-		return authMw(h.requireAdmin(http.HandlerFunc(handler)))
+// RegisterRoutes mounts the user-management endpoints on mux. Every route
+// runs behind authenticate (the composed JWT + user-loading middleware) and
+// a permission check.
+func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Handler) http.Handler) {
+	wrap := func(perm string, handler http.HandlerFunc) http.Handler {
+		return authenticate(authz.RequirePermission(perm)(http.HandlerFunc(handler)))
 	}
-	mux.Handle("GET /api/users", wrap(h.list))
-	mux.Handle("POST /api/users", wrap(h.create))
-	mux.Handle("GET /api/users/{id}", wrap(h.get))
-	mux.Handle("PUT /api/users/{id}", wrap(h.update))
-	mux.Handle("PATCH /api/users/{id}/password", wrap(h.changePassword))
-	mux.Handle("DELETE /api/users/{id}", wrap(h.delete))
+	mux.Handle("GET /api/users", wrap(authz.UserManage, h.list))
+	mux.Handle("POST /api/users", wrap(authz.UserManage, h.create))
+	mux.Handle("GET /api/users/{id}", wrap(authz.UserManage, h.get))
+	mux.Handle("PUT /api/users/{id}", wrap(authz.UserManage, h.update))
+	mux.Handle("PATCH /api/users/{id}/password", wrap(authz.UserManage, h.changePassword))
+	mux.Handle("DELETE /api/users/{id}", wrap(authz.UserManage, h.delete))
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +155,7 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
-	if requester, ok := requesterFrom(r.Context()); ok && id == requester.ID {
+	if subject, ok := authz.SubjectFrom(r.Context()); ok && id == subject.ID {
 		httpx.RespondError(w, http.StatusConflict, "cannot delete your own account")
 		return
 	}
@@ -170,33 +171,27 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-type requesterKey struct{}
-
-// requireAdmin ensures the authenticated user has the admin role. It loads the
-// requester's profile once and stores it in the context for downstream handlers.
-func (h *Handler) requireAdmin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, ok := auth.UsernameFrom(r.Context())
-		if !ok {
-			httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
-			return
-		}
-		u, err := h.store.GetByUsername(r.Context(), username)
-		if err != nil {
-			httpx.RespondError(w, http.StatusUnauthorized, "account not found")
-			return
-		}
-		if u.Role != RoleAdmin {
-			httpx.RespondError(w, http.StatusForbidden, "admin access required")
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requesterKey{}, u)))
-	})
-}
-
-func requesterFrom(ctx context.Context) (User, bool) {
-	u, ok := ctx.Value(requesterKey{}).(User)
-	return u, ok
+// LoadSubject is an auth-pipeline middleware that resolves the authenticated
+// username (placed in context by auth.Middleware) to a user record and stores
+// an authz.Subject in the context for downstream permission checks. It looks
+// up the database on every request (Option B) so role changes take effect
+// immediately, for both the web console and the mini-program.
+func LoadSubject(store *Store) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			username, ok := auth.UsernameFrom(r.Context())
+			if !ok {
+				httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+				return
+			}
+			u, err := store.GetByUsername(r.Context(), username)
+			if err != nil {
+				httpx.RespondError(w, http.StatusUnauthorized, "account not found")
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(authz.WithSubject(r.Context(), authz.Subject{ID: u.ID, Role: u.Role})))
+		})
+	}
 }
 
 func parseID(r *http.Request) (int64, error) {

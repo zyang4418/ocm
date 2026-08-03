@@ -71,7 +71,10 @@ func main() {
 	auth.NewHandler(authStore, tokenService).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
-	user.NewHandler(userStore).RegisterRoutes(mux, auth.Middleware(tokenService))
+	authenticate := func(next http.Handler) http.Handler {
+		return auth.Middleware(tokenService)(user.LoadSubject(userStore)(next))
+	}
+	user.NewHandler(userStore).RegisterRoutes(mux, authenticate)
 
 	// Readiness probe - the process can serve requests (database reachable).
 	// Registered after the DB is connected so it only reports ready once the
