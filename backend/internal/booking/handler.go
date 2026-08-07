@@ -211,10 +211,7 @@ func (h *Handler) validateBooking(ctx context.Context, in *BookingInput) (string
 	if !ok {
 		return "no schedule regime configured for this date", false
 	}
-	valid := make(map[int]bool, len(regime.Periods))
-	for _, p := range regime.Periods {
-		valid[p.PeriodIndex] = true
-	}
+	valid := schedule.PeriodIndexSet(regime)
 	for i := in.PeriodStart; i <= in.PeriodEnd; i++ {
 		if !valid[i] {
 			return "period range is not valid for the active regime on this date", false

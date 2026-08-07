@@ -10,7 +10,10 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-var ErrJobNotFound = errors.New("import job not found")
+var (
+	ErrJobNotFound      = errors.New("import job not found")
+	ErrJobStateConflict = errors.New("import job not in expected state")
+)
 
 const jobColumns = `id, type, status, filename, payload, total_rows, succeeded_rows, failed_rows, error_report, preview, user_id, created_at, started_at, finished_at`
 
@@ -137,14 +140,25 @@ func (s *Store) ListJobs(ctx context.Context, limit int) ([]Job, error) {
 	return list, rows.Err()
 }
 
-// MarkProcessing transitions a job to processing and stamps started_at.
-func (s *Store) MarkProcessing(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE import_jobs SET status = ?, started_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		StatusProcessing, id,
+// MarkProcessing transitions a job to processing and stamps started_at. It is
+// conditional on fromStatus so the transition is atomic with the status
+// precondition: a concurrent transition that changed the status first causes
+// this to affect zero rows and return ErrJobStateConflict. (processJob passes
+// pending; commitJob passes preview.)
+func (s *Store) MarkProcessing(ctx context.Context, id int64, fromStatus string) error {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE import_jobs SET status = ?, started_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?`,
+		StatusProcessing, id, fromStatus,
 	)
 	if err != nil {
 		return fmt.Errorf("mark import job processing: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark import job processing rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrJobStateConflict
 	}
 	return nil
 }
@@ -197,13 +211,24 @@ func (s *Store) Finish(ctx context.Context, id int64, status string, r Result) e
 	return nil
 }
 
-// Cancel discards a previewed job without committing.
+// Cancel discards a previewed job without committing. The transition is
+// conditional on the job still being in the preview state, so a concurrent
+// commit that took the slot first returns ErrJobStateConflict instead of
+// racing the cancellation.
 func (s *Store) Cancel(ctx context.Context, id int64) error {
-	if _, err := s.db.ExecContext(ctx,
-		`UPDATE import_jobs SET status = ?, preview = NULL, finished_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		StatusCancelled, id,
-	); err != nil {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE import_jobs SET status = ?, preview = NULL, finished_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?`,
+		StatusCancelled, id, StatusPreview,
+	)
+	if err != nil {
 		return fmt.Errorf("cancel import job: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("cancel import job rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrJobStateConflict
 	}
 	return nil
 }

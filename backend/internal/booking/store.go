@@ -122,15 +122,30 @@ func (s *Store) GetByID(ctx context.Context, id int64) (BookingView, error) {
 	return v, nil
 }
 
-// Create inserts a pending booking after checking, inside a transaction, that
-// no course session and no active (pending/approved) booking overlaps the
-// requested period range for this classroom and date.
+// Create inserts a pending booking. The classroom row is locked for the
+// duration of an inner transaction so that concurrent Create calls for the
+// same classroom serialize: a second caller's conflict check runs only after
+// the first commits, by which point the inserted booking is visible and
+// reported as a conflict. The check itself verifies that no course session
+// and no active (pending/approved) booking overlaps the requested period
+// range for this classroom and date.
 func (s *Store) Create(ctx context.Context, in BookingInput, userID int64) (BookingView, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return BookingView{}, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	// Lock the classrooms row (guaranteed to exist by validateBooking) and
+	// hold the X lock until commit. This is the lock anchor rather than a
+	// classroom_bookings row: FOR UPDATE on an empty result set acquires
+	// only a gap lock, which does not block a concurrent INSERT into that
+	// gap, so locking the target booking row would not serialize inserts
+	// into a still-empty slot.
+	var lockID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM classrooms WHERE id = ? FOR UPDATE`, in.ClassroomID).Scan(&lockID); err != nil {
+		return BookingView{}, fmt.Errorf("lock classroom: %w", err)
+	}
 
 	if conflict, err := conflicts(ctx, tx, in.ClassroomID, in.Date, in.PeriodStart, in.PeriodEnd, 0); err != nil {
 		return BookingView{}, err
@@ -168,10 +183,24 @@ func (s *Store) Cancel(ctx context.Context, id, userID int64, isAdmin bool) (Boo
 	if v.Status != StatusPending && v.Status != StatusApproved {
 		return BookingView{}, ErrInvalidTransition
 	}
-	if _, err := s.db.ExecContext(ctx,
-		`UPDATE classroom_bookings SET status = ? WHERE id = ?`, StatusCancelled, id,
-	); err != nil {
+	// Condition the update on the current status so a concurrent transition
+	// (e.g. an admin rejecting it between the read above and this write)
+	// cannot be overwritten. affected == matched here because the status
+	// column always changes value on a successful cancel, so the
+	// changed-rows vs matched-rows distinction does not apply.
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE classroom_bookings SET status = ? WHERE id = ? AND status IN (?, ?)`,
+		StatusCancelled, id, StatusPending, StatusApproved,
+	)
+	if err != nil {
 		return BookingView{}, fmt.Errorf("cancel booking: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return BookingView{}, fmt.Errorf("cancel booking rows affected: %w", err)
+	}
+	if n == 0 {
+		return BookingView{}, ErrInvalidTransition
 	}
 	return s.GetByID(ctx, id)
 }
@@ -206,21 +235,40 @@ func (s *Store) Review(ctx context.Context, id int64, decision string) (BookingV
 		} else if conflict {
 			return BookingView{}, ErrClassroomConflict
 		}
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE classroom_bookings SET status = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?`,
-			newStatus, id,
-		); err != nil {
+		res, err := tx.ExecContext(ctx,
+			`UPDATE classroom_bookings SET status = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?`,
+			newStatus, id, StatusPending,
+		)
+		if err != nil {
 			return BookingView{}, fmt.Errorf("approve booking: %w", err)
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return BookingView{}, fmt.Errorf("approve booking rows affected: %w", err)
+		}
+		if n == 0 {
+			// A concurrent transition changed the status away from pending
+			// between the fast-path read and this update; the deferred
+			// rollback discards the no-op transaction.
+			return BookingView{}, ErrInvalidTransition
 		}
 		if err := tx.Commit(); err != nil {
 			return BookingView{}, fmt.Errorf("commit: %w", err)
 		}
 	} else {
-		if _, err := s.db.ExecContext(ctx,
-			`UPDATE classroom_bookings SET status = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?`,
-			newStatus, id,
-		); err != nil {
+		res, err := s.db.ExecContext(ctx,
+			`UPDATE classroom_bookings SET status = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?`,
+			newStatus, id, StatusPending,
+		)
+		if err != nil {
 			return BookingView{}, fmt.Errorf("reject booking: %w", err)
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return BookingView{}, fmt.Errorf("reject booking rows affected: %w", err)
+		}
+		if n == 0 {
+			return BookingView{}, ErrInvalidTransition
 		}
 	}
 	return s.GetByID(ctx, id)

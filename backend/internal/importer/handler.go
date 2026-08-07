@@ -157,13 +157,21 @@ func (h *Handler) processJob(id int64) {
 	defer func() { <-h.sem }()
 
 	ctx := context.Background()
-	if err := h.store.MarkProcessing(ctx, id); err != nil {
+	if err := h.store.MarkProcessing(ctx, id, StatusPending); err != nil {
+		if errors.Is(err, ErrJobStateConflict) {
+			// A concurrent worker (e.g. a RecoverStale requeue of a job
+			// whose original processJob is still alive) already moved this
+			// job out of pending; leave it to that worker.
+			return
+		}
 		log.Printf("importer: mark processing job %d: %v", id, err)
+		h.finishFail(ctx, id, "标记处理中失败："+err.Error())
 		return
 	}
 	job, err := h.store.GetJob(ctx, id)
 	if err != nil {
 		log.Printf("importer: load job %d: %v", id, err)
+		h.finishFail(ctx, id, "加载任务失败："+err.Error())
 		return
 	}
 
@@ -199,6 +207,7 @@ func (h *Handler) runCommit(id int64) {
 	job, err := h.store.GetJob(ctx, id)
 	if err != nil {
 		log.Printf("importer: load job %d for commit: %v", id, err)
+		h.finishFail(ctx, id, "加载任务失败："+err.Error())
 		return
 	}
 
@@ -240,7 +249,11 @@ func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
 		return
 	}
-	if err := h.store.MarkProcessing(r.Context(), id); err != nil {
+	if err := h.store.MarkProcessing(r.Context(), id, StatusPreview); err != nil {
+		if errors.Is(err, ErrJobStateConflict) {
+			httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
+			return
+		}
 		httpx.RespondError(w, http.StatusInternalServerError, "could not start commit")
 		return
 	}
@@ -269,6 +282,10 @@ func (h *Handler) cancelJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.store.Cancel(r.Context(), id); err != nil {
+		if errors.Is(err, ErrJobStateConflict) {
+			httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
+			return
+		}
 		httpx.RespondError(w, http.StatusInternalServerError, "could not cancel import job")
 		return
 	}

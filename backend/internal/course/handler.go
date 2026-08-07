@@ -453,12 +453,10 @@ func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string
 	if !ok {
 		return "no schedule regime configured for this date", false
 	}
-	for _, p := range regime.Periods {
-		if p.PeriodIndex == in.PeriodIndex {
-			return "", true
-		}
+	if !schedule.PeriodIndexSet(regime)[in.PeriodIndex] {
+		return "periodIndex is not valid for the active regime on this date", false
 	}
-	return "periodIndex is not valid for the active regime on this date", false
+	return "", true
 }
 
 func parseID(r *http.Request) (int64, error) {

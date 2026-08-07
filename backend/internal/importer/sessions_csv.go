@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +29,7 @@ type sessionInsert struct {
 	courseName    string
 	className     string
 	semester      string
+	rowNum        int // 1-based CSV row, for per-row error reporting
 }
 
 func (s sessionInsert) toPreviewRow() PreviewRow {
@@ -88,6 +88,7 @@ func parseAndValidate(
 			continue
 		}
 		seen[key] = true
+		ins.rowNum = rowNum
 		clean = append(clean, ins)
 	}
 
@@ -106,7 +107,7 @@ func parseAndValidate(
 		filtered := clean[:0]
 		for _, ins := range clean {
 			if conflict[fmt.Sprintf("%d|%s|%d", ins.classroomID, ins.date, ins.periodIndex)] {
-				errs = append(errs, RowError{Row: 0, Error: fmt.Sprintf("教室+日期+节次已被占用：%s 第%d节", ins.date, ins.periodIndex)})
+				errs = append(errs, RowError{Row: ins.rowNum, Error: fmt.Sprintf("教室+日期+节次已被占用：%s 第%d节", ins.date, ins.periodIndex)})
 			} else {
 				filtered = append(filtered, ins)
 			}
@@ -192,7 +193,7 @@ func commitSessions(
 			res.SucceededRows = 0
 			res.FailedRows = dataRows
 			if isDuplicateEntry(err) {
-				res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：与已有课次冲突（并发）"})
+				res.Errors = append(res.Errors, RowError{Row: ins.rowNum, Error: "导入中断：与已有课次冲突（并发）"})
 				return res, errors.New("conflict during insert (race)")
 			}
 			res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
@@ -296,14 +297,7 @@ func resolveRow(
 	if !ok {
 		return sessionInsert{}, "该日期未配置作息制度"
 	}
-	valid := false
-	for _, p := range regime.Periods {
-		if p.PeriodIndex == period {
-			valid = true
-			break
-		}
-	}
-	if !valid {
+	if !schedule.PeriodIndexSet(regime)[period] {
 		return sessionInsert{}, fmt.Sprintf("节次 %d 不在该日期作息制度「%s」中", period, regime.Name)
 	}
 
@@ -321,32 +315,22 @@ func resolveRow(
 	}, ""
 }
 
-// existingConflicts returns a set of "classroomID|date|period" keys already
-// present in course_sessions for the classrooms and date span of the clean
-// rows.
+// existingConflicts returns the set of "classroomID|date|period" keys from clean
+// that are already present in course_sessions. It queries only the tuples being
+// imported (not the whole classroom×date span), so a semester-wide import over
+// many rooms/days validates a few hundred rows instead of loading tens of
+// thousands.
 func existingConflicts(ctx context.Context, db *sql.DB, clean []sessionInsert) (map[string]bool, error) {
-	roomSet := make(map[int64]bool)
-	var dates []string
-	for _, ins := range clean {
-		roomSet[ins.classroomID] = true
-		dates = append(dates, ins.date)
-	}
-	sort.Strings(dates)
-	minDate, maxDate := dates[0], dates[len(dates)-1]
-
-	roomIDs := make([]any, 0, len(roomSet))
-	for id := range roomSet {
-		roomIDs = append(roomIDs, id)
-	}
-	placeholders := make([]string, len(roomIDs))
-	for i := range roomIDs {
-		placeholders[i] = "?"
+	placeholders := make([]string, len(clean))
+	args := make([]any, 0, len(clean)*3)
+	for i, ins := range clean {
+		placeholders[i] = "(?, ?, ?)"
+		args = append(args, ins.classroomID, ins.date, ins.periodIndex)
 	}
 	q := fmt.Sprintf(
-		`SELECT classroom_id, date, period_index FROM course_sessions WHERE classroom_id IN (%s) AND date BETWEEN ? AND ?`,
+		`SELECT classroom_id, date, period_index FROM course_sessions WHERE (classroom_id, date, period_index) IN (%s)`,
 		strings.Join(placeholders, ","),
 	)
-	args := append(roomIDs, minDate, maxDate)
 
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
