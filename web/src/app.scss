@@ -533,6 +533,132 @@
   margin-block-end: $spacing-05;
 }
 
+/* ---- bookings page ---- */
+.bookings-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-05;
+  align-items: flex-end;
+  margin-block-end: $spacing-05;
+}
+
+.bookings-page__filter {
+  flex: 1 1 12rem;
+  min-width: 12rem;
+}
+
+.bookings-page__busy {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+/* ---- imports page ---- */
+.imports-page__upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-05;
+  margin-block-end: $spacing-03;
+}
+
+.imports-page__upload-err {
+  flex-basis: 100%;
+}
+
+.imports-page__schema {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block-end: $spacing-07;
+
+  code {
+    background: var(--cds-layer-01);
+    padding: 0 $spacing-02;
+    border-radius: 2px;
+  }
+}
+
+.imports-page__skill {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block-end: $spacing-07;
+
+  a {
+    color: var(--cds-link-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  code {
+    background: var(--cds-layer-01);
+    padding: 0 $spacing-02;
+    border-radius: 2px;
+  }
+}
+
+.imports-page__summary {
+  @include type-style('body-01');
+  margin-block-end: $spacing-04;
+}
+
+.imports-page__actions {
+  display: flex;
+  gap: $spacing-03;
+  margin-block-end: $spacing-05;
+}
+
+.imports-page__rows {
+  max-height: 22rem;
+  overflow: auto;
+  margin-block-end: $spacing-05;
+  border: 1px solid var(--cds-border-subtle);
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    @include type-style('body-01');
+  }
+
+  th,
+  td {
+    padding: $spacing-02 $spacing-03;
+    text-align: left;
+    white-space: nowrap;
+    border-block-end: 1px solid var(--cds-border-subtle);
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--cds-layer-02);
+    @include type-style('heading-01');
+  }
+
+  tbody tr:nth-child(even) {
+    background: var(--cds-layer-01);
+  }
+}
+
+.imports-page__rows-cap {
+  @include type-style('helper-text-01');
+  color: var(--cds-text-secondary);
+  margin-block-start: $spacing-02;
+}
+
+.imports-page__errors {
+  max-height: 24rem;
+  overflow-y: auto;
+  margin: 0;
+  padding-inline-start: $spacing-05;
+  @include type-style('body-01');
+
+  li {
+    margin-block-end: $spacing-02;
+  }
+}
+
 /* ---- regime cards ---- */
 .schedule-regime {
   margin-block-end: $spacing-05;

@@ -50,6 +50,7 @@ services:
       args:
         # Baked into the static bundle at image build time.
         VITE_ICP_NUMBER: ${ICP_NUMBER:-}
+        VITE_DOCS_URL: ${DOCS_URL:-}
     container_name: ocm-web-prod
     ports:
       - "80:80"

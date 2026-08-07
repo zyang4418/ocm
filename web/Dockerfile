@@ -10,6 +10,9 @@ COPY . .
 # Optional ICP filing number, inlined into the bundle by vite build.
 ARG VITE_ICP_NUMBER=
 ENV VITE_ICP_NUMBER=${VITE_ICP_NUMBER}
+# External docs site origin; inlined into the bundle by vite build.
+ARG VITE_DOCS_URL=
+ENV VITE_DOCS_URL=${VITE_DOCS_URL}
 RUN npm run build
 
 # --- Runtime stage ---

@@ -239,6 +239,18 @@ func ActiveFor(regimes []Regime, date time.Time) (Regime, bool) {
 	return latest, true
 }
 
+// PeriodIndexSet returns the set of valid period indices for a regime. It
+// centralizes the "which periods are valid" rule shared by course, booking, and
+// importer validation, so the three cannot drift to accept different period
+// sets when the rule changes.
+func PeriodIndexSet(r Regime) map[int]bool {
+	set := make(map[int]bool, len(r.Periods))
+	for _, p := range r.Periods {
+		set[p.PeriodIndex] = true
+	}
+	return set
+}
+
 // trimSeconds drops the ":SS" suffix MySQL returns for TIME columns so callers
 // see "HH:MM".
 func trimSeconds(s string) string {

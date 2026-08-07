@@ -63,6 +63,8 @@ services:
       - VITE_API_PROXY_TARGET=http://backend:8080
       # Optional ICP filing number, inlined by the vite dev server.
       - VITE_ICP_NUMBER=${ICP_NUMBER:-}
+      # External docs site origin; when set the in-app docs links are shown.
+      - VITE_DOCS_URL=${DOCS_URL:-}
     command: npm run dev -- --host 0.0.0.0
 
 volumes:
