@@ -1,7 +1,12 @@
+import { getUser, unbind } from '../../utils/auth'
+
 Page({
   data: {
     statusBarHeight: 44,
     cacheSize: '12.5 MB',
+    displayName: '未登录',
+    roleLabel: '',
+    username: '',
     stats: [
       { value: '18', label: '本周课时' },
       { value: '4', label: '管理班级' },
@@ -21,6 +26,19 @@ Page({
   onLoad() {
     const info = wx.getWindowInfo()
     this.setData({ statusBarHeight: info.statusBarHeight })
+  },
+
+  onShow() {
+    const u = getUser()
+    if (u) {
+      this.setData({
+        displayName: u.displayName || u.username,
+        username: u.username,
+        roleLabel: u.role === 'admin' ? '管理员' : '教师'
+      })
+    } else {
+      this.setData({ displayName: '未登录', roleLabel: '', username: '' })
+    }
   },
 
   onTapAction(e: WechatMiniprogram.TouchEvent) {
@@ -47,15 +65,25 @@ Page({
     wx.showToast({ title: name, icon: 'none', duration: 1000 })
   },
 
+  // In the bind model the only meaningful "exit" is unbinding: it severs the
+  // WeChat<->account link so the next entry requires credentials again.
   onLogout() {
     wx.showModal({
-      title: '退出登录',
-      content: '确定要退出当前账号吗？',
+      title: '解绑并退出',
+      content: '解绑后将解除当前微信号与账号的关联，下次进入需重新输入账号密码。',
+      confirmText: '解绑',
       confirmColor: '#FF7A45',
-      success: (res) => {
-        if (res.confirm) {
-          wx.showToast({ title: '已退出登录', icon: 'none', duration: 1200 })
+      success: async (res) => {
+        if (!res.confirm) return
+        wx.showLoading({ title: '解绑中', mask: true })
+        try {
+          await unbind()
+        } catch (_e) {
+          // Even if the unbind request fails (e.g. network), clear locally and
+          // return to the login page so the user can re-bind.
         }
+        wx.hideLoading()
+        wx.reLaunch({ url: '/pages/login/login' })
       }
     })
   }

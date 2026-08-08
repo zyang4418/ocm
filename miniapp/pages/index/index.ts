@@ -1,3 +1,5 @@
+import { ensureAuth } from '../../utils/auth'
+
 Page({
   data: {
     statusBarHeight: 44,
@@ -20,9 +22,12 @@ Page({
     ]
   },
 
-  onLoad() {
+  async onLoad() {
     const info = wx.getWindowInfo()
     this.setData({ statusBarHeight: info.statusBarHeight })
+    const ok = await ensureAuth()
+    if (!ok) return
+    // TODO: load real data from the API (next phase).
   },
 
   onTapAction(e: WechatMiniprogram.TouchEvent) {

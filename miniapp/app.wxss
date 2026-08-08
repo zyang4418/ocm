@@ -2,6 +2,7 @@
 
 page {
   --color-primary: #2B5FF6;
+  --td-brand-color: #2B5FF6;
   --color-primary-light: #E8F0FF;
   --color-accent: #00C49A;
   --color-accent-light: #E0F7F0;

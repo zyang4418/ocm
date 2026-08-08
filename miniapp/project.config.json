@@ -25,7 +25,12 @@
     "showShadowRootInWxmlPanel": true,
     "skylineRenderEnable": true,
     "bigPackageSizeSupport": true,
-    "packNpmRelationList": [],
+    "packNpmRelationList": [
+      {
+        "packageJsonPath": "./package.json",
+        "miniprogramNpmDistDir": "./"
+      }
+    ],
     "ignoreUploadUnusedFiles": true,
     "babelSetting": {
       "ignore": [],
@@ -33,7 +38,7 @@
       "outputPath": ""
     },
     "compileWorklet": false,
-    "packNpmManually": false,
+    "packNpmManually": true,
     "minifyWXSS": true,
     "minifyWXML": true,
     "localPlugins": false,
@@ -41,7 +46,9 @@
     "swc": false,
     "disableSWC": true,
     "disableUseStrict": false,
-    "useCompilerPlugins": ["typescript"]
+    "useCompilerPlugins": [
+      "typescript"
+    ]
   },
   "compileType": "miniprogram",
   "libVersion": "3.6.3",

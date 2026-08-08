@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/login/login",
     "pages/console/console",
     "pages/ai/ai",
     "pages/messages/messages",
@@ -26,6 +27,7 @@
   "themeLocation": "theme.json",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
+  "componentFramework": "glass-easel",
   "rendererOptions": {
     "skyline": {
       "disableABTest": true,

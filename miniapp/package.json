@@ -1,0 +1,12 @@
+{
+  "name": "ocm-miniapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OCM 智慧教室管理小程序",
+  "dependencies": {
+    "tdesign-miniprogram": "^1.16.0"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^5.0.0"
+  }
+}
