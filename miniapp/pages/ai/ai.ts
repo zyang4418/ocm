@@ -1,11 +1,13 @@
-// 同步获取系统信息，确保首帧渲染时拿到正确高度（避免 100vh 在部分机型初始计算偏差）
-const sysInfo = wx.getSystemInfoSync()
+import { getNavInfo } from '../../utils/nav'
+
+// 首帧渲染即需正确高度（避免 100vh 在部分机型初始计算偏差），故在模块级同步取值。
+const nav = getNavInfo()
 
 Page({
   data: {
-    statusBarHeight: sysInfo.statusBarHeight,
-    safeAreaBottom: sysInfo.screenHeight - sysInfo.safeArea.bottom,
-    pageHeight: sysInfo.windowHeight + sysInfo.statusBarHeight,
+    statusBarHeight: nav.statusBarHeight,
+    safeAreaBottom: nav.safeAreaBottom,
+    pageHeight: nav.pageHeight,
     inputValue: '',
     suggestions: [
       { text: '帮我查一下本周高等数学的出勤率' },

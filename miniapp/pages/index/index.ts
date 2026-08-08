@@ -1,6 +1,9 @@
+import { ensureAuth } from '../../utils/auth'
+import { getNavInfo } from '../../utils/nav'
+
 Page({
   data: {
-    statusBarHeight: 44,
+    statusBarHeight: getNavInfo().statusBarHeight,
     gridItems: [
       { name: '课程管理', icon: '/assets/icons/grid_course.png' },
       { name: '学生管理', icon: '/assets/icons/grid_student.png' },
@@ -20,9 +23,10 @@ Page({
     ]
   },
 
-  onLoad() {
-    const info = wx.getWindowInfo()
-    this.setData({ statusBarHeight: info.statusBarHeight })
+  async onLoad() {
+    const ok = await ensureAuth()
+    if (!ok) return
+    // TODO: load real data from the API (next phase).
   },
 
   onTapAction(e: WechatMiniprogram.TouchEvent) {

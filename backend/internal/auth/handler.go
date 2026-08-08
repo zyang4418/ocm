@@ -14,16 +14,23 @@ import (
 type Handler struct {
 	store  *Store
 	tokens *TokenService
+	wx     *WxService
 }
 
-func NewHandler(store *Store, tokens *TokenService) *Handler {
-	return &Handler{store: store, tokens: tokens}
+func NewHandler(store *Store, tokens *TokenService, wx *WxService) *Handler {
+	return &Handler{store: store, tokens: tokens, wx: wx}
 }
 
 // RegisterRoutes mounts the auth endpoints on mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/login", h.login)
 	mux.Handle("GET /api/auth/me", Middleware(h.tokens)(http.HandlerFunc(h.me)))
+	// Mini-program login lifecycle. wx-bind/wx-login are public: the caller is
+	// authenticated by WeChat via code2Session, not by a JWT. wx-unbind requires
+	// an existing session.
+	mux.HandleFunc("POST /api/auth/wx-bind", h.wxBind)
+	mux.HandleFunc("POST /api/auth/wx-login", h.wxLogin)
+	mux.Handle("POST /api/auth/wx-unbind", Middleware(h.tokens)(http.HandlerFunc(h.wxUnbind)))
 }
 
 type loginRequest struct {
@@ -82,6 +89,119 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, user)
+}
+
+// ---- Mini-program (WeChat) login ----
+
+type wxLoginRequest struct {
+	Code string `json:"code"`
+}
+
+// wxLogin silently re-issues a JWT for a returning mini-program user whose
+// WeChat openid is already bound. The code comes from wx.login(); the openid is
+// resolved server-side via code2Session -- never trusted from a header.
+func (h *Handler) wxLogin(w http.ResponseWriter, r *http.Request) {
+	var req wxLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	req.Code = strings.TrimSpace(req.Code)
+	if req.Code == "" {
+		httpx.RespondError(w, http.StatusBadRequest, "code is required")
+		return
+	}
+	openid, err := h.wx.CodeToOpenid(r.Context(), req.Code)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadGateway, "微信登录校验失败")
+		return
+	}
+	user, err := h.store.GetByOpenid(r.Context(), openid)
+	if errors.Is(err, ErrNotBound) {
+		httpx.RespondError(w, http.StatusNotFound, "微信号未绑定账号")
+		return
+	}
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "登录失败")
+		return
+	}
+	token, err := h.tokens.Issue(user)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: user})
+}
+
+type wxBindRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Code     string `json:"code"`
+}
+
+// wxBind verifies username/password, then binds the caller's WeChat openid
+// (resolved from code) to that account and issues a JWT. An account may only be
+// bound once; re-binding requires unbinding first.
+func (h *Handler) wxBind(w http.ResponseWriter, r *http.Request) {
+	var req wxBindRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	req.Username = strings.TrimSpace(req.Username)
+	req.Code = strings.TrimSpace(req.Code)
+	if req.Username == "" || req.Password == "" || req.Code == "" {
+		httpx.RespondError(w, http.StatusBadRequest, "请填写账号、密码")
+		return
+	}
+	// Authenticate first so a wrong password short-circuits before consuming
+	// the single-use WeChat code.
+	user, err := h.store.Authenticate(r.Context(), req.Username, req.Password)
+	if errors.Is(err, ErrInvalidCredentials) {
+		httpx.RespondError(w, http.StatusUnauthorized, "用户名或密码错误")
+		return
+	}
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "登录失败")
+		return
+	}
+	openid, err := h.wx.CodeToOpenid(r.Context(), req.Code)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadGateway, "微信登录校验失败")
+		return
+	}
+	if err := h.store.BindOpenid(r.Context(), user.ID, openid); err != nil {
+		switch {
+		case errors.Is(err, ErrAlreadyBound):
+			httpx.RespondError(w, http.StatusConflict, "该账号已绑定其他微信号，请先解绑")
+		case errors.Is(err, ErrOpenidTaken):
+			httpx.RespondError(w, http.StatusConflict, "该微信号已绑定其他账号")
+		default:
+			httpx.RespondError(w, http.StatusInternalServerError, "绑定失败")
+		}
+		return
+	}
+	token, err := h.tokens.Issue(user)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: user})
+}
+
+// wxUnbind clears the WeChat openid bound to the authenticated account. After
+// this, the next mini-program entry must re-bind with credentials.
+func (h *Handler) wxUnbind(w http.ResponseWriter, r *http.Request) {
+	username, ok := UsernameFrom(r.Context())
+	if !ok {
+		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	if err := h.store.UnbindOpenid(r.Context(), username); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "解绑失败")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type contextKey struct{}

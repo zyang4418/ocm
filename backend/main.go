@@ -68,12 +68,13 @@ func main() {
 	}()
 
 	tokenService := auth.NewTokenService()
+	wxService := auth.NewWxService()
 
 	authStore := auth.NewStore(database)
 	if err := authStore.Migrate(ctx); err != nil {
 		log.Fatalf("auth migration: %v", err)
 	}
-	auth.NewHandler(authStore, tokenService).RegisterRoutes(mux)
+	auth.NewHandler(authStore, tokenService, wxService).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
 	authenticate := func(next http.Handler) http.Handler {

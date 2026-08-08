@@ -15,12 +15,12 @@
         <image class="user-avatar" src="/assets/icons/avatar_default.png" mode="aspectFill" />
         <view class="user-info">
           <view class="user-name-row">
-            <text class="user-name">李明哲</text>
-            <view class="user-role">
-              <text>教师</text>
+            <text class="user-name">{{displayName}}</text>
+            <view class="user-role" wx:if="{{roleLabel}}">
+              <text>{{roleLabel}}</text>
             </view>
           </view>
-          <text class="user-org">计算机学院 · 软件工程系</text>
+          <text class="user-org">{{username || '未绑定微信号'}}</text>
         </view>
         <view class="card-arrow"></view>
       </view>
@@ -76,11 +76,11 @@
       </view>
     </view>
 
-    <!-- 退出登录 -->
+    <!-- 解绑并退出 -->
     <view class="logout-section">
       <view class="logout-btn" bindtap="onLogout">
         <image class="logout-icon" src="/assets/icons/profile_logout.png" mode="aspectFit" />
-        <text class="logout-text">退出登录</text>
+        <text class="logout-text">解绑并退出</text>
       </view>
     </view>
 

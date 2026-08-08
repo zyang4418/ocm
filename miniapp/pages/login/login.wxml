@@ -1,0 +1,70 @@
+<view class="page" style="padding-top: {{statusBarHeight}}px">
+
+  <block wx:if="{{autoChecking}}">
+    <view class="checking">
+      <view class="checking-logo">
+        <text class="checking-logo-text">OCM</text>
+      </view>
+      <text class="checking-text">正在登录…</text>
+    </view>
+  </block>
+
+  <block wx:else>
+    <scroll-view type="custom" scroll-y class="scroll">
+
+      <!-- 品牌区 -->
+      <view class="brand">
+        <view class="logo">
+          <text class="logo-text">OCM</text>
+        </view>
+        <text class="brand-title">智慧教室管理</text>
+        <text class="brand-sub">登录后将绑定当前微信号，后续进入无需重复输入</text>
+      </view>
+
+      <!-- 表单 -->
+      <view class="form">
+        <text class="form-title">账号绑定</text>
+
+        <view class="field">
+          <image class="field-icon" src="/assets/icons/profile_account.png" mode="aspectFit" />
+          <input
+            class="field-input"
+            placeholder="请输入账号"
+            placeholder-class="ph"
+            value="{{username}}"
+            bindinput="onUsernameInput"
+          />
+        </view>
+
+        <view class="field">
+          <image class="field-icon" src="/assets/icons/profile_privacy.png" mode="aspectFit" />
+          <input
+            class="field-input"
+            placeholder="请输入密码"
+            placeholder-class="ph"
+            password="{{!showPassword}}"
+            value="{{password}}"
+            bindinput="onPasswordInput"
+          />
+          <view class="field-action" bindtap="togglePassword">
+            <text class="field-action-text">{{showPassword ? '隐藏' : '显示'}}</text>
+          </view>
+        </view>
+
+        <view class="submit-wrap">
+          <t-button theme="primary" size="large" block loading="{{loading}}" bind:tap="onSubmit">
+            {{loading ? '绑定中…' : '绑定并登录'}}
+          </t-button>
+        </view>
+
+        <text class="tips">首次使用需用账号密码完成绑定；解绑后下次进入需重新输入。</text>
+      </view>
+
+    </scroll-view>
+
+    <view class="footer">
+      <text class="footer-text">OCM · 智慧教室管理平台</text>
+    </view>
+  </block>
+
+</view>
