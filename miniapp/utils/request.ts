@@ -1,4 +1,5 @@
 import { apiConfig } from '../config/api'
+import { getToken } from './storage'
 
 export interface ApiError {
   statusCode: number
@@ -36,14 +37,6 @@ function buildPath(path: string, params?: RequestOptions['params']): string {
   }
   if (!parts.length) return path
   return path + (path.indexOf('?') >= 0 ? '&' : '?') + parts.join('&')
-}
-
-function getToken(): string | null {
-  try {
-    return wx.getStorageSync('token') || null
-  } catch {
-    return null
-  }
 }
 
 interface RawResponse {

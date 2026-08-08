@@ -2,10 +2,6 @@ const { apiConfig } = require('./config/api')
 const { initAuth } = require('./utils/auth')
 
 App({
-  globalData: {
-    user: null,
-  },
-
   onLaunch() {
     this.initCloud()
     initAuth()

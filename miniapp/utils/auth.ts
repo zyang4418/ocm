@@ -1,6 +1,6 @@
 import { request, setOnUnauthorized } from './request'
+import { getToken, setToken, clearToken } from './storage'
 
-const TOKEN_KEY = 'token'
 const USER_KEY = 'user'
 
 export interface AppUser {
@@ -15,13 +15,10 @@ interface AuthResponse {
   user: AppUser
 }
 
-export function getToken(): string | null {
-  try {
-    return wx.getStorageSync(TOKEN_KEY) || null
-  } catch {
-    return null
-  }
-}
+// Re-exported so existing consumers (e.g. pages/login) keep importing getToken
+// from auth; the single implementation now lives in ./storage, avoiding the
+// auth.ts <-> request.ts circular import.
+export { getToken }
 
 export function getUser(): AppUser | null {
   try {
@@ -32,19 +29,15 @@ export function getUser(): AppUser | null {
 }
 
 function setAuth(token: string, user: AppUser) {
-  wx.setStorageSync(TOKEN_KEY, token)
+  setToken(token)
   wx.setStorageSync(USER_KEY, user)
-  const app = getApp() as any
-  if (app && app.globalData) app.globalData.user = user
 }
 
 export function clearAuth() {
+  clearToken()
   try {
-    wx.removeStorageSync(TOKEN_KEY)
     wx.removeStorageSync(USER_KEY)
   } catch {}
-  const app = getApp() as any
-  if (app && app.globalData) app.globalData.user = null
 }
 
 function wxLogin(): Promise<string> {
@@ -106,8 +99,11 @@ export async function ensureAuth(): Promise<boolean> {
   try {
     await silentLogin()
     return true
-  } catch {
-    wx.reLaunch({ url: '/pages/login/login' })
+  } catch (err: any) {
+    // 404 = openid 未绑定(后端 wxLogin 的确定性返回):通知 login 跳过冗余
+    // probe 直接出表单。其余错误(网络 0 / 502 / 500)可能瞬时,仍让 login 重试。
+    const notBound = err && err.statusCode === 404
+    wx.reLaunch({ url: '/pages/login/login' + (notBound ? '?notBound=1' : '') })
     return false
   }
 }

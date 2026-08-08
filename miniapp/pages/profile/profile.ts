@@ -1,8 +1,9 @@
 import { getUser, unbind } from '../../utils/auth'
+import { getNavInfo } from '../../utils/nav'
 
 Page({
   data: {
-    statusBarHeight: 44,
+    statusBarHeight: getNavInfo().statusBarHeight,
     cacheSize: '12.5 MB',
     displayName: '未登录',
     roleLabel: '',
@@ -21,11 +22,6 @@ Page({
       { name: '隐私政策', icon: '/assets/icons/profile_privacy.png' },
       { name: '关于我们', icon: '/assets/icons/profile_about.png' }
     ]
-  },
-
-  onLoad() {
-    const info = wx.getWindowInfo()
-    this.setData({ statusBarHeight: info.statusBarHeight })
   },
 
   onShow() {
