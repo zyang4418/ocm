@@ -11,11 +11,11 @@ import (
 // authorization model. Handlers check these strings, never role names, so
 // the role-to-permission mapping can evolve without touching handler code.
 const (
-	UserManage      = "user:manage"
-	ClassroomRead   = "classroom:read"
-	ClassroomManage = "classroom:manage"
-	ClassroomBook   = "classroom:book"
-	BookingApprove  = "booking:approve"
+	UserManage       = "user:manage"
+	ClassroomRead    = "classroom:read"
+	ClassroomManage  = "classroom:manage"
+	ClassroomBook    = "classroom:book"
+	BookingApprove   = "booking:approve"
 	CourseRead       = "course:read"
 	CourseManage     = "course:manage"
 	AdminClassRead   = "admin_class:read"
@@ -25,8 +25,8 @@ const (
 	// class-grouping domain stays independent of course management.
 	TeachingClassRead   = "teaching_class:read"
 	TeachingClassManage = "teaching_class:manage"
-	RepairCreate     = "repair:create"
-	RepairAssign     = "repair:assign"
+	RepairCreate        = "repair:create"
+	RepairAssign        = "repair:assign"
 )
 
 // Subject is the authenticated actor resolved by the auth pipeline. It is
@@ -56,12 +56,12 @@ func SubjectFrom(ctx context.Context) (Subject, bool) {
 // it to the database. The admin role is handled as a wildcard in Can.
 var rolePermissions = map[string]map[string]bool{
 	"user": {
-		ClassroomRead:      true,
-		CourseRead:         true,
-		ClassroomBook:      true,
-		RepairCreate:       true,
-		AdminClassRead:     true,
-		TeachingClassRead:  true,
+		ClassroomRead:     true,
+		CourseRead:        true,
+		ClassroomBook:     true,
+		RepairCreate:      true,
+		AdminClassRead:    true,
+		TeachingClassRead: true,
 	},
 }
 

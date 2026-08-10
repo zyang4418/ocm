@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	ErrAdminClassNotFound  = errors.New("admin class not found")
+	ErrAdminClassNotFound    = errors.New("admin class not found")
 	ErrTeachingClassNotFound = errors.New("teaching class not found")
-	ErrClassNameTaken      = errors.New("class name already taken")
-	ErrClassInUse          = errors.New("class is in use and cannot be modified or deleted")
-	ErrMemberRequired      = errors.New("teaching class must have at least one admin class")
+	ErrClassNameTaken        = errors.New("class name already taken")
+	ErrClassInUse            = errors.New("class is in use and cannot be modified or deleted")
+	ErrMemberRequired        = errors.New("teaching class must have at least one admin class")
 )
 
 // Migrate creates the admin_classes, teaching_classes and

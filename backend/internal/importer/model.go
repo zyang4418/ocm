@@ -26,13 +26,13 @@ const JobTypeSessions = "sessions"
 // CSV column names for the sessions import. The parser maps columns by header
 // name, so column order in the file does not matter.
 const (
-	ColDate        = "date"
-	ColPeriodIndex = "period_index"
-	ColClassroom   = "classroom"
+	ColDate          = "date"
+	ColPeriodIndex   = "period_index"
+	ColClassroom     = "classroom"
 	ColCourse        = "course"
 	ColTeachingClass = "teaching_class"
 	ColSemester      = "semester"
-	ColNote        = "note"
+	ColNote          = "note"
 )
 
 // Job is an import task record. Payload holds the raw CSV text; it is excluded

@@ -20,16 +20,16 @@ import (
 // sessionInsert is a fully resolved, validated session ready to insert. The
 // *Name fields mirror the resolved IDs purely for preview display.
 type sessionInsert struct {
-	offeringID    int64
-	classroomID   int64
-	date          string
-	periodIndex   int
-	note          string
-	classroomName string
+	offeringID        int64
+	classroomID       int64
+	date              string
+	periodIndex       int
+	note              string
+	classroomName     string
 	courseName        string
 	teachingClassName string
 	semester          string
-	rowNum        int // 1-based CSV row, for per-row error reporting
+	rowNum            int // 1-based CSV row, for per-row error reporting
 }
 
 func (s sessionInsert) toPreviewRow() PreviewRow {

@@ -11,14 +11,14 @@ import (
 )
 
 var (
-	ErrCatalogNotFound      = errors.New("course not found")
-	ErrOfferingNotFound     = errors.New("course offering not found")
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrNameTaken            = errors.New("course name already taken")
-	ErrOfferingTaken        = errors.New("course offering already exists")
+	ErrCatalogNotFound       = errors.New("course not found")
+	ErrOfferingNotFound      = errors.New("course offering not found")
+	ErrSessionNotFound       = errors.New("session not found")
+	ErrNameTaken             = errors.New("course name already taken")
+	ErrOfferingTaken         = errors.New("course offering already exists")
 	ErrTeachingClassNotFound = errors.New("teaching class not found")
-	ErrInUse                = errors.New("record is in use and cannot be deleted")
-	ErrClassroomConflict    = errors.New("classroom already booked for this date and period")
+	ErrInUse                 = errors.New("record is in use and cannot be deleted")
+	ErrClassroomConflict     = errors.New("classroom already booked for this date and period")
 )
 
 // Store manages the course catalog, offerings and sessions tables.
