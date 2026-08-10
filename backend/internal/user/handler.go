@@ -33,6 +33,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	mux.Handle("PUT /api/users/{id}", wrap(authz.UserManage, h.update))
 	mux.Handle("PATCH /api/users/{id}/password", wrap(authz.UserManage, h.changePassword))
 	mux.Handle("DELETE /api/users/{id}", wrap(authz.UserManage, h.delete))
+
+	// Admin classes (行政班) and teaching classes (教学班) belong to the
+	// user/people module. Mounted via registerOrgRoutes so handler.go stays
+	// focused on account management.
+	h.registerOrgRoutes(mux, authenticate)
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {

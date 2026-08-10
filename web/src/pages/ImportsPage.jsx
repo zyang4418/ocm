@@ -253,7 +253,7 @@ export default function ImportsPage() {
           )}
         </div>
         <p className="imports-page__schema">
-          CSV 表头（按列名识别，顺序无关）：<code>date, period_index, classroom, course, class, semester, note</code>
+          CSV 表头（按列名识别，顺序无关）：<code>date, period_index, classroom, course, teaching_class, semester, note</code>
         </p>
         {importGuideUrl && (
           <p className="imports-page__skill">
@@ -388,7 +388,7 @@ export default function ImportsPage() {
                       <th>节次</th>
                       <th>教室</th>
                       <th>课程</th>
-                      <th>班级</th>
+                      <th>教学班</th>
                       <th>学期</th>
                       <th>备注</th>
                     </tr>
@@ -400,7 +400,7 @@ export default function ImportsPage() {
                         <td>{r.periodIndex}</td>
                         <td>{r.classroom}</td>
                         <td>{r.course}</td>
-                        <td>{r.class}</td>
+                        <td>{r.teachingClass}</td>
                         <td>{r.semester}</td>
                         <td>{r.note}</td>
                       </tr>

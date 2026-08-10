@@ -29,9 +29,9 @@ const (
 	ColDate        = "date"
 	ColPeriodIndex = "period_index"
 	ColClassroom   = "classroom"
-	ColCourse      = "course"
-	ColClass       = "class"
-	ColSemester    = "semester"
+	ColCourse        = "course"
+	ColTeachingClass = "teaching_class"
+	ColSemester      = "semester"
 	ColNote        = "note"
 )
 
@@ -60,13 +60,13 @@ type Job struct {
 // confirmation before it is inserted. It carries the human-readable values
 // (names, not resolved IDs) so the operator can review what would be imported.
 type PreviewRow struct {
-	Date        string `json:"date"`
-	PeriodIndex int    `json:"periodIndex"`
-	Classroom   string `json:"classroom"`
-	Course      string `json:"course"`
-	Class       string `json:"class"`
-	Semester    string `json:"semester"`
-	Note        string `json:"note"`
+	Date          string `json:"date"`
+	PeriodIndex   int    `json:"periodIndex"`
+	Classroom     string `json:"classroom"`
+	Course        string `json:"course"`
+	TeachingClass string `json:"teachingClass"`
+	Semester      string `json:"semester"`
+	Note          string `json:"note"`
 }
 
 type RowError struct {

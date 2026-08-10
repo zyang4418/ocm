@@ -77,6 +77,9 @@ func main() {
 	auth.NewHandler(authStore, tokenService, wxService).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
+	if err := userStore.Migrate(ctx); err != nil {
+		log.Fatalf("user org migration: %v", err)
+	}
 	authenticate := func(next http.Handler) http.Handler {
 		return auth.Middleware(tokenService)(user.LoadSubject(userStore)(next))
 	}

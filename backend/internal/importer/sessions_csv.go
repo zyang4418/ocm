@@ -26,21 +26,21 @@ type sessionInsert struct {
 	periodIndex   int
 	note          string
 	classroomName string
-	courseName    string
-	className     string
-	semester      string
+	courseName        string
+	teachingClassName string
+	semester          string
 	rowNum        int // 1-based CSV row, for per-row error reporting
 }
 
 func (s sessionInsert) toPreviewRow() PreviewRow {
 	return PreviewRow{
-		Date:        s.date,
-		PeriodIndex: s.periodIndex,
-		Classroom:   s.classroomName,
-		Course:      s.courseName,
-		Class:       s.className,
-		Semester:    s.semester,
-		Note:        s.note,
+		Date:          s.date,
+		PeriodIndex:   s.periodIndex,
+		Classroom:     s.classroomName,
+		Course:        s.courseName,
+		TeachingClass: s.teachingClassName,
+		Semester:      s.semester,
+		Note:          s.note,
 	}
 }
 
@@ -64,7 +64,7 @@ func parseAndValidate(
 	}
 	offeringByKey := make(map[string]int64, len(offerings))
 	for _, o := range offerings {
-		key := strings.TrimSpace(o.CatalogName) + "|" + strings.TrimSpace(o.ClassName) + "|" + strings.TrimSpace(o.Semester)
+		key := strings.TrimSpace(o.CatalogName) + "|" + strings.TrimSpace(o.TeachingClassName) + "|" + strings.TrimSpace(o.Semester)
 		offeringByKey[key] = o.ID
 	}
 
@@ -230,7 +230,7 @@ func parseCSVHeader(payload string) ([][]string, map[string]int, error) {
 	for i, name := range header {
 		colMap[strings.ToLower(strings.TrimSpace(name))] = i
 	}
-	for _, required := range []string{ColDate, ColPeriodIndex, ColClassroom, ColCourse, ColClass, ColSemester} {
+	for _, required := range []string{ColDate, ColPeriodIndex, ColClassroom, ColCourse, ColTeachingClass, ColSemester} {
 		if _, ok := colMap[required]; !ok {
 			return nil, nil, fmt.Errorf("表头缺少必需列：%s", required)
 		}
@@ -283,14 +283,14 @@ func resolveRow(
 	}
 
 	courseName, ok := get(ColCourse)
-	className, _ := get(ColClass)
+	teachingClassName, _ := get(ColTeachingClass)
 	semester, ok2 := get(ColSemester)
-	if !ok || courseName == "" || className == "" || !ok2 || semester == "" {
-		return sessionInsert{}, "course / class / semester 为空"
+	if !ok || courseName == "" || teachingClassName == "" || !ok2 || semester == "" {
+		return sessionInsert{}, "course / teaching_class / semester 为空"
 	}
-	offeringID, ok := offerings[courseName+"|"+className+"|"+semester]
+	offeringID, ok := offerings[courseName+"|"+teachingClassName+"|"+semester]
 	if !ok {
-		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", courseName, className, semester)
+		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", courseName, teachingClassName, semester)
 	}
 
 	regime, ok := schedule.ActiveFor(regimes, date)
@@ -303,15 +303,15 @@ func resolveRow(
 
 	note, _ := get(ColNote)
 	return sessionInsert{
-		offeringID:    offeringID,
-		classroomID:   classroomID,
-		date:          dateStr,
-		periodIndex:   period,
-		note:          note,
-		classroomName: roomName,
-		courseName:    courseName,
-		className:     className,
-		semester:      semester,
+		offeringID:        offeringID,
+		classroomID:       classroomID,
+		date:              dateStr,
+		periodIndex:       period,
+		note:              note,
+		classroomName:     roomName,
+		courseName:        courseName,
+		teachingClassName: teachingClassName,
+		semester:          semester,
 	}, ""
 }
 

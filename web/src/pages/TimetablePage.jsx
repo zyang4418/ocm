@@ -248,7 +248,7 @@ export default function TimetablePage() {
                           {session ? (
                             <div className="timetable__session">
                               <strong>{session.courseName}</strong>
-                              {session.className && <span>{session.className}</span>}
+                              {session.teachingClassName && <span>{session.teachingClassName}</span>}
                               {session.teacher && <span>{session.teacher}</span>}
                             </div>
                           ) : canManage ? (
@@ -279,7 +279,7 @@ export default function TimetablePage() {
           <Select id="s-offering" labelText="课程" value={form.offeringId} onChange={(e) => setForm({ ...form, offeringId: e.target.value })}>
             <SelectItem value="" text="请选择课程" />
             {offerings.map((o) => (
-              <SelectItem key={o.id} value={String(o.id)} text={`${o.catalogName} · ${o.className} · ${o.semester}`} />
+              <SelectItem key={o.id} value={String(o.id)} text={`${o.catalogName} · ${o.teachingClassName} · ${o.semester}`} />
             ))}
           </Select>
           <Select id="s-classroom" labelText="教室" value={form.classroomId} onChange={(e) => setForm({ ...form, classroomId: e.target.value })}>

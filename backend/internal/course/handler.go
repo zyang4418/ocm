@@ -412,15 +412,17 @@ func normalizeCatalog(in *CatalogInput) (string, bool) {
 }
 
 func normalizeOffering(in *OfferingInput) (string, bool) {
-	in.ClassName = strings.TrimSpace(in.ClassName)
 	in.Teacher = strings.TrimSpace(in.Teacher)
 	in.Semester = strings.TrimSpace(in.Semester)
 	in.Note = strings.TrimSpace(in.Note)
 	if in.CatalogID <= 0 {
 		return "catalogId is required", false
 	}
-	if in.ClassName == "" {
-		return "className is required", false
+	if in.TeachingClassID <= 0 {
+		return "teachingClassId is required", false
+	}
+	if in.Teacher == "" {
+		return "teacher is required", false
 	}
 	if in.Semester == "" {
 		return "semester is required", false

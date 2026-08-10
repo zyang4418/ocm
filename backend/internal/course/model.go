@@ -12,23 +12,29 @@ type CatalogCourse struct {
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
-// Offering is a concrete "课程": one class taking one catalog course in one
-// semester. It owns its set of course sessions.
+// Offering is a concrete "课程": one teaching class taking one catalog course
+// in one semester. The teaching class (教学班) is a named group of admin
+// classes, so an offering can span multiple admin classes (合班). Two offerings
+// of the same course/teacher/semester taught to different groups are distinct
+// teaching classes. It owns its set of course sessions.
 type Offering struct {
-	ID        int64     `json:"id"`
-	CatalogID int64     `json:"catalogId"`
-	ClassName string    `json:"className"`
-	Teacher   string    `json:"teacher"`
-	Semester  string    `json:"semester"`
-	Note      string    `json:"note"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID              int64     `json:"id"`
+	CatalogID       int64     `json:"catalogId"`
+	TeachingClassID int64     `json:"teachingClassId"`
+	Teacher         string    `json:"teacher"`
+	Semester        string    `json:"semester"`
+	Note            string    `json:"note"`
+	CreatedAt       time.Time `json:"createdAt"`
 }
 
-// OfferingView is an offering joined with its catalog course name/code.
+// OfferingView is an offering joined with its catalog course name/code and the
+// teaching class display name plus its member admin class names.
 type OfferingView struct {
 	Offering
-	CatalogName string `json:"catalogName"`
-	CatalogCode string `json:"catalogCode"`
+	CatalogName       string   `json:"catalogName"`
+	CatalogCode       string   `json:"catalogCode"`
+	TeachingClassName string   `json:"teachingClassName"`
+	ClassNames        []string `json:"classNames"`
 }
 
 // Session is one actual class meeting (上课实例): a course offering in a
@@ -48,12 +54,13 @@ type Session struct {
 // fields, used in session lists and the classroom timetable.
 type SessionView struct {
 	Session
-	CourseName    string `json:"courseName"`
-	CatalogCode   string `json:"catalogCode"`
-	ClassName     string `json:"className"`
-	Teacher       string `json:"teacher"`
-	Semester      string `json:"semester"`
-	ClassroomName string `json:"classroomName"`
+	CourseName        string   `json:"courseName"`
+	CatalogCode       string   `json:"catalogCode"`
+	TeachingClassName string   `json:"teachingClassName"`
+	ClassNames        []string `json:"classNames"`
+	Teacher           string   `json:"teacher"`
+	Semester          string   `json:"semester"`
+	ClassroomName     string   `json:"classroomName"`
 }
 
 type CatalogInput struct {
@@ -63,11 +70,11 @@ type CatalogInput struct {
 }
 
 type OfferingInput struct {
-	CatalogID int64  `json:"catalogId"`
-	ClassName string `json:"className"`
-	Teacher   string `json:"teacher"`
-	Semester  string `json:"semester"`
-	Note      string `json:"note"`
+	CatalogID       int64  `json:"catalogId"`
+	TeachingClassID int64  `json:"teachingClassId"`
+	Teacher         string `json:"teacher"`
+	Semester        string `json:"semester"`
+	Note            string `json:"note"`
 }
 
 type SessionInput struct {
