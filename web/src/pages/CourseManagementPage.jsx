@@ -31,6 +31,7 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 // ---- Offerings (课程/开课) ----
 const offeringHeaders = [
@@ -235,6 +236,11 @@ export default function CourseManagementPage() {
           <TableToolbar {...getToolbarProps()}>
             <TableToolbarContent>
               <TableToolbarSearch onChange={onInputChange} placeholder="搜索" />
+              <ExportButton
+                path={kind === 'offering' ? '/api/offerings/export' : '/api/courses/export'}
+                fallbackName={kind === 'offering' ? 'offerings.xlsx' : 'catalog.xlsx'}
+                onError={setError}
+              />
               {canManage && (
                 <Button
                   renderIcon={Add}

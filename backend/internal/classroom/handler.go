@@ -9,6 +9,7 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/xlsx"
 )
 
 var validTypes = map[string]bool{
@@ -45,6 +46,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	}
 	mux.Handle("GET /api/classrooms", read(h.list))
 	mux.Handle("POST /api/classrooms", manage(h.create))
+	mux.Handle("GET /api/classrooms/export", read(h.export))
 	mux.Handle("GET /api/classrooms/{id}", read(h.get))
 	mux.Handle("PUT /api/classrooms/{id}", manage(h.update))
 	mux.Handle("DELETE /api/classrooms/{id}", manage(h.delete))
@@ -57,6 +59,24 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, classrooms)
+}
+
+// export streams all classrooms as an xlsx download. The column layout matches
+// the importer's expected headers so the file round-trips.
+func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
+	classrooms, err := h.store.List(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list classrooms")
+		return
+	}
+	headers := []string{"name", "building", "capacity", "type", "status", "description"}
+	rows := make([][]any, 0, len(classrooms))
+	for _, c := range classrooms {
+		rows = append(rows, []any{c.Name, c.Building, c.Capacity, c.Type, c.Status, c.Description})
+	}
+	if err := xlsx.WriteExport(w, "classrooms.xlsx", "classrooms", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export classrooms")
+	}
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +166,13 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// NormalizeInput trims string fields, applies defaults for type and status,
+// and validates the result. It returns an error message when invalid. Exported
+// so the import framework reuses the exact same rules as the CRUD handlers.
+func NormalizeInput(in *ClassroomInput) (string, bool) {
+	return normalizeInput(in)
 }
 
 // normalizeInput trims string fields, applies defaults for type and status,

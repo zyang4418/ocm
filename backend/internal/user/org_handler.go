@@ -9,6 +9,7 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/xlsx"
 )
 
 // registerOrgRoutes mounts the admin-class and teaching-class endpoints. They
@@ -23,12 +24,14 @@ func (h *Handler) registerOrgRoutes(mux *http.ServeMux, authenticate func(http.H
 	// Admin classes (行政班)
 	mux.Handle("GET /api/admin-classes", read(authz.AdminClassRead, h.listAdminClasses))
 	mux.Handle("POST /api/admin-classes", read(authz.AdminClassManage, h.createAdminClass))
+	mux.Handle("GET /api/admin-classes/export", read(authz.AdminClassRead, h.exportAdminClasses))
 	mux.Handle("GET /api/admin-classes/{id}", read(authz.AdminClassRead, h.getAdminClass))
 	mux.Handle("PUT /api/admin-classes/{id}", read(authz.AdminClassManage, h.updateAdminClass))
 	mux.Handle("DELETE /api/admin-classes/{id}", read(authz.AdminClassManage, h.deleteAdminClass))
 	// Teaching classes (教学班)
 	mux.Handle("GET /api/teaching-classes", read(authz.TeachingClassRead, h.listTeachingClasses))
 	mux.Handle("POST /api/teaching-classes", read(authz.TeachingClassManage, h.createTeachingClass))
+	mux.Handle("GET /api/teaching-classes/export", read(authz.TeachingClassRead, h.exportTeachingClasses))
 	mux.Handle("GET /api/teaching-classes/{id}", read(authz.TeachingClassRead, h.getTeachingClass))
 	mux.Handle("PUT /api/teaching-classes/{id}", read(authz.TeachingClassManage, h.updateTeachingClass))
 	mux.Handle("DELETE /api/teaching-classes/{id}", read(authz.TeachingClassManage, h.deleteTeachingClass))
@@ -46,6 +49,24 @@ func (h *Handler) listAdminClasses(w http.ResponseWriter, r *http.Request) {
 		list = []AdminClass{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, list)
+}
+
+// exportAdminClasses streams all admin classes as an xlsx download. Columns
+// match the importer's headers so the file round-trips.
+func (h *Handler) exportAdminClasses(w http.ResponseWriter, r *http.Request) {
+	list, err := h.store.ListAdminClasses(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list admin classes")
+		return
+	}
+	headers := []string{"grade", "name", "note"}
+	rows := make([][]any, 0, len(list))
+	for _, c := range list {
+		rows = append(rows, []any{c.Grade, c.Name, c.Note})
+	}
+	if err := xlsx.WriteExport(w, "admin-classes.xlsx", "admin-classes", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export admin classes")
+	}
 }
 
 func (h *Handler) createAdminClass(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +170,12 @@ func normalizeAdminClass(in *AdminClassInput) (string, bool) {
 	return "", true
 }
 
+// NormalizeAdminClass is the exported wrapper around normalizeAdminClass so the
+// import framework reuses the same validation rules as the CRUD handlers.
+func NormalizeAdminClass(in *AdminClassInput) (string, bool) {
+	return normalizeAdminClass(in)
+}
+
 // ---- Teaching classes ----
 
 func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
@@ -161,6 +188,28 @@ func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
 		list = []TeachingClassView{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, list)
+}
+
+// exportTeachingClasses streams all teaching classes as an xlsx download,
+// flattened to one row per member admin class (parent columns repeated). A
+// teaching class with N members produces N rows; the layout round-trips with
+// the importer, which groups by name and replaces the member set.
+func (h *Handler) exportTeachingClasses(w http.ResponseWriter, r *http.Request) {
+	list, err := h.store.ListTeachingClasses(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list teaching classes")
+		return
+	}
+	headers := []string{"name", "note", "admin_grade", "admin_name"}
+	rows := make([][]any, 0, len(list))
+	for _, tc := range list {
+		for _, m := range tc.Classes {
+			rows = append(rows, []any{tc.Name, tc.Note, m.Grade, m.Name})
+		}
+	}
+	if err := xlsx.WriteExport(w, "teaching-classes.xlsx", "teaching-classes", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export teaching classes")
+	}
 }
 
 func (h *Handler) createTeachingClass(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +334,14 @@ func normalizeTeachingClass(in *TeachingClassInput) (string, bool) {
 		return "至少选择一个行政班", false
 	}
 	return "", true
+}
+
+// NormalizeTeachingClass is the exported wrapper around normalizeTeachingClass
+// so the import framework reuses the same validation rules. Importers that need
+// to relax the member-required check (e.g. to warn instead of fail) do so after
+// calling this.
+func NormalizeTeachingClass(in *TeachingClassInput) (string, bool) {
+	return normalizeTeachingClass(in)
 }
 
 func dedupInt64(ids []int64) []int64 {

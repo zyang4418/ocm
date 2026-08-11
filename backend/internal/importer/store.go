@@ -172,7 +172,7 @@ func (s *Store) SavePreview(ctx context.Context, id int64, r Result) error {
 	}
 	rows := r.Rows
 	if rows == nil {
-		rows = []PreviewRow{}
+		rows = []map[string]any{}
 	}
 	errJSON, err := json.Marshal(errs)
 	if err != nil {

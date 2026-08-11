@@ -27,6 +27,7 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 const headers = [
   { key: 'id', header: 'ID' },
@@ -261,6 +262,11 @@ export default function ClassroomsPage() {
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
                   <TableToolbarSearch onChange={onInputChange} placeholder="搜索教室" />
+                  <ExportButton
+                    path="/api/classrooms/export"
+                    fallbackName="classrooms.xlsx"
+                    onError={setError}
+                  />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
                       添加教室

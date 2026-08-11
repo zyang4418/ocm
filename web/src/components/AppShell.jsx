@@ -160,7 +160,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/imports')}
                         onClick={go('/imports')}
                       >
-                        课表导入
+                        数据导入
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>

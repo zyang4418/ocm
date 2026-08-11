@@ -2,53 +2,48 @@ package importer
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 
 	"ocm-backend/internal/authz"
-	"ocm-backend/internal/classroom"
-	"ocm-backend/internal/course"
 	"ocm-backend/internal/httpx"
-	"ocm-backend/internal/schedule"
 )
 
-// maxUploadBytes caps the CSV upload size. Timetables are small text; this
+// maxUploadBytes caps the xlsx upload size. Imports are bounded text data; this
 // guards against accidental large uploads through the edge proxy.
 const maxUploadBytes = 5 << 20
 
 type Handler struct {
-	store      *Store
-	classrooms *classroom.Store
-	courses    *course.Store
-	regimes    *schedule.Store
-	sem        chan struct{} // limits concurrent import processing
+	store    *Store
+	registry *Registry
+	sem      chan struct{} // limits concurrent import processing
 }
 
-func NewHandler(store *Store, classrooms *classroom.Store, courses *course.Store, regimes *schedule.Store) *Handler {
+func NewHandler(store *Store, registry *Registry) *Handler {
 	return &Handler{
-		store:      store,
-		classrooms: classrooms,
-		courses:    courses,
-		regimes:    regimes,
-		sem:        make(chan struct{}, 2),
+		store:    store,
+		registry: registry,
+		sem:      make(chan struct{}, 2),
 	}
 }
 
-// RegisterRoutes mounts the import endpoints. All require course:manage
-// (admin only) -- importing is a management action taken by an operator.
+// RegisterRoutes mounts the import endpoints. Upload/commit/cancel each enforce
+// the type-specific permission looked up from the Registry (so importing
+// classrooms needs classroom:manage, sessions needs course:manage, etc.); list
+// and get require only authentication.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Handler) http.Handler) {
-	manage := func(handler http.HandlerFunc) http.Handler {
-		return authenticate(authz.RequirePermission(authz.CourseManage)(http.HandlerFunc(handler)))
+	authOnly := func(handler http.HandlerFunc) http.Handler {
+		return authenticate(http.HandlerFunc(handler))
 	}
-	mux.Handle("POST /api/imports/sessions", manage(h.uploadSessions))
-	mux.Handle("GET /api/imports", manage(h.list))
-	mux.Handle("GET /api/imports/{id}", manage(h.get))
-	mux.Handle("POST /api/imports/{id}/commit", manage(h.commitJob))
-	mux.Handle("POST /api/imports/{id}/cancel", manage(h.cancelJob))
+	mux.Handle("POST /api/imports/{type}", authOnly(h.upload))
+	mux.Handle("GET /api/imports", authOnly(h.list))
+	mux.Handle("GET /api/imports/{id}", authOnly(h.get))
+	mux.Handle("POST /api/imports/{id}/commit", authOnly(h.commitJob))
+	mux.Handle("POST /api/imports/{id}/cancel", authOnly(h.cancelJob))
 }
 
 // RecoverStale is called once at startup: jobs left "processing" by a crashed
@@ -66,6 +61,21 @@ func (h *Handler) RecoverStale(ctx context.Context) {
 	if len(pendingIDs) > 0 {
 		log.Printf("importer: requeued %d pending job(s)", len(pendingIDs))
 	}
+}
+
+// checkPerm verifies the subject has perm, writing a 401/403 and returning false
+// otherwise. Centralized so upload/commit/cancel share one permission path.
+func (h *Handler) checkPerm(w http.ResponseWriter, r *http.Request, perm string) bool {
+	subject, ok := authz.SubjectFrom(r.Context())
+	if !ok {
+		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+		return false
+	}
+	if !authz.Can(subject.Role, perm) {
+		httpx.RespondError(w, http.StatusForbidden, "insufficient permissions")
+		return false
+	}
+	return true
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +108,17 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, job)
 }
 
-func (h *Handler) uploadSessions(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
+	typ := r.PathValue("type")
+	_, perm, ok := h.registry.Lookup(typ)
+	if !ok {
+		httpx.RespondError(w, http.StatusNotFound, "未知的导入类型")
+		return
+	}
+	if !h.checkPerm(w, r, perm) {
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
 	if err := r.ParseMultipartForm(2 << 20); err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "无效的上传或文件过大（上限 5MB）")
@@ -120,7 +140,10 @@ func (h *Handler) uploadSessions(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	job, err := h.store.CreateJob(r.Context(), JobTypeSessions, header.Filename, string(data), subject.ID)
+	// Payload is the binary xlsx, base64-encoded so it survives the TEXT column
+	// used by import_jobs.payload (see parseWorkbook).
+	payload := base64.StdEncoding.EncodeToString(data)
+	job, err := h.store.CreateJob(r.Context(), typ, header.Filename, payload, subject.ID)
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not create import job")
 		return
@@ -131,27 +154,9 @@ func (h *Handler) uploadSessions(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{"id": job.ID, "status": job.Status})
 }
 
-// loadRefs fetches the reference data the importer resolves CSV rows against.
-// The returned error already carries a user-facing Chinese prefix.
-func (h *Handler) loadRefs(ctx context.Context) ([]classroom.Classroom, []course.OfferingView, []schedule.Regime, error) {
-	classrooms, err := h.classrooms.List(ctx)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("加载教室列表失败：%w", err)
-	}
-	offerings, err := h.courses.ListOfferings(ctx)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("加载开课列表失败：%w", err)
-	}
-	regimes, err := h.regimes.ListRegimes(ctx)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("加载作息制度失败：%w", err)
-	}
-	return classrooms, offerings, regimes, nil
-}
-
 // processJob runs the dry-run parse/validate for one job and stores the result
-// as a preview awaiting the user's commit. It uses a background context so it
-// is not canceled when the uploading request completes.
+// as a preview awaiting the user's commit. It uses a background context so it is
+// not canceled when the uploading request completes.
 func (h *Handler) processJob(id int64) {
 	h.sem <- struct{}{}
 	defer func() { <-h.sem }()
@@ -159,9 +164,9 @@ func (h *Handler) processJob(id int64) {
 	ctx := context.Background()
 	if err := h.store.MarkProcessing(ctx, id, StatusPending); err != nil {
 		if errors.Is(err, ErrJobStateConflict) {
-			// A concurrent worker (e.g. a RecoverStale requeue of a job
-			// whose original processJob is still alive) already moved this
-			// job out of pending; leave it to that worker.
+			// A concurrent worker (e.g. a RecoverStale requeue of a job whose
+			// original processJob is still alive) already moved this job out of
+			// pending; leave it to that worker.
 			return
 		}
 		log.Printf("importer: mark processing job %d: %v", id, err)
@@ -175,13 +180,13 @@ func (h *Handler) processJob(id int64) {
 		return
 	}
 
-	classrooms, offerings, regimes, err := h.loadRefs(ctx)
-	if err != nil {
-		h.finishFail(ctx, id, err.Error())
+	imp, _, ok := h.registry.Lookup(job.Type)
+	if !ok {
+		h.finishFail(ctx, id, "未知的导入类型："+job.Type)
 		return
 	}
 
-	result, err := analyze(ctx, h.store.db, classrooms, offerings, regimes, job.Payload)
+	result, err := imp.Analyze(ctx, job.Payload)
 	if err != nil {
 		if ferr := h.store.Finish(ctx, id, StatusFailed, result); ferr != nil {
 			log.Printf("importer: finish failed job %d: %v", id, ferr)
@@ -196,7 +201,7 @@ func (h *Handler) processJob(id int64) {
 	}
 }
 
-// runCommit performs the actual insert for a job the user confirmed. It
+// runCommit performs the actual write for a job the user confirmed. It
 // re-validates from the stored payload (not the preview rows) because database
 // state may have changed since the preview.
 func (h *Handler) runCommit(id int64) {
@@ -211,13 +216,13 @@ func (h *Handler) runCommit(id int64) {
 		return
 	}
 
-	classrooms, offerings, regimes, err := h.loadRefs(ctx)
-	if err != nil {
-		h.finishFail(ctx, id, err.Error())
+	imp, _, ok := h.registry.Lookup(job.Type)
+	if !ok {
+		h.finishFail(ctx, id, "未知的导入类型："+job.Type)
 		return
 	}
 
-	result, err := commitSessions(ctx, h.store.db, classrooms, offerings, regimes, job.Payload)
+	result, err := imp.Commit(ctx, job.Payload)
 	status := StatusSucceeded
 	if err != nil || result.SucceededRows == 0 {
 		status = StatusFailed
@@ -228,8 +233,8 @@ func (h *Handler) runCommit(id int64) {
 }
 
 // commitJob transitions a previewed job into processing and kicks off the
-// asynchronous insert. The status check is synchronous so a stale job is
-// rejected with 409 before any work starts.
+// asynchronous write. The status and permission checks are synchronous so a
+// stale or unauthorized job is rejected before any work starts.
 func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -243,6 +248,14 @@ func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not load import job")
+		return
+	}
+	_, perm, ok := h.registry.Lookup(job.Type)
+	if !ok {
+		httpx.RespondError(w, http.StatusNotFound, "未知的导入类型")
+		return
+	}
+	if !h.checkPerm(w, r, perm) {
 		return
 	}
 	if job.Status != StatusPreview {
@@ -275,6 +288,14 @@ func (h *Handler) cancelJob(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not load import job")
+		return
+	}
+	_, perm, ok := h.registry.Lookup(job.Type)
+	if !ok {
+		httpx.RespondError(w, http.StatusNotFound, "未知的导入类型")
+		return
+	}
+	if !h.checkPerm(w, r, perm) {
 		return
 	}
 	if job.Status != StatusPreview {

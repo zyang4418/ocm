@@ -10,6 +10,7 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/xlsx"
 )
 
 type Handler struct {
@@ -32,6 +33,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	}
 	mux.Handle("GET /api/schedule/regimes", read(h.listRegimes))
 	mux.Handle("POST /api/schedule/regimes", manage(h.createRegime))
+	mux.Handle("GET /api/schedule/regimes/export", read(h.exportRegimes))
 	mux.Handle("GET /api/schedule/regimes/{id}", read(h.getRegime))
 	mux.Handle("PUT /api/schedule/regimes/{id}", manage(h.updateRegime))
 	mux.Handle("DELETE /api/schedule/regimes/{id}", manage(h.deleteRegime))
@@ -49,6 +51,27 @@ func (h *Handler) listRegimes(w http.ResponseWriter, r *http.Request) {
 		regimes = []Regime{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, regimes)
+}
+
+// exportRegimes streams all regimes as an xlsx download, flattened to one row
+// per period (regime columns repeated). The layout round-trips with the
+// importer, which groups by regime_name and replaces the period set.
+func (h *Handler) exportRegimes(w http.ResponseWriter, r *http.Request) {
+	regimes, err := h.store.ListRegimes(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list regimes")
+		return
+	}
+	headers := []string{"regime_name", "effective_month", "effective_day", "period_index", "start_time", "end_time"}
+	rows := make([][]any, 0)
+	for _, rg := range regimes {
+		for _, p := range rg.Periods {
+			rows = append(rows, []any{rg.Name, rg.EffectiveMonth, rg.EffectiveDay, p.PeriodIndex, p.StartTime, p.EndTime})
+		}
+	}
+	if err := xlsx.WriteExport(w, "regimes.xlsx", "regimes", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export regimes")
+	}
 }
 
 func (h *Handler) createRegime(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +232,12 @@ func normalizeRegime(in *RegimeInput) (string, bool) {
 	return "", true
 }
 
+// NormalizeRegime is the exported wrapper around normalizeRegime so the import
+// framework reuses the same validation rules as the CRUD handlers.
+func NormalizeRegime(in *RegimeInput) (string, bool) {
+	return normalizeRegime(in)
+}
+
 // normalizePeriods validates a period set: each period has a positive unique
 // index and a valid time range (end after start).
 func normalizePeriods(periods []PeriodInput) (string, bool) {
@@ -234,6 +263,12 @@ func normalizePeriods(periods []PeriodInput) (string, bool) {
 		}
 	}
 	return "", true
+}
+
+// NormalizePeriods is the exported wrapper around normalizePeriods so the import
+// framework reuses the same validation rules as the CRUD handlers.
+func NormalizePeriods(periods []PeriodInput) (string, bool) {
+	return normalizePeriods(periods)
 }
 
 func parseTime(s string) (time.Time, bool) {

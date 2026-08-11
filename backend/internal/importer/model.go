@@ -8,7 +8,7 @@ import "time"
 //	processing  - worker running (parsing or committing)
 //	preview     - parsed and validated, awaiting user review before commit
 //	succeeded   - committed (may still have per-row failures in FailedRows)
-//	failed      - could not parse/commit (system error or unparseable CSV)
+//	failed      - could not parse/commit (system error or unparseable file)
 //	cancelled   - user discarded the preview without committing
 const (
 	StatusPending    = "pending"
@@ -19,54 +19,39 @@ const (
 	StatusCancelled  = "cancelled"
 )
 
-// JobType identifies what a job imports. Only "sessions" for now; kept as a
-// column so future entity imports share the table.
-const JobTypeSessions = "sessions"
-
-// CSV column names for the sessions import. The parser maps columns by header
-// name, so column order in the file does not matter.
+// JobType identifies what a job imports. Each value corresponds to a registered
+// Importer in the Registry; the upload route dispatches by this string.
 const (
-	ColDate          = "date"
-	ColPeriodIndex   = "period_index"
-	ColClassroom     = "classroom"
-	ColCourse        = "course"
-	ColTeachingClass = "teaching_class"
-	ColSemester      = "semester"
-	ColNote          = "note"
+	JobTypeSessions        = "sessions"
+	JobTypeClassrooms      = "classrooms"
+	JobTypeAdminClasses    = "admin_classes"
+	JobTypeTeachingClasses = "teaching_classes"
+	JobTypeCatalog         = "catalog"
+	JobTypeOfferings       = "offerings"
+	JobTypeRegimes         = "regimes"
+	JobTypeBookings        = "bookings"
 )
 
-// Job is an import task record. Payload holds the raw CSV text; it is excluded
-// from JSON responses (large, and only needed server-side while processing).
-// Rows holds the successfully parsed rows shown in the preview (empty once the
-// job is committed or cancelled).
+// Job is an import task record. Payload holds the raw uploaded file content; it
+// is excluded from JSON responses (large, and only needed server-side while
+// processing). Rows holds the successfully parsed rows shown in the preview
+// (empty once the job is committed or cancelled). Rows is a generic map so the
+// same table serves every entity type; the frontend renders columns by Type.
 type Job struct {
-	ID            int64        `json:"id"`
-	Type          string       `json:"type"`
-	Status        string       `json:"status"`
-	Filename      string       `json:"filename"`
-	Payload       string       `json:"-"`
-	TotalRows     int          `json:"totalRows"`
-	SucceededRows int          `json:"succeededRows"`
-	FailedRows    int          `json:"failedRows"`
-	ErrorReport   string       `json:"errorReport"`
-	Rows          []PreviewRow `json:"rows,omitempty"`
-	UserID        int64        `json:"userId"`
-	CreatedAt     time.Time    `json:"createdAt"`
-	StartedAt     *time.Time   `json:"startedAt,omitempty"`
-	FinishedAt    *time.Time   `json:"finishedAt,omitempty"`
-}
-
-// PreviewRow is a successfully parsed, validated row awaiting the user's
-// confirmation before it is inserted. It carries the human-readable values
-// (names, not resolved IDs) so the operator can review what would be imported.
-type PreviewRow struct {
-	Date          string `json:"date"`
-	PeriodIndex   int    `json:"periodIndex"`
-	Classroom     string `json:"classroom"`
-	Course        string `json:"course"`
-	TeachingClass string `json:"teachingClass"`
-	Semester      string `json:"semester"`
-	Note          string `json:"note"`
+	ID            int64            `json:"id"`
+	Type          string           `json:"type"`
+	Status        string           `json:"status"`
+	Filename      string           `json:"filename"`
+	Payload       string           `json:"-"`
+	TotalRows     int              `json:"totalRows"`
+	SucceededRows int              `json:"succeededRows"`
+	FailedRows    int              `json:"failedRows"`
+	ErrorReport   string           `json:"errorReport"`
+	Rows          []map[string]any `json:"rows,omitempty"`
+	UserID        int64            `json:"userId"`
+	CreatedAt     time.Time        `json:"createdAt"`
+	StartedAt     *time.Time       `json:"startedAt,omitempty"`
+	FinishedAt    *time.Time       `json:"finishedAt,omitempty"`
 }
 
 type RowError struct {
@@ -74,11 +59,12 @@ type RowError struct {
 	Error string `json:"error"`
 }
 
-// Result is the outcome of processing a CSV import, persisted onto the job.
+// Result is the outcome of processing an import, persisted onto the job. Rows is
+// the preview (human-readable values, not resolved IDs) shown before commit.
 type Result struct {
-	TotalRows     int          `json:"totalRows"`
-	SucceededRows int          `json:"succeededRows"`
-	FailedRows    int          `json:"failedRows"`
-	Errors        []RowError   `json:"errors"`
-	Rows          []PreviewRow `json:"rows,omitempty"`
+	TotalRows     int              `json:"totalRows"`
+	SucceededRows int              `json:"succeededRows"`
+	FailedRows    int              `json:"failedRows"`
+	Errors        []RowError       `json:"errors"`
+	Rows          []map[string]any `json:"rows,omitempty"`
 }

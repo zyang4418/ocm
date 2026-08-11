@@ -12,6 +12,7 @@ import (
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/xlsx"
 )
 
 type Handler struct {
@@ -36,6 +37,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	// Course catalog (课程库)
 	mux.Handle("GET /api/courses", read(h.listCatalog))
 	mux.Handle("POST /api/courses", manage(h.createCatalog))
+	mux.Handle("GET /api/courses/export", read(h.exportCatalog))
 	mux.Handle("GET /api/courses/{id}", read(h.getCatalog))
 	mux.Handle("PUT /api/courses/{id}", manage(h.updateCatalog))
 	mux.Handle("DELETE /api/courses/{id}", manage(h.deleteCatalog))
@@ -43,6 +45,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	// Course offerings (课程/开课)
 	mux.Handle("GET /api/offerings", read(h.listOfferings))
 	mux.Handle("POST /api/offerings", manage(h.createOffering))
+	mux.Handle("GET /api/offerings/export", read(h.exportOfferings))
 	mux.Handle("GET /api/offerings/{id}", read(h.getOffering))
 	mux.Handle("PUT /api/offerings/{id}", manage(h.updateOffering))
 	mux.Handle("DELETE /api/offerings/{id}", manage(h.deleteOffering))
@@ -50,6 +53,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	// Sessions (上课实例)
 	mux.Handle("GET /api/sessions", read(h.listSessions))
 	mux.Handle("POST /api/sessions", manage(h.createSession))
+	mux.Handle("GET /api/sessions/export", read(h.exportSessions))
 	mux.Handle("GET /api/sessions/{id}", read(h.getSession))
 	mux.Handle("PUT /api/sessions/{id}", manage(h.updateSession))
 	mux.Handle("DELETE /api/sessions/{id}", manage(h.deleteSession))
@@ -70,6 +74,24 @@ func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
 		list = []CatalogCourse{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, list)
+}
+
+// exportCatalog streams the course catalog as an xlsx download. Columns match
+// the importer's headers so the file round-trips.
+func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
+	list, err := h.store.ListCatalog(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
+		return
+	}
+	headers := []string{"name", "code", "description"}
+	rows := make([][]any, 0, len(list))
+	for _, c := range list {
+		rows = append(rows, []any{c.Name, c.Code, c.Description})
+	}
+	if err := xlsx.WriteExport(w, "courses.xlsx", "catalog", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export courses")
+	}
 }
 
 func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
@@ -177,6 +199,24 @@ func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, list)
 }
 
+// exportOfferings streams all offerings as an xlsx download, using display names
+// (course name, teaching class name) so the file round-trips with the importer.
+func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
+	list, err := h.store.ListOfferings(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
+		return
+	}
+	headers := []string{"course", "teaching_class", "semester", "teacher", "note"}
+	rows := make([][]any, 0, len(list))
+	for _, o := range list {
+		rows = append(rows, []any{o.CatalogName, o.TeachingClassName, o.Semester, o.Teacher, o.Note})
+	}
+	if err := xlsx.WriteExport(w, "offerings.xlsx", "offerings", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export offerings")
+	}
+}
+
 func (h *Handler) createOffering(w http.ResponseWriter, r *http.Request) {
 	var in OfferingInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -271,10 +311,7 @@ func (h *Handler) deleteOffering(w http.ResponseWriter, r *http.Request) {
 // ---- Sessions ----
 
 func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	offeringID, _ := strconv.ParseInt(q.Get("offering_id"), 10, 64)
-	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
-	list, err := h.store.ListSessions(r.Context(), offeringID, classroomID, q.Get("from"), q.Get("to"))
+	list, err := h.querySessions(r)
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
 		return
@@ -283,6 +320,35 @@ func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
 		list = []SessionView{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, list)
+}
+
+// querySessions parses the list/export filter params and returns the matching
+// sessions, shared by listSessions and exportSessions so the two stay in sync.
+func (h *Handler) querySessions(r *http.Request) ([]SessionView, error) {
+	q := r.URL.Query()
+	offeringID, _ := strconv.ParseInt(q.Get("offering_id"), 10, 64)
+	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
+	return h.store.ListSessions(r.Context(), offeringID, classroomID, q.Get("from"), q.Get("to"))
+}
+
+// exportSessions streams sessions as an xlsx download, honoring the same
+// filters (offering_id, classroom_id, from, to) as the list endpoint. Columns
+// match the importer's headers (teacher included for human readability; the
+// importer ignores unknown columns).
+func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
+	list, err := h.querySessions(r)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
+		return
+	}
+	headers := []string{"date", "period_index", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
+	rows := make([][]any, 0, len(list))
+	for _, s := range list {
+		rows = append(rows, []any{s.Date, s.PeriodIndex, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
+	}
+	if err := xlsx.WriteExport(w, "sessions.xlsx", "sessions", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export sessions")
+	}
 }
 
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
@@ -411,6 +477,12 @@ func normalizeCatalog(in *CatalogInput) (string, bool) {
 	return "", true
 }
 
+// NormalizeCatalog is the exported wrapper around normalizeCatalog so the import
+// framework reuses the same validation rules as the CRUD handlers.
+func NormalizeCatalog(in *CatalogInput) (string, bool) {
+	return normalizeCatalog(in)
+}
+
 func normalizeOffering(in *OfferingInput) (string, bool) {
 	in.Teacher = strings.TrimSpace(in.Teacher)
 	in.Semester = strings.TrimSpace(in.Semester)
@@ -428,6 +500,12 @@ func normalizeOffering(in *OfferingInput) (string, bool) {
 		return "semester is required", false
 	}
 	return "", true
+}
+
+// NormalizeOffering is the exported wrapper around normalizeOffering so the
+// import framework reuses the same validation rules as the CRUD handlers.
+func NormalizeOffering(in *OfferingInput) (string, bool) {
+	return normalizeOffering(in)
 }
 
 // validateSession checks basic fields and that periodIndex is valid for the

@@ -8,6 +8,8 @@ import {
   Grid,
   InlineNotification,
   Modal,
+  Select,
+  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -24,9 +26,112 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch, apiUpload } from '../auth/api.js'
 
-// External docs site; when unset the docs link is hidden.
-const docsUrl = import.meta.env.VITE_DOCS_URL || ''
-const importGuideUrl = docsUrl ? `${docsUrl.replace(/\/$/, '')}/guide/import` : ''
+// IMPORT_TYPES describes each business-table import: the upload label, the
+// xlsx header contract (order-independent, matched by name), and the preview
+// columns used to render the dry-run rows. The column keys mirror the
+// toPreviewMap() keys produced by each backend importer.
+const IMPORT_TYPES = {
+  sessions: {
+    label: '课表（课次）',
+    schema: 'date, period_index, classroom, course, teaching_class, semester, note',
+    note: '教室与开课需预先建立，按名称引用；按教室+日期+节次去重，冲突行跳过。',
+    columns: [
+      { key: 'date', header: '日期' },
+      { key: 'periodIndex', header: '节次' },
+      { key: 'classroom', header: '教室' },
+      { key: 'course', header: '课程' },
+      { key: 'teachingClass', header: '教学班' },
+      { key: 'semester', header: '学期' },
+      { key: 'note', header: '备注' },
+    ],
+  },
+  classrooms: {
+    label: '教室',
+    schema: 'name, building, capacity, type, status, description',
+    note: '按教室名称 upsert：已存在则更新，否则新增。',
+    columns: [
+      { key: 'name', header: '教室编号' },
+      { key: 'building', header: '楼栋' },
+      { key: 'capacity', header: '座位数' },
+      { key: 'type', header: '类型' },
+      { key: 'status', header: '状态' },
+      { key: 'description', header: '备注' },
+    ],
+  },
+  admin_classes: {
+    label: '行政班',
+    schema: 'grade, name, note',
+    note: '按年级+班级名称 upsert。',
+    columns: [
+      { key: 'grade', header: '年级' },
+      { key: 'name', header: '班级' },
+      { key: 'note', header: '备注' },
+    ],
+  },
+  teaching_classes: {
+    label: '教学班',
+    schema: 'name, note, admin_grade, admin_name',
+    note: '父子表扁平化：每个成员行政班一行，按 name 分组。被开课引用的教学班成员不可修改。',
+    columns: [
+      { key: 'name', header: '教学班' },
+      { key: 'note', header: '备注' },
+      { key: 'admin_classes', header: '成员行政班' },
+    ],
+  },
+  catalog: {
+    label: '课程库',
+    schema: 'name, code, description',
+    note: '按课程名称 upsert。',
+    columns: [
+      { key: 'name', header: '课程' },
+      { key: 'code', header: '代码' },
+      { key: 'description', header: '说明' },
+    ],
+  },
+  offerings: {
+    label: '开课',
+    schema: 'course, teaching_class, semester, teacher, note',
+    note: '按课程+教学班+学期 upsert；课程与教学班按名称引用，需预先建立。',
+    columns: [
+      { key: 'course', header: '课程' },
+      { key: 'teachingClass', header: '教学班' },
+      { key: 'semester', header: '学期' },
+      { key: 'teacher', header: '教师' },
+      { key: 'note', header: '备注' },
+    ],
+  },
+  regimes: {
+    label: '作息制度',
+    schema: 'regime_name, effective_month, effective_day, period_index, start_time, end_time',
+    note: '父子表扁平化：每节次一行，按 regime_name 分组；提交时整套替换该制度的节次。',
+    columns: [
+      { key: 'name', header: '制度' },
+      { key: 'effectiveMonth', header: '生效月' },
+      { key: 'effectiveDay', header: '生效日' },
+      { key: 'periods', header: '节次' },
+    ],
+  },
+  bookings: {
+    label: '教室预约',
+    schema: 'classroom, username, date, period_start, period_end, status, purpose',
+    note: '恢复模式：按文件中的 status 还原。pending/approved 行占用时段并做冲突校验。',
+    columns: [
+      { key: 'classroom', header: '教室' },
+      { key: 'username', header: '预约人' },
+      { key: 'date', header: '日期' },
+      { key: 'periodStart', header: '起始节次' },
+      { key: 'periodEnd', header: '结束节次' },
+      { key: 'status', header: '状态' },
+      { key: 'purpose', header: '事由' },
+    ],
+  },
+}
+
+// The ordered list shown in the type selector.
+const TYPE_OPTIONS = Object.entries(IMPORT_TYPES).map(([value, cfg]) => ({
+  value,
+  label: cfg.label,
+}))
 
 const statusLabel = {
   pending: '待处理',
@@ -47,6 +152,7 @@ const statusKind = {
 }
 
 const headers = [
+  { key: 'type', header: '类型' },
   { key: 'filename', header: '文件' },
   { key: 'status', header: '状态' },
   { key: 'totalRows', header: '总行数' },
@@ -66,6 +172,31 @@ function formatDate(value) {
   })
 }
 
+// typeLabelOf maps a job's type string to a Chinese label; unknown types fall
+// back to the raw value so the list stays readable even for stale/unregistered
+// types.
+function typeLabelOf(type) {
+  return IMPORT_TYPES[type]?.label ?? type ?? '-'
+}
+
+// formatCell renders a preview cell value. Arrays (teaching-class members,
+// regime periods) are joined into a readable string; other values pass through.
+function formatCell(value) {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return ''
+    // Regime periods are objects {periodIndex, startTime, endTime}; teaching
+    // class members are plain label strings. Detect by element type.
+    if (typeof value[0] === 'object' && value[0] !== null) {
+      return value
+        .map((p) => `${p.periodIndex}(${p.startTime}-${p.endTime})`)
+        .join('，')
+    }
+    return value.join('，')
+  }
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
+
 export default function ImportsPage() {
   const { token } = useAuth()
   const navigate = useNavigate()
@@ -75,6 +206,7 @@ export default function ImportsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const [importType, setImportType] = useState('sessions')
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -113,7 +245,7 @@ export default function ImportsPage() {
     try {
       setUploading(true)
       setUploadError('')
-      await apiUpload('/api/imports/sessions', { file: selectedFile, token })
+      await apiUpload(`/api/imports/${importType}`, { file: selectedFile, token })
       setSelectedFile(null)
       if (fileRef.current) fileRef.current.value = ''
       await fetchJobs()
@@ -186,9 +318,13 @@ export default function ImportsPage() {
   const PREVIEW_CAP = 1000
   const shownRows = previewRows.slice(0, PREVIEW_CAP)
   const rowsTruncated = previewRows.length - shownRows.length
+  // Preview columns are driven by the job's type so a preview reflects what was
+  // uploaded, not the currently-selected type selector.
+  const previewColumns = (detailJob && IMPORT_TYPES[detailJob.type]?.columns) || []
 
   const rows = jobs.map((j) => ({
     id: String(j.id),
+    type: j.type,
     filename: j.filename || '(未命名)',
     status: j.status,
     totalRows: j.totalRows,
@@ -198,6 +334,7 @@ export default function ImportsPage() {
   }))
 
   const colSpan = headers.length + 1
+  const typeCfg = IMPORT_TYPES[importType]
 
   return (
     <Grid fullWidth className="courses-page">
@@ -212,11 +349,11 @@ export default function ImportsPage() {
           >
             首页
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>课表导入</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>数据导入</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">课表导入</h1>
+        <h1 className="courses-page__heading">数据导入</h1>
         <p className="courses-page__subtitle">
-          上传 CSV 课表文件异步导入。教室与开课需预先在系统中建立，CSV 按名称引用。
+          上传 xlsx 文件异步导入业务数据。先选择导入类型，再上传文件；解析后可预览并确认。
         </p>
         {error && (
           <InlineNotification
@@ -232,10 +369,22 @@ export default function ImportsPage() {
 
       <Column sm={4} md={8} lg={16}>
         <div className="imports-page__upload">
+          <Select
+            id="import-type"
+            className="imports-page__type-select"
+            labelText="导入类型"
+            value={importType}
+            onChange={(e) => setImportType(e.target.value)}
+            size="sm"
+          >
+            {TYPE_OPTIONS.map((t) => (
+              <SelectItem key={t.value} value={t.value} text={t.label} />
+            ))}
+          </Select>
           <input
             ref={fileRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
           />
           <Button renderIcon={Upload} size="sm" onClick={handleUpload} disabled={!selectedFile || uploading}>
@@ -253,17 +402,10 @@ export default function ImportsPage() {
           )}
         </div>
         <p className="imports-page__schema">
-          CSV 表头（按列名识别，顺序无关）：<code>date, period_index, classroom, course, teaching_class, semester, note</code>
+          <strong>{typeCfg.label}</strong> 表头（按列名识别，顺序无关）：
+          <code>{typeCfg.schema}</code>
         </p>
-        {importGuideUrl && (
-          <p className="imports-page__skill">
-            课表是 Excel？先
-            <a href={importGuideUrl} target="_blank" rel="noreferrer">
-              阅读导入文档
-            </a>
-            ，按其中的契约用 AI 转换并上传。
-          </p>
-        )}
+        <p className="imports-page__note">{typeCfg.note}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
@@ -299,6 +441,9 @@ export default function ImportsPage() {
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
+                            if (cell.info.header === 'type') {
+                              return <TableCell key={cell.id}>{typeLabelOf(cell.value)}</TableCell>
+                            }
                             if (cell.info.header === 'status') {
                               return (
                                 <TableCell key={cell.id}>
@@ -318,9 +463,9 @@ export default function ImportsPage() {
                               <Button kind="ghost" size="sm" onClick={() => openDetail(j)}>
                                 查看预览
                               </Button>
-                            ) : j && j.failedRows > 0 ? (
+                            ) : j && (j.failedRows > 0 || j.status === 'failed') ? (
                               <Button kind="ghost" size="sm" onClick={() => openDetail(j)}>
-                                查看错误
+                                查看明细
                               </Button>
                             ) : (
                               <span style={{ color: 'var(--cds-text-secondary)' }}>-</span>
@@ -339,7 +484,11 @@ export default function ImportsPage() {
 
       <Modal
         open={Boolean(detailJob) || detailLoading}
-        modalHeading={detailJob?.status === 'preview' ? '预览：确认导入内容' : '导入明细'}
+        modalHeading={
+          detailJob?.status === 'preview'
+            ? `预览：确认导入「${typeLabelOf(detailJob?.type)}」`
+            : `导入明细：${typeLabelOf(detailJob?.type)}`
+        }
         primaryButtonText="关闭"
         onRequestClose={closeDetail}
         onRequestSubmit={closeDetail}
@@ -384,25 +533,17 @@ export default function ImportsPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th>日期</th>
-                      <th>节次</th>
-                      <th>教室</th>
-                      <th>课程</th>
-                      <th>教学班</th>
-                      <th>学期</th>
-                      <th>备注</th>
+                      {previewColumns.map((c) => (
+                        <th key={c.key}>{c.header}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {shownRows.map((r, i) => (
                       <tr key={i}>
-                        <td>{r.date}</td>
-                        <td>{r.periodIndex}</td>
-                        <td>{r.classroom}</td>
-                        <td>{r.course}</td>
-                        <td>{r.teachingClass}</td>
-                        <td>{r.semester}</td>
-                        <td>{r.note}</td>
+                        {previewColumns.map((c) => (
+                          <td key={c.key}>{formatCell(r[c.key])}</td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>

@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -204,6 +205,13 @@ export default function TimetablePage() {
             </span>
             <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronRight} iconDescription="下一周" onClick={() => setWeekStart(addDays(weekStart, 7))} />
           </div>
+          <ExportButton
+            path={`/api/sessions/export?classroom_id=${classroomId}&from=${from}&to=${to}`}
+            fallbackName="sessions.xlsx"
+            label="导出课表"
+            onError={setError}
+            disabled={!classroomId}
+          />
         </div>
       </Column>
 

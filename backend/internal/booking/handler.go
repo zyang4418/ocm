@@ -13,6 +13,7 @@ import (
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/xlsx"
 )
 
 type Handler struct {
@@ -40,23 +41,30 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	}
 	mux.Handle("GET /api/bookings", read(h.list))
 	mux.Handle("POST /api/bookings", book(h.create))
+	mux.Handle("GET /api/bookings/export", read(h.export))
 	mux.Handle("GET /api/bookings/{id}", read(h.get))
 	mux.Handle("POST /api/bookings/{id}/cancel", book(h.cancel))
 	mux.Handle("POST /api/bookings/{id}/review", approve(h.review))
 }
 
-func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+// bookingFilter builds a ListFilter from the query string, shared by list and
+// export so an export respects the same classroom/status/date filters the
+// operator is currently viewing.
+func bookingFilter(r *http.Request) ListFilter {
 	q := r.URL.Query()
 	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
 	userID, _ := strconv.ParseInt(q.Get("user_id"), 10, 64)
-	f := ListFilter{
+	return ListFilter{
 		ClassroomID: classroomID,
 		UserID:      userID,
 		Status:      strings.TrimSpace(q.Get("status")),
 		From:        q.Get("from"),
 		To:          q.Get("to"),
 	}
-	list, err := h.store.List(r.Context(), f)
+}
+
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	list, err := h.store.List(r.Context(), bookingFilter(r))
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
 		return
@@ -65,6 +73,26 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		list = []BookingView{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, list)
+}
+
+// export streams bookings as an xlsx download, respecting the same
+// classroom/status/date filters as the list endpoint. The column layout matches
+// the importer's expected headers so the file round-trips; status is included
+// so an exported file can be re-imported as a faithful restore.
+func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
+	list, err := h.store.List(r.Context(), bookingFilter(r))
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
+		return
+	}
+	headers := []string{"classroom", "username", "date", "period_start", "period_end", "status", "purpose"}
+	rows := make([][]any, 0, len(list))
+	for _, b := range list {
+		rows = append(rows, []any{b.ClassroomName, b.Username, b.Date, b.PeriodStart, b.PeriodEnd, b.Status, b.Purpose})
+	}
+	if err := xlsx.WriteExport(w, "bookings.xlsx", "bookings", headers, rows); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export bookings")
+	}
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {

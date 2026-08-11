@@ -24,6 +24,7 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 // 行政班 (admin class): a persistent student cohort identified by grade + name.
 // Managed here because it is an organizational unit, not a course-delivery
@@ -205,6 +206,11 @@ export default function AdminClassesPage() {
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
                   <TableToolbarSearch onChange={onInputChange} placeholder="搜索行政班" />
+                  <ExportButton
+                    path="/api/admin-classes/export"
+                    fallbackName="admin-classes.xlsx"
+                    onError={setError}
+                  />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
                       添加行政班

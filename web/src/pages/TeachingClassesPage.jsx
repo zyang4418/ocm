@@ -25,6 +25,7 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 // 教学班 (teaching class): a named group of admin classes taught together (合班).
 // An offering is taught to exactly one teaching class; two offerings of the same
@@ -253,6 +254,11 @@ export default function TeachingClassesPage() {
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
                   <TableToolbarSearch onChange={onInputChange} placeholder="搜索教学班" />
+                  <ExportButton
+                    path="/api/teaching-classes/export"
+                    fallbackName="teaching-classes.xlsx"
+                    onError={setError}
+                  />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
                       添加教学班

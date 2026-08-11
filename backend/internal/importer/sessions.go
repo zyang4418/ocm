@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"database/sql"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"strconv"
@@ -17,6 +16,67 @@ import (
 	"ocm-backend/internal/schedule"
 )
 
+// CSV column names for the sessions import. The parser maps columns by header
+// name, so column order in the file does not matter.
+const (
+	ColDate          = "date"
+	ColPeriodIndex   = "period_index"
+	ColClassroom     = "classroom"
+	ColCourse        = "course"
+	ColTeachingClass = "teaching_class"
+	ColSemester      = "semester"
+	ColNote          = "note"
+)
+
+// SessionsImporter imports course_sessions from an xlsx file. It resolves
+// classroom/offering names to IDs and validates each row against the active
+// bell-time regime before inserting. Insert-only: a slot already occupied is a
+// per-row error, not a silent overwrite.
+type SessionsImporter struct {
+	db         *sql.DB
+	classrooms *classroom.Store
+	courses    *course.Store
+	regimes    *schedule.Store
+}
+
+func NewSessionsImporter(db *sql.DB, classrooms *classroom.Store, courses *course.Store, regimes *schedule.Store) *SessionsImporter {
+	return &SessionsImporter{db: db, classrooms: classrooms, courses: courses, regimes: regimes}
+}
+
+// loadRefs fetches the reference data the importer resolves rows against. The
+// returned error already carries a user-facing Chinese prefix.
+func (s *SessionsImporter) loadRefs(ctx context.Context) ([]classroom.Classroom, []course.OfferingView, []schedule.Regime, error) {
+	classrooms, err := s.classrooms.List(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("加载教室列表失败：%w", err)
+	}
+	offerings, err := s.courses.ListOfferings(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("加载开课列表失败：%w", err)
+	}
+	regimes, err := s.regimes.ListRegimes(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("加载作息制度失败：%w", err)
+	}
+	return classrooms, offerings, regimes, nil
+}
+
+func (s *SessionsImporter) Analyze(ctx context.Context, payload string) (Result, error) {
+	classrooms, offerings, regimes, err := s.loadRefs(ctx)
+	if err != nil {
+		return Result{Errors: []RowError{{Row: 0, Error: err.Error()}}}, nil
+	}
+	return analyzeSessions(ctx, s.db, classrooms, offerings, regimes, payload)
+}
+
+func (s *SessionsImporter) Commit(ctx context.Context, payload string) (Result, error) {
+	classrooms, offerings, regimes, err := s.loadRefs(ctx)
+	if err != nil {
+		return Result{Errors: []RowError{{Row: 0, Error: err.Error()}}}, nil
+	}
+	return commitSessions(ctx, s.db, classrooms, offerings, regimes, payload)
+}
+
 // sessionInsert is a fully resolved, validated session ready to insert. The
 // *Name fields mirror the resolved IDs purely for preview display.
 type sessionInsert struct {
@@ -29,22 +89,22 @@ type sessionInsert struct {
 	courseName        string
 	teachingClassName string
 	semester          string
-	rowNum            int // 1-based CSV row, for per-row error reporting
+	rowNum            int // 1-based file row, for per-row error reporting
 }
 
-func (s sessionInsert) toPreviewRow() PreviewRow {
-	return PreviewRow{
-		Date:          s.date,
-		PeriodIndex:   s.periodIndex,
-		Classroom:     s.classroomName,
-		Course:        s.courseName,
-		TeachingClass: s.teachingClassName,
-		Semester:      s.semester,
-		Note:          s.note,
+func (s sessionInsert) toPreviewMap() map[string]any {
+	return map[string]any{
+		"date":          s.date,
+		"periodIndex":   s.periodIndex,
+		"classroom":     s.classroomName,
+		"course":        s.courseName,
+		"teachingClass": s.teachingClassName,
+		"semester":      s.semester,
+		"note":          s.note,
 	}
 }
 
-// parseAndValidate parses the CSV payload, resolves and validates each row,
+// parseAndValidate parses the xlsx payload, resolves and validates each row,
 // dedups within the file, and pre-checks existing course_sessions conflicts.
 // It does not write anything. Rows that fail parsing, name resolution, period
 // validation, or conflict detection are reported as per-row errors and do not
@@ -68,16 +128,19 @@ func parseAndValidate(
 		offeringByKey[key] = o.ID
 	}
 
-	rows, colMap, headerErr := parseCSVHeader(payload)
+	headers, rows, headerErr := parseWorkbook(payload)
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
+	}
+	if rerr, ok := requireColumns(headers, ColDate, ColPeriodIndex, ColClassroom, ColCourse, ColTeachingClass, ColSemester); !ok {
+		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
 	seen := make(map[string]bool) // in-import dedup: classroomID|date|period
 	for i, rec := range rows {
 		rowNum := i + 2 // +1 for header, +1 for 1-based
 		dataRows++
-		ins, rowErr := resolveRow(rec, colMap, roomByID, offeringByKey, regimes)
+		ins, rowErr := resolveSessionRow(rec, roomByID, offeringByKey, regimes)
 		if rowErr != "" {
 			errs = append(errs, RowError{Row: rowNum, Error: rowErr})
 			continue
@@ -117,9 +180,9 @@ func parseAndValidate(
 	return clean, errs, dataRows, nil
 }
 
-// analyze is the dry-run: parse and validate, returning the rows that would be
-// inserted alongside the per-row errors. No database writes.
-func analyze(
+// analyzeSessions is the dry-run: parse and validate, returning the rows that
+// would be inserted alongside the per-row errors. No database writes.
+func analyzeSessions(
 	ctx context.Context,
 	db *sql.DB,
 	classrooms []classroom.Classroom,
@@ -131,9 +194,9 @@ func analyze(
 	if err != nil {
 		return Result{TotalRows: dataRows, FailedRows: dataRows, Errors: errs}, err
 	}
-	rows := make([]PreviewRow, 0, len(clean))
+	rows := make([]map[string]any, 0, len(clean))
 	for _, ins := range clean {
-		rows = append(rows, ins.toPreviewRow())
+		rows = append(rows, ins.toPreviewMap())
 	}
 	return Result{
 		TotalRows:     dataRows,
@@ -145,10 +208,10 @@ func analyze(
 }
 
 // commitSessions parses, validates, and inserts the valid rows into
-// course_sessions in a single transaction. It re-validates (rather than
-// trusting a prior preview) because database state may have changed between the
-// preview and the commit. A transaction failure (e.g. a race with a concurrent
-// insert) aborts the whole import and is returned as an error.
+// course_sessions in a single transaction. It re-validates (rather than trusting
+// a prior preview) because database state may have changed between the preview
+// and the commit. A transaction failure (e.g. a race with a concurrent insert)
+// aborts the whole import and is returned as an error.
 func commitSessions(
 	ctx context.Context,
 	db *sql.DB,
@@ -168,7 +231,6 @@ func commitSessions(
 		return res, nil
 	}
 
-	// Atomic insert of all clean rows.
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		res.SucceededRows = 0
@@ -211,52 +273,18 @@ func commitSessions(
 	return res, nil
 }
 
-// parseCSVHeader reads all CSV records, maps the first record to a column-index
-// by header name, and returns the data records. A missing required column is an
-// error.
-func parseCSVHeader(payload string) ([][]string, map[string]int, error) {
-	reader := csv.NewReader(strings.NewReader(payload))
-	reader.FieldsPerRecord = -1 // lenient: missing columns become row errors
-	reader.TrimLeadingSpace = true
-	records, err := reader.ReadAll()
-	if err != nil {
-		return nil, nil, fmt.Errorf("CSV 解析失败：%w", err)
-	}
-	if len(records) == 0 {
-		return nil, nil, errors.New("CSV 为空")
-	}
-	header := records[0]
-	colMap := make(map[string]int, len(header))
-	for i, name := range header {
-		colMap[strings.ToLower(strings.TrimSpace(name))] = i
-	}
-	for _, required := range []string{ColDate, ColPeriodIndex, ColClassroom, ColCourse, ColTeachingClass, ColSemester} {
-		if _, ok := colMap[required]; !ok {
-			return nil, nil, fmt.Errorf("表头缺少必需列：%s", required)
-		}
-	}
-	return records[1:], colMap, nil
-}
-
-// resolveRow maps one CSV record to a sessionInsert, returning a non-empty
-// error string on the first failure encountered for that row.
-func resolveRow(
-	rec []string,
-	colMap map[string]int,
+// resolveSessionRow maps one row to a sessionInsert, returning a non-empty error
+// string on the first failure encountered for that row.
+func resolveSessionRow(
+	rec map[string]string,
 	rooms map[string]int64,
 	offerings map[string]int64,
 	regimes []schedule.Regime,
 ) (sessionInsert, string) {
-	get := func(col string) (string, bool) {
-		idx, ok := colMap[col]
-		if !ok || idx >= len(rec) {
-			return "", false
-		}
-		return strings.TrimSpace(rec[idx]), true
-	}
+	get := func(col string) string { return rec[col] }
 
-	dateStr, ok := get(ColDate)
-	if !ok || dateStr == "" {
+	dateStr := get(ColDate)
+	if dateStr == "" {
 		return sessionInsert{}, "date 为空"
 	}
 	date, err := time.Parse("2006-01-02", dateStr)
@@ -264,8 +292,8 @@ func resolveRow(
 		return sessionInsert{}, "date 格式应为 YYYY-MM-DD"
 	}
 
-	periodStr, ok := get(ColPeriodIndex)
-	if !ok || periodStr == "" {
+	periodStr := get(ColPeriodIndex)
+	if periodStr == "" {
 		return sessionInsert{}, "period_index 为空"
 	}
 	period, err := strconv.Atoi(periodStr)
@@ -273,8 +301,8 @@ func resolveRow(
 		return sessionInsert{}, "period_index 须为正整数"
 	}
 
-	roomName, ok := get(ColClassroom)
-	if !ok || roomName == "" {
+	roomName := get(ColClassroom)
+	if roomName == "" {
 		return sessionInsert{}, "classroom 为空"
 	}
 	classroomID, ok := rooms[roomName]
@@ -282,10 +310,10 @@ func resolveRow(
 		return sessionInsert{}, "教室不存在：" + roomName
 	}
 
-	courseName, ok := get(ColCourse)
-	teachingClassName, _ := get(ColTeachingClass)
-	semester, ok2 := get(ColSemester)
-	if !ok || courseName == "" || teachingClassName == "" || !ok2 || semester == "" {
+	courseName := get(ColCourse)
+	teachingClassName := get(ColTeachingClass)
+	semester := get(ColSemester)
+	if courseName == "" || teachingClassName == "" || semester == "" {
 		return sessionInsert{}, "course / teaching_class / semester 为空"
 	}
 	offeringID, ok := offerings[courseName+"|"+teachingClassName+"|"+semester]
@@ -301,13 +329,12 @@ func resolveRow(
 		return sessionInsert{}, fmt.Sprintf("节次 %d 不在该日期作息制度「%s」中", period, regime.Name)
 	}
 
-	note, _ := get(ColNote)
 	return sessionInsert{
 		offeringID:        offeringID,
 		classroomID:       classroomID,
 		date:              dateStr,
 		periodIndex:       period,
-		note:              note,
+		note:              get(ColNote),
 		classroomName:     roomName,
 		courseName:        courseName,
 		teachingClassName: teachingClassName,
