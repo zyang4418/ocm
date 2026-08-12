@@ -13,8 +13,8 @@ type CatalogCourse struct {
 	Code        string    `json:"code"`
 	Credits     float64   `json:"credits"`
 	TotalHours  int       `json:"totalHours"`
-	Category    string    `json:"category"`  // 课程类别二：专业基础课/专业课/学科基础课/通识教育课
-	ExamType    string    `json:"examType"`  // 考核方式：考试/考查
+	Category    string    `json:"category"` // 课程类别二：专业基础课/专业课/学科基础课/通识教育课
+	ExamType    string    `json:"examType"` // 考核方式：考试/考查
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
@@ -34,13 +34,13 @@ type Offering struct {
 	CatalogID       int64     `json:"catalogId"`
 	TeachingClassID int64     `json:"teachingClassId"`
 	Teacher         string    `json:"teacher"`
-	CourseSeq       string    `json:"courseSeq"`       // 课程序号，如 113130004.68
-	TeacherID       string    `json:"teacherId"`       // 教师工号（合上课逗号合并）
-	TeacherTitle    string    `json:"teacherTitle"`    // 教师职称
-	College         string    `json:"college"`         // 开课学院
-	MaxStudents     int       `json:"maxStudents"`     // 人数上限
-	Requirement     string    `json:"requirement"`     // 课程类别一：必修/限选/任选
-	WeeklyHours     int       `json:"weeklyHours"`     // 周学时
+	CourseSeq       string    `json:"courseSeq"`    // 课程序号，如 113130004.68
+	TeacherID       string    `json:"teacherId"`    // 教师工号（合上课逗号合并）
+	TeacherTitle    string    `json:"teacherTitle"` // 教师职称
+	College         string    `json:"college"`      // 开课学院
+	MaxStudents     int       `json:"maxStudents"`  // 人数上限
+	Requirement     string    `json:"requirement"`  // 课程类别一：必修/限选/任选
+	WeeklyHours     int       `json:"weeklyHours"`  // 周学时
 	Semester        string    `json:"semester"`
 	Note            string    `json:"note"`
 	CreatedAt       time.Time `json:"createdAt"`

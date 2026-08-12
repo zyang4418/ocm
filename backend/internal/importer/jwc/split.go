@@ -34,8 +34,8 @@ type Stats struct {
 	Sessions          int      `json:"sessions"`          // 展开后课次数
 	SkippedEmptyAdmin int      `json:"skippedEmptyAdmin"` // 空行政班跳过的开课数
 	SkippedParallel   int      `json:"skippedParallel"`   // 平行教学班跳过的开课数
-	NoTeacherFilled   int      `json:"noTeacherFilled"`  // 无教师已填「未安排」的开课数
-	Warnings          []string `json:"warnings"`         // 人类可读告警
+	NoTeacherFilled   int      `json:"noTeacherFilled"`   // 无教师已填「未安排」的开课数
+	Warnings          []string `json:"warnings"`          // 人类可读告警
 }
 
 // Result 是 Split 的返回：6 张 xlsx + 统计。
@@ -253,14 +253,14 @@ type classroomRec struct {
 // roomTypeMap 把教务处「教室类型」映射为系统 classroom.type 英文键。
 var roomTypeMap = map[string]string{
 	"多媒体教室": classroom.TypeMultimedia,
-	"机房":     classroom.TypeComputer,
-	"实验室":    classroom.TypeLab,
-	"体育场":    classroom.TypeStadium,
+	"机房":    classroom.TypeComputer,
+	"实验室":   classroom.TypeLab,
+	"体育场":   classroom.TypeStadium,
 	"制图教室":  classroom.TypeDrawing,
 	"听力教室":  classroom.TypeLanguage,
-	"画室":     classroom.TypeStudio,
+	"画室":    classroom.TypeStudio,
 	"专用教室":  classroom.TypeSpecial,
-	"":        classroom.TypeStandard,
+	"":      classroom.TypeStandard,
 }
 
 func mapRoomType(s string) string {
@@ -428,18 +428,18 @@ func buildTeachingClasses(seqs map[string]*seqGroup, st *Stats) []teachingClass 
 
 // offeringRec 是一个开课记录（匹配 offerings importer 列契约）。
 type offeringRec struct {
-	course       string
+	course        string
 	teachingClass string
-	semester     string
-	teacher      string
-	courseSeq    string
-	teacherID    string
-	teacherTitle string
-	college      string
-	maxStudents  string
-	requirement  string
-	weeklyHours  string
-	note         string
+	semester      string
+	teacher       string
+	courseSeq     string
+	teacherID     string
+	teacherTitle  string
+	college       string
+	maxStudents   string
+	requirement   string
+	weeklyHours   string
+	note          string
 }
 
 // sessionRec 是一个课次记录（匹配 sessions importer 列契约）。

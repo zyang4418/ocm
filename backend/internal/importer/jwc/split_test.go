@@ -52,7 +52,10 @@ func TestSplitEndToEnd(t *testing.T) {
 	}
 
 	// 计数（样本重算值；sample_timetable.xlsx 为 committed 二进制，确定性）。
-	checks := []struct{ name string; got, want int }{
+	checks := []struct {
+		name      string
+		got, want int
+	}{
 		{"Classrooms", st.Classrooms, 21},
 		{"CatalogCourses", st.CatalogCourses, 22},
 		{"AdminClasses", st.AdminClasses, 62},
@@ -199,8 +202,8 @@ func TestExpandWeeks(t *testing.T) {
 		{"[1-4],[6-17]", []int{1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}},
 		{"3-3", []int{3}},
 		{"[1-5],9", []int{1, 2, 3, 4, 5, 9}},
-		{"[1-3]单", []int{1, 3}},          // 奇数周
-		{"[4-6]双", []int{4, 6}},          // 偶数周
+		{"[1-3]单", []int{1, 3}}, // 奇数周
+		{"[4-6]双", []int{4, 6}}, // 偶数周
 		{"[1-3]单,[4-6]双,[7-9]", []int{1, 3, 4, 6, 7, 8, 9}},
 	}
 	for _, c := range cases {
