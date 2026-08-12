@@ -281,7 +281,13 @@ func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
 // not canceled when the uploading request completes.
 func (h *Handler) processJob(id int64) {
 	h.sem <- struct{}{}
-	defer func() { <-h.sem }()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("importer: panic processing job %d: %v", id, r)
+			h.finishFail(context.Background(), id, "处理任务时发生内部错误")
+		}
+		<-h.sem
+	}()
 
 	ctx := context.Background()
 	if err := h.store.MarkProcessing(ctx, id, StatusPending); err != nil {
@@ -328,7 +334,13 @@ func (h *Handler) processJob(id int64) {
 // state may have changed since the preview.
 func (h *Handler) runCommit(id int64) {
 	h.sem <- struct{}{}
-	defer func() { <-h.sem }()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("importer: panic committing job %d: %v", id, r)
+			h.finishFail(context.Background(), id, "提交任务时发生内部错误")
+		}
+		<-h.sem
+	}()
 
 	ctx := context.Background()
 	job, err := h.store.GetJob(ctx, id)

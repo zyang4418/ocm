@@ -17,6 +17,7 @@ import (
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
 	"ocm-backend/internal/db"
+	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/importer"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/user"
@@ -48,7 +49,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: httpx.Recover(mux),
 	}
 
 	go func() {

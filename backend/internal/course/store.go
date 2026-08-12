@@ -151,6 +151,18 @@ func (s *Store) Migrate(ctx context.Context) error {
 			}
 		}
 	}
+	// teaching_class_id is defined by the CREATE TABLE above for fresh installs,
+	// but a course_offerings table predating teaching classes lacks the column
+	// and would make the ADD INDEX below fail with MySQL 1054 (unknown column).
+	// Add it idempotently (ignore 1060 duplicate-column); legacy rows get 0 and
+	// simply match no teaching_class, which the INNER JOINs already enforce.
+	if _, err := s.db.ExecContext(ctx,
+		`ALTER TABLE course_offerings ADD COLUMN teaching_class_id BIGINT NOT NULL DEFAULT 0 AFTER catalog_id`); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
+			return fmt.Errorf("add offering teaching_class_id column: %w", err)
+		}
+	}
 	// Single-column index on teaching_class_id so the in-use check
 	// (SELECT COUNT(*) ... WHERE teaching_class_id = ? FOR UPDATE) takes a
 	// precise range/gap lock instead of a full-table scan. The existing

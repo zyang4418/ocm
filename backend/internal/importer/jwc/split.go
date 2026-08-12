@@ -97,13 +97,9 @@ func Split(data []byte, semester string, week1Monday time.Time, regimes []schedu
 	}
 
 	// 9. 生成 6 张 xlsx。
-	f := Files{
-		Classrooms:      emitClassrooms(rooms),
-		Catalog:         emitCatalog(catalog),
-		AdminClasses:    emitAdminClasses(adminGrades),
-		TeachingClasses: emitTeachingClasses(tcs, adminGrades),
-		Offerings:       emitOfferings(offerings),
-		Sessions:        emitSessions(sessions),
+	f, err := buildFiles(rooms, catalog, adminGrades, tcs, offerings, sessions)
+	if err != nil {
+		return nil, err
 	}
 	st.Classrooms = len(rooms)
 	st.CatalogCourses = len(catalog)
@@ -615,33 +611,53 @@ func validateRegimes(sessions []sessionRec, regimes []schedule.Regime) error {
 
 // ---- xlsx 生成 ----
 
-func emitClassrooms(rs []classroomRec) []byte {
+// buildFiles 生成 6 张规范 xlsx。任一 excelize 编码失败即返回错误（不 panic），
+// 由 Split 上抛，jwcSplit 将其转为 400 返回前端。BuildBytes 仅在 excelize
+// 内部错误时失败，此前各 emit* 用 panic 终止——会让裸 goroutine 路径崩溃
+// 整个进程，故改为错误返回。
+func buildFiles(rooms []classroomRec, catalog []catalogRec, adminGrades map[string]string, tcs []teachingClass, ofs []offeringRec, ss []sessionRec) (Files, error) {
+	var f Files
+	var err error
+	if f.Classrooms, err = emitClassrooms(rooms); err != nil {
+		return Files{}, fmt.Errorf("生成教室表失败：%w", err)
+	}
+	if f.Catalog, err = emitCatalog(catalog); err != nil {
+		return Files{}, fmt.Errorf("生成课程目录表失败：%w", err)
+	}
+	if f.AdminClasses, err = emitAdminClasses(adminGrades); err != nil {
+		return Files{}, fmt.Errorf("生成行政班表失败：%w", err)
+	}
+	if f.TeachingClasses, err = emitTeachingClasses(tcs, adminGrades); err != nil {
+		return Files{}, fmt.Errorf("生成教学班表失败：%w", err)
+	}
+	if f.Offerings, err = emitOfferings(ofs); err != nil {
+		return Files{}, fmt.Errorf("生成开课表失败：%w", err)
+	}
+	if f.Sessions, err = emitSessions(ss); err != nil {
+		return Files{}, fmt.Errorf("生成课次表失败：%w", err)
+	}
+	return f, nil
+}
+
+func emitClassrooms(rs []classroomRec) ([]byte, error) {
 	headers := []string{"name", "building", "capacity", "type", "floor", "campus", "status", "description"}
 	rows := make([][]any, 0, len(rs))
 	for _, r := range rs {
 		rows = append(rows, []any{r.name, r.building, r.capacity, r.typ, r.floor, r.campus, classroom.StatusAvailable, ""})
 	}
-	b, err := xlsx.BuildBytes("classrooms", headers, rows)
-	if err != nil {
-		panic(err) // BuildBytes 仅在 excelize 内部错误时失败，不可恢复
-	}
-	return b
+	return xlsx.BuildBytes("classrooms", headers, rows)
 }
 
-func emitCatalog(cs []catalogRec) []byte {
+func emitCatalog(cs []catalogRec) ([]byte, error) {
 	headers := []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}
 	rows := make([][]any, 0, len(cs))
 	for _, c := range cs {
 		rows = append(rows, []any{c.name, c.code, atofOr(c.credits, 0), atoiOr(c.totalHours, 0), c.category, c.examType, ""})
 	}
-	b, err := xlsx.BuildBytes("catalog", headers, rows)
-	if err != nil {
-		panic(err)
-	}
-	return b
+	return xlsx.BuildBytes("catalog", headers, rows)
 }
 
-func emitAdminClasses(ag map[string]string) []byte {
+func emitAdminClasses(ag map[string]string) ([]byte, error) {
 	headers := []string{"grade", "name", "note"}
 	names := make([]string, 0, len(ag))
 	for n := range ag {
@@ -652,14 +668,10 @@ func emitAdminClasses(ag map[string]string) []byte {
 	for _, n := range names {
 		rows = append(rows, []any{ag[n], n, ""})
 	}
-	b, err := xlsx.BuildBytes("admin_classes", headers, rows)
-	if err != nil {
-		panic(err)
-	}
-	return b
+	return xlsx.BuildBytes("admin_classes", headers, rows)
 }
 
-func emitTeachingClasses(tcs []teachingClass, adminGrades map[string]string) []byte {
+func emitTeachingClasses(tcs []teachingClass, adminGrades map[string]string) ([]byte, error) {
 	headers := []string{"name", "note", "admin_grade", "admin_name"}
 	var rows [][]any
 	for _, tc := range tcs {
@@ -667,35 +679,23 @@ func emitTeachingClasses(tcs []teachingClass, adminGrades map[string]string) []b
 			rows = append(rows, []any{tc.name, tc.note, adminGrades[m], m})
 		}
 	}
-	b, err := xlsx.BuildBytes("teaching_classes", headers, rows)
-	if err != nil {
-		panic(err)
-	}
-	return b
+	return xlsx.BuildBytes("teaching_classes", headers, rows)
 }
 
-func emitOfferings(ofs []offeringRec) []byte {
+func emitOfferings(ofs []offeringRec) ([]byte, error) {
 	headers := []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
 	rows := make([][]any, 0, len(ofs))
 	for _, o := range ofs {
 		rows = append(rows, []any{o.course, o.teachingClass, o.semester, o.teacher, o.courseSeq, o.teacherID, o.teacherTitle, o.college, atoiOr(o.maxStudents, 0), o.requirement, atoiOr(o.weeklyHours, 0), o.note})
 	}
-	b, err := xlsx.BuildBytes("offerings", headers, rows)
-	if err != nil {
-		panic(err)
-	}
-	return b
+	return xlsx.BuildBytes("offerings", headers, rows)
 }
 
-func emitSessions(ss []sessionRec) []byte {
+func emitSessions(ss []sessionRec) ([]byte, error) {
 	headers := []string{"date", "period_index", "classroom", "course", "teaching_class", "semester", "note"}
 	rows := make([][]any, 0, len(ss))
 	for _, s := range ss {
 		rows = append(rows, []any{s.date, s.periodIndex, s.classroom, s.course, s.teachingClass, s.semester, ""})
 	}
-	b, err := xlsx.BuildBytes("sessions", headers, rows)
-	if err != nil {
-		panic(err)
-	}
-	return b
+	return xlsx.BuildBytes("sessions", headers, rows)
 }
