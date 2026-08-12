@@ -9,9 +9,15 @@ import (
 )
 
 // Column names for the course_catalog import (header-mapped, order-independent).
+// credits/total_hours/category/exam_type are optional 教务处-derived columns
+// (学分/总学时/课程类别二/考核方式); legacy files without them default to zero/empty.
 const (
 	ColCatalogName        = "name"
 	ColCatalogCode        = "code"
+	ColCatalogCredits     = "credits"
+	ColCatalogTotalHours  = "total_hours"
+	ColCatalogCategory    = "category"
+	ColCatalogExamType    = "exam_type"
 	ColCatalogDescription = "description"
 )
 
@@ -42,6 +48,10 @@ func (r catalogRow) toPreviewMap() map[string]any {
 	return map[string]any{
 		"name":        r.Name,
 		"code":        r.Code,
+		"credits":     r.Credits,
+		"totalHours":  r.TotalHours,
+		"category":    r.Category,
+		"examType":    r.ExamType,
 		"description": r.Description,
 	}
 }
@@ -61,6 +71,10 @@ func parseCatalog(payload string) (clean []catalogRow, errs []RowError, dataRows
 		in := course.CatalogInput{
 			Name:        rec[ColCatalogName],
 			Code:        rec[ColCatalogCode],
+			Credits:     atofOr(rec[ColCatalogCredits], 0),
+			TotalHours:  atoiOr(rec[ColCatalogTotalHours], 0),
+			Category:    rec[ColCatalogCategory],
+			ExamType:    rec[ColCatalogExamType],
 			Description: rec[ColCatalogDescription],
 		}
 		if msg, ok := course.NormalizeCatalog(&in); !ok {
@@ -110,9 +124,9 @@ func commitCatalog(ctx context.Context, db *sql.DB, payload string) (Result, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO course_catalog (name, code, description)
-VALUES (?, ?, ?)
-ON DUPLICATE KEY UPDATE code=VALUES(code), description=VALUES(description)`)
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO course_catalog (name, code, credits, total_hours, category, exam_type, description)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE code=VALUES(code), credits=VALUES(credits), total_hours=VALUES(total_hours), category=VALUES(category), exam_type=VALUES(exam_type), description=VALUES(description)`)
 	if err != nil {
 		res.FailedRows = dataRows
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
@@ -121,7 +135,7 @@ ON DUPLICATE KEY UPDATE code=VALUES(code), description=VALUES(description)`)
 	defer func() { _ = stmt.Close() }()
 
 	for _, c := range clean {
-		if _, err := stmt.ExecContext(ctx, c.Name, c.Code, c.Description); err != nil {
+		if _, err := stmt.ExecContext(ctx, c.Name, nullIfEmpty(c.Code), c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description); err != nil {
 			res.FailedRows = dataRows
 			res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("upsert catalog: %w", err)

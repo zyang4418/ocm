@@ -342,40 +342,60 @@ func resolveSessionRow(
 	}, ""
 }
 
+// batchTupleSize is the number of (classroom_id, date, period_index) tuples
+// queried per existingConflicts round-trip. A large 教务处 import expands to
+// ~64k sessions; issuing one 200k-placeholder IN list would risk hitting
+// max_allowed_packet / parser limits. 1000 tuples (3k placeholders) per query
+// stays well under any limit while keeping the round-trip count modest (~64).
+const batchTupleSize = 1000
+
 // existingConflicts returns the set of "classroomID|date|period" keys from clean
 // that are already present in course_sessions. It queries only the tuples being
 // imported (not the whole classroom×date span), so a semester-wide import over
-// many rooms/days validates a few hundred rows instead of loading tens of
-// thousands.
+// many rooms/days validates the imported set rather than loading the full table.
+// The tuple set is batched (batchTupleSize rows per query) and the per-batch
+// results merged, so a large import never builds a single huge IN list.
 func existingConflicts(ctx context.Context, db *sql.DB, clean []sessionInsert) (map[string]bool, error) {
-	placeholders := make([]string, len(clean))
-	args := make([]any, 0, len(clean)*3)
-	for i, ins := range clean {
-		placeholders[i] = "(?, ?, ?)"
-		args = append(args, ins.classroomID, ins.date, ins.periodIndex)
-	}
-	q := fmt.Sprintf(
-		`SELECT classroom_id, date, period_index FROM course_sessions WHERE (classroom_id, date, period_index) IN (%s)`,
-		strings.Join(placeholders, ","),
-	)
-
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query existing sessions: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
 	conflict := make(map[string]bool)
-	for rows.Next() {
-		var cid int64
-		var d time.Time
-		var p int
-		if err := rows.Scan(&cid, &d, &p); err != nil {
-			return nil, fmt.Errorf("scan existing session: %w", err)
+	for start := 0; start < len(clean); start += batchTupleSize {
+		end := start + batchTupleSize
+		if end > len(clean) {
+			end = len(clean)
 		}
-		conflict[fmt.Sprintf("%d|%s|%d", cid, d.Format("2006-01-02"), p)] = true
+		batch := clean[start:end]
+		placeholders := make([]string, len(batch))
+		args := make([]any, 0, len(batch)*3)
+		for i, ins := range batch {
+			placeholders[i] = "(?, ?, ?)"
+			args = append(args, ins.classroomID, ins.date, ins.periodIndex)
+		}
+		q := fmt.Sprintf(
+			`SELECT classroom_id, date, period_index FROM course_sessions WHERE (classroom_id, date, period_index) IN (%s)`,
+			strings.Join(placeholders, ","),
+		)
+
+		rows, err := db.QueryContext(ctx, q, args...)
+		if err != nil {
+			return nil, fmt.Errorf("query existing sessions: %w", err)
+		}
+		for rows.Next() {
+			var cid int64
+			var d time.Time
+			var p int
+			if err := rows.Scan(&cid, &d, &p); err != nil {
+				_ = rows.Close()
+				return nil, fmt.Errorf("scan existing session: %w", err)
+			}
+			conflict[fmt.Sprintf("%d|%s|%d", cid, d.Format("2006-01-02"), p)] = true
+		}
+		if err := rows.Close(); err != nil {
+			return nil, fmt.Errorf("close existing session rows: %w", err)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("iterate existing sessions: %w", err)
+		}
 	}
-	return conflict, rows.Err()
+	return conflict, nil
 }
 
 func isDuplicateEntry(err error) bool {

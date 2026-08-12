@@ -20,6 +20,7 @@ import {
   TableToolbar,
   TableToolbarContent,
   Tag,
+  TextInput,
 } from '@carbon/react'
 import { Upload } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -47,13 +48,15 @@ const IMPORT_TYPES = {
   },
   classrooms: {
     label: '教室',
-    schema: 'name, building, capacity, type, status, description',
-    note: '按教室名称 upsert：已存在则更新，否则新增。',
+    schema: 'name, building, capacity, type, floor, campus, status, description',
+    note: '按教室名称 upsert：已存在则更新，否则新增。floor/campus 为可选的楼层与校区。',
     columns: [
       { key: 'name', header: '教室编号' },
       { key: 'building', header: '楼栋' },
       { key: 'capacity', header: '座位数' },
       { key: 'type', header: '类型' },
+      { key: 'floor', header: '楼层' },
+      { key: 'campus', header: '校区' },
       { key: 'status', header: '状态' },
       { key: 'description', header: '备注' },
     ],
@@ -80,23 +83,34 @@ const IMPORT_TYPES = {
   },
   catalog: {
     label: '课程库',
-    schema: 'name, code, description',
-    note: '按课程名称 upsert。',
+    schema: 'name, code, credits, total_hours, category, exam_type, description',
+    note: '按课程名称 upsert。code 加唯一索引（留空存 NULL，互不冲突）；credits/total_hours/category/exam_type 为可选的教务处属性。',
     columns: [
       { key: 'name', header: '课程' },
       { key: 'code', header: '代码' },
+      { key: 'credits', header: '学分' },
+      { key: 'totalHours', header: '总学时' },
+      { key: 'category', header: '课程类别' },
+      { key: 'examType', header: '考核方式' },
       { key: 'description', header: '说明' },
     ],
   },
   offerings: {
     label: '开课',
-    schema: 'course, teaching_class, semester, teacher, note',
-    note: '按课程+教学班+学期 upsert；课程与教学班按名称引用，需预先建立。',
+    schema: 'course, teaching_class, semester, teacher, course_seq, teacher_id, teacher_title, college, max_students, requirement, weekly_hours, note',
+    note: '按课程+教学班+学期 upsert；课程与教学班按名称引用，需预先建立。course_seq..weekly_hours 为可选的教务处开课元数据。',
     columns: [
       { key: 'course', header: '课程' },
       { key: 'teachingClass', header: '教学班' },
       { key: 'semester', header: '学期' },
       { key: 'teacher', header: '教师' },
+      { key: 'courseSeq', header: '课程序号' },
+      { key: 'teacherId', header: '教师工号' },
+      { key: 'teacherTitle', header: '教师职称' },
+      { key: 'college', header: '开课学院' },
+      { key: 'maxStudents', header: '人数上限' },
+      { key: 'requirement', header: '课程类别一' },
+      { key: 'weeklyHours', header: '周学时' },
       { key: 'note', header: '备注' },
     ],
   },
@@ -216,6 +230,15 @@ export default function ImportsPage() {
   const [actionPending, setActionPending] = useState(false)
   const [actionError, setActionError] = useState('')
 
+  // 教务处课表拆分表单：上传聚合表 + 学期 + 第一周周一，后端拆为 6 个导入任务。
+  const [splitFile, setSplitFile] = useState(null)
+  const [splitSemester, setSplitSemester] = useState('')
+  const [splitWeek1, setSplitWeek1] = useState('')
+  const [splitting, setSplitting] = useState(false)
+  const [splitError, setSplitError] = useState('')
+  const [splitResult, setSplitResult] = useState(null)
+  const splitFileRef = useRef(null)
+
   const fetchJobs = useCallback(async () => {
     try {
       setError('')
@@ -253,6 +276,34 @@ export default function ImportsPage() {
       setUploadError(err.message)
     } finally {
       setUploading(false)
+    }
+  }
+
+  // handleSplit posts the 教务处 aggregated schedule to /api/imports/jwc_split
+  // with semester + week1_monday. The backend splits it into 6 canonical xlsx
+  // and creates one import job per output; we just refresh the job list and
+  // surface the split stats/warnings. The 6 jobs then follow the normal
+  // preview→commit flow (commit in dependency order: classrooms → catalog →
+  // admin_classes → teaching_classes → offerings → sessions).
+  const handleSplit = async () => {
+    if (!splitFile || !splitSemester || !splitWeek1) return
+    try {
+      setSplitting(true)
+      setSplitError('')
+      setSplitResult(null)
+      const data = await apiUpload('/api/imports/jwc_split', {
+        file: splitFile,
+        token,
+        fields: { semester: splitSemester, week1_monday: splitWeek1 },
+      })
+      setSplitResult(data)
+      setSplitFile(null)
+      if (splitFileRef.current) splitFileRef.current.value = ''
+      await fetchJobs()
+    } catch (err) {
+      setSplitError(err.message)
+    } finally {
+      setSplitting(false)
     }
   }
 
@@ -406,6 +457,87 @@ export default function ImportsPage() {
           <code>{typeCfg.schema}</code>
         </p>
         <p className="imports-page__note">{typeCfg.note}</p>
+      </Column>
+
+      <Column sm={4} md={8} lg={16}>
+        <div className="imports-page__split-head">
+          <h2 className="imports-page__subheading">教务处课表拆分</h2>
+          <p className="courses-page__subtitle">
+            上传教务处导出的聚合课表（含教室 / 课程 / 行政班 / 教师 / 周次），填学期与第一周
+            周一，系统自动拆为 6 个导入任务（教室 / 课程库 / 行政班 / 教学班 / 开课 / 课次），
+            各自进入预览。请按依赖顺序确认：教室 → 课程库 → 行政班 → 教学班 → 开课 → 课次
+            （开课与课次引用课程库与教学班，未先确认时预览会报「不存在」，确认后重校通过）。
+          </p>
+        </div>
+        <div className="imports-page__upload">
+          <input
+            ref={splitFileRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(e) => setSplitFile(e.target.files?.[0] || null)}
+          />
+          <TextInput
+            id="jwc-semester"
+            className="imports-page__split-input"
+            labelText="学期"
+            placeholder="2024-2025-2"
+            value={splitSemester}
+            onChange={(e) => setSplitSemester(e.target.value)}
+            size="sm"
+          />
+          <TextInput
+            id="jwc-week1"
+            className="imports-page__split-input"
+            type="date"
+            labelText="第一周周一（须为周一）"
+            value={splitWeek1}
+            onChange={(e) => setSplitWeek1(e.target.value)}
+            size="sm"
+          />
+          <Button
+            renderIcon={Upload}
+            size="sm"
+            onClick={handleSplit}
+            disabled={!splitFile || !splitSemester || !splitWeek1 || splitting}
+          >
+            {splitting ? '拆分中…' : '拆分并建任务'}
+          </Button>
+        </div>
+        {splitError && (
+          <InlineNotification
+            kind="error"
+            title="拆分失败"
+            subtitle={splitError}
+            lowContrast
+            hideCloseButton
+            className="imports-page__upload-err"
+          />
+        )}
+        {splitResult && (
+          <div className="imports-page__split-result">
+            <InlineNotification
+              kind="success"
+              title={`拆分完成，已建 ${splitResult.jobs?.length ?? 6} 个导入任务`}
+              subtitle={`教室 ${splitResult.stats?.classrooms ?? 0} · 课程 ${splitResult.stats?.catalogCourses ?? 0} · 行政班 ${splitResult.stats?.adminClasses ?? 0} · 教学班 ${splitResult.stats?.teachingClasses ?? 0} · 开课 ${splitResult.stats?.offerings ?? 0} · 课次 ${splitResult.stats?.sessions ?? 0}（跳过 空行政班 ${splitResult.stats?.skippedEmptyAdmin ?? 0} / 平行 ${splitResult.stats?.skippedParallel ?? 0} / 无教师填未安排 ${splitResult.stats?.noTeacherFilled ?? 0}）`}
+              lowContrast
+              hideCloseButton
+              className="imports-page__upload-err"
+            />
+            {splitResult.warnings?.length > 0 && (
+              <details className="imports-page__warnings">
+                <summary>告警 {splitResult.warnings.length} 条（点击展开）</summary>
+                <ul>
+                  {splitResult.warnings.slice(0, 50).map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                  {splitResult.warnings.length > 50 && (
+                    <li>…其余 {splitResult.warnings.length - 50} 条省略</li>
+                  )}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
       </Column>
 
       <Column sm={4} md={8} lg={16}>

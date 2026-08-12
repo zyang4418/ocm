@@ -45,3 +45,28 @@ func atoiOr(s string, def int) int {
 	}
 	return n
 }
+
+// atofOr parses s as a float64, returning def when s is empty or not a valid
+// float. Importers use it for numeric columns like credits (学分) that may be
+// blank or fractional.
+func atofOr(s string, def float64) float64 {
+	if s == "" {
+		return def
+	}
+	n, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+// nullIfEmpty returns nil for an empty string so the column stores NULL rather
+// than ''. This matters for UNIQUE columns such as course_catalog.code: MySQL
+// treats multiple '' as equal (collision) but multiple NULL as distinct. Pass
+// the result as a statement argument.
+func nullIfEmpty(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}

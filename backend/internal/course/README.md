@@ -90,9 +90,14 @@ CREATE TABLE teaching_class_members (
 CREATE TABLE course_catalog (
   id          BIGINT AUTO_INCREMENT PRIMARY KEY,
   name        VARCHAR(128) NOT NULL UNIQUE,
-  code        VARCHAR(64)  NOT NULL DEFAULT '',
+  code        VARCHAR(64)  NULL DEFAULT NULL,        -- 课程代码；留空存 NULL，见下方「code 唯一性」
+  credits     DECIMAL(4,1) NOT NULL DEFAULT 0,       -- 学分（教务处属性）
+  total_hours INT          NOT NULL DEFAULT 0,       -- 总学时
+  category    VARCHAR(32)  NOT NULL DEFAULT '',      -- 课程类别
+  exam_type   VARCHAR(16)  NOT NULL DEFAULT '',      -- 考核方式
   description VARCHAR(255) NOT NULL DEFAULT '',
-  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_catalog_code (code)                 -- NULL 互不冲突；'' 会冲突，故留空须存 NULL
 );
 
 CREATE TABLE course_offerings (
@@ -100,6 +105,13 @@ CREATE TABLE course_offerings (
   catalog_id        BIGINT       NOT NULL,          -- → course_catalog.id（逻辑外键）
   teaching_class_id BIGINT       NOT NULL,          -- → teaching_classes.id（逻辑外键）
   teacher           VARCHAR(64)  NOT NULL DEFAULT '',
+  course_seq        VARCHAR(32)  NOT NULL DEFAULT '', -- 教务处「课程序号」
+  teacher_id        VARCHAR(64)  NOT NULL DEFAULT '', -- 教师工号
+  teacher_title     VARCHAR(32)  NOT NULL DEFAULT '', -- 教师职称
+  college           VARCHAR(64)  NOT NULL DEFAULT '', -- 开课学院
+  max_students      INT          NOT NULL DEFAULT 0, -- 人数上限
+  requirement       VARCHAR(16)  NOT NULL DEFAULT '', -- 课程类别一
+  weekly_hours      INT          NOT NULL DEFAULT 0, -- 周学时
   semester          VARCHAR(32)  NOT NULL,
   note              VARCHAR(255) NOT NULL DEFAULT '',
   created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -130,6 +142,7 @@ CREATE TABLE course_sessions (
 - **唯一约束**：
   - `admin_classes`：`UNIQUE(grade, name)`
   - `teaching_classes`：`UNIQUE(name)`
+  - `course_catalog`：`UNIQUE(name)` + `UNIQUE(code)`（`code` 为 NULL-able，多个 NULL 互不冲突；但 `''` 会冲突，故代码留空须存 NULL 而非空串。重复代码返回 `ErrCodeTaken`，HTTP 409）
   - `course_offerings`：`UNIQUE(catalog_id, teaching_class_id, semester)`
   - `course_sessions`：`UNIQUE(classroom_id, date, period_index)`
 
@@ -195,15 +208,35 @@ CREATE TABLE course_sessions (
 - `teachingClassName`：教学班名称（JOIN `teaching_classes`）。
 - `classNames`：成员行政班名称数组（`course_offerings → teaching_class_members → admin_classes`，按 `grade, name` 排序）。`classNamesByTeachingClass`（course 模块）/ `classNamesBySession`（按课次聚合）以单次批量查询填充，避免 N+1。
 
-## 8. CSV 课表导入
+## 8. xlsx 导入框架与教务处拆分
 
-`internal/importer` 的 CSV 表头中，原 `class` 列**改名为 `teaching_class`**，值为**教学班名称**（不再是行政班名/自由文本）。导入按 `课程名 | 教学班名 | 学期` 解析开课（`offeringByKey`），结构不变。
+### 8.1 导入框架（`internal/importer`）
 
-表头（按列名识别，顺序无关）：
+业务数据通过 xlsx 异步导入。`Registry` 把任务类型映射到 `Importer` 接口（`Analyze` 干跑预览 / `Commit` 事务写入），载荷以 base64 存于 `import_jobs.payload`（LONGTEXT）。流程：上传 → `Analyze` 生成预览（`status=preview`）→ 用户确认 → `Commit` 重校并写入（`status=succeeded/failed`）。`Commit` 从原始载荷重新解析校验，不信任预览行，故预览与提交间的 DB 变化会被捕获。
 
-```
-date, period_index, classroom, course, teaching_class, semester, note
-```
+表头**按列名识别、顺序无关**（`xlsx.MapRows` 小写化去空格后的中文/英文表头映射）。各类型的列契约见 `web/src/pages/ImportsPage.jsx` 的 `IMPORT_TYPES` 与对应 `backend/internal/importer/*.go` 的 `Col*` 常量。
+
+### 8.2 教务处课表拆分（`internal/importer/jwc` + `POST /api/imports/jwc_split`）
+
+教务处导出的「列表课程信息」是**聚合表**（3690 行 × 29 列），把教室 / 课程 / 行政班 / 教师 / 周次揉在一张表里，按「星期 / 节次 / 起止周」的**周次模式**描述排课。系统不能直接吃这张表，需要先拆成 6 张规范 xlsx 再走 §8.1 的导入框架。
+
+端点 `POST /api/imports/jwc_split`（multipart：`file` + `semester` + `week1_monday`，权限 `course:manage`）：
+
+1. 读文件字节 + 学期标签 + 第一周周一（须为周一）；
+2. 加载全部作息制度 `schedule.Store.ListRegimes`；
+3. 调 `jwc.Split(data, semester, week1Monday, regimes)` 拆为 6 张 xlsx 字节 + 统计/告警；
+4. **致命错误**（作息未覆盖某展开日期、参数非法、文件无法解析）→ 400 返回，**不建任何任务**，避免孤儿；
+5. 否则 base64 编码每张 xlsx，按依赖顺序建 6 个 `import_jobs`（教室 → 课程库 → 行政班 → 教学班 → 开课 → 课次），各自异步 `processJob` 跑 `Analyze → preview`；
+6. 返回 `{ jobs, stats, warnings }`，前端展示拆分计数与告警。
+
+**依赖顺序**：开课 / 课次按名称引用课程库与教学班。若拆分后立即看开课/课次的预览，因依赖未提交会报「课程/教学班不存在」；**按依赖顺序确认**（教室 → 课程库 → 行政班 → 教学班 → 开课 → 课次）后，`Commit` 重校通过即成功。预览中的「不存在」是信息性提示，不影响后续提交。
+
+`jwc.Split` 的核心规则（详见 `internal/importer/jwc/doc.go`）：
+
+- **合班去重**：同一「课程序号」下，相同（教室 + 星期 + 节次串 + 起止周串）的多行视为同一槽位（合班上课的多教师行），教师按工号合并去重；
+- **周次展开**：`起止周` 支持 `[a-b]` / `a-b` / `n` / 逗号分段，及「单/双」奇偶周后缀；`节次` 支持 `3-4` / `1-4` / `1-1` 范围；日期 = 第一周周一 + (周-1)*7 + (星期-1)；
+- **教学班命名**：按行政班集合去重，名称用区间压缩（`机电241~245`）；超 64 字符回退为「首班,次班等N班」+ note 存完整成员；
+- **特殊处理**：空行政班行（任选课，41 行）跳过告警；平行教学班（同课程代码+行政班集合多序号，4 对）跳过告警；无教师开课（26 个体育）填「未安排」；「停课」占位不计为教室也不展开课次。
 
 ## 9. 迁移说明（重要）
 
@@ -221,12 +254,22 @@ DROP TABLE IF EXISTS course_offerings;
 
 > 如需保留 `course_sessions` 数据，可改为 `ALTER`：先 `ALTER TABLE course_offerings DROP INDEX <旧唯一索引名>`，`DROP COLUMN class_name`，`ADD COLUMN teaching_class_id BIGINT NOT NULL DEFAULT 0`，再 `ADD UNIQUE (catalog_id, teaching_class_id, semester)`——但开发阶段不建议，DROP 重建更干净。
 
+### 9.1 教务处属性列与 `UNIQUE(code)`（幂等加列，无需 DROP）
+
+`course.Store.Migrate` 对**已存在**的 `course_catalog` / `course_offerings` 做**幂等 ALTER** 升级（忽略 MySQL 1060 重复列 / 1061 重复键名），开发库直接重启即可，无需 DROP：
+
+- `course_catalog` 加 `credits` / `total_hours` / `category` / `exam_type` 四个教务处属性列；
+- `course_catalog.code` 改为 `NULL DEFAULT NULL`（旧 `''` 迁为 `NULL`），再加 `UNIQUE KEY uq_catalog_code (code)`——NULL 互不冲突，`''` 才会碰撞，故留空必须存 NULL；
+- `course_offerings` 的 `course_seq` / `teacher_id` / `teacher_title` / `college` / `max_students` / `requirement` / `weekly_hours` 七个教务处元数据列随 `CREATE TABLE IF NOT EXISTS` 建立；已有表需手动加列或 DROP 重建（开发阶段建议后者）。
+
+> 1062（数据级重复）**故意不忽略**：若两门不同课程已存同一 `code`，加 `UNIQUE(code)` 会失败，提示先去重——这是数据问题，不应静默。
+
 ## 10. 前端
 
 - **组织与权限**导航组下新增「行政班管理」「教学班管理」两个页面（`web/src/pages/AdminClassesPage.jsx`、`TeachingClassesPage.jsx`），路由 `/admin-classes`、`/teaching-classes`。
 - **课程管理**页开课表单：原「班级」文本框改为「教学班」下拉（数据源 `/api/teaching-classes`），`teachingClassId` 必填；教师改为必填。列表新增「行政班」列（`classNames` 聚合展示）。
 - **教室课表**页：课次单元格与开课下拉改用 `teachingClassName`。
-- **课表导入**页：CSV 表头提示与预览列 `class → teaching_class`（预览字段 `teachingClass`）。
+- **数据导入**页：上传 xlsx（按列名识别表头，顺序无关）；预览列由任务类型驱动。新增「教务处课表拆分」表单：上传聚合表 + 填学期与第一周周一 → 调 `/api/imports/jwc_split` 一次建 6 个导入任务，并展示拆分统计与告警。
 - 教学班表单用 Carbon `MultiSelect` 选择成员行政班；行政班为空时提示先创建。
 
 ## 11. 文件清单
@@ -245,3 +288,29 @@ DROP TABLE IF EXISTS course_offerings;
 | `internal/importer/sessions_csv.go` | 改：CSV 列名与解析键 |
 | `internal/authz/authz.go` | 改：新增 4 个权限常量并赋予 user 读权限 |
 | `main.go` | 改：启动时调用 `userStore.Migrate` |
+
+## 12. 文件清单：教务处拆分与属性列扩充
+
+本次（教务处课表导入）改造的文件：
+
+| 文件 | 变更 |
+|---|---|
+| `internal/course/store.go` | 改：`course_catalog` 加 `code NULL` + `credits/total_hours/category/exam_type` + `UNIQUE(code)`；`course_offerings` 加 7 个教务处元数据列；幂等 ALTER 升级；`ErrCodeTaken`/`duplicateKeyName`/`nullableCode` |
+| `internal/course/handler.go` | 改：create/updateCatalog 映射 `ErrCodeTaken → 409` |
+| `internal/course/model.go` | 改：`Catalog`/`CatalogInput` 加 `Code/Credits/TotalHours/Category/ExamType`；`Offering`/`OfferingInput` 加教务处元数据字段 |
+| `internal/importer/catalog.go` | 改：upsert 写 `code(nullIfEmpty)` + 4 个教务处属性列 |
+| `internal/importer/offerings.go` | 改：列常量 + `offeringInsert` + upsert 写 7 个教务处元数据列 + 预览字段 |
+| `internal/importer/sessions.go` | 改：`existingConflicts` 按 1000 元组分批 IN 查询 |
+| `internal/importer/parse.go` | 改：`nullIfEmpty` 辅助 |
+| `internal/importer/jwc/doc.go` | 新增：jwc 包中文文档（源表结构、六表映射、展开/去重/命名规则） |
+| `internal/importer/jwc/parse.go` | 新增：教务处表头常量、`jwcRow`、`parseRows` |
+| `internal/importer/jwc/expand.go` | 新增：`parsePeriods`/`expandWeeks`/`weekDate`/`expandSlot` |
+| `internal/importer/jwc/teaching.go` | 新增：行政班集合解析、教学班命名（区间压缩 + 回退）、年级推导 |
+| `internal/importer/jwc/split.go` | 新增：`Split` 主编排 + 6 张 xlsx 生成 + 作息预校验 |
+| `internal/importer/jwc/split_test.go` | 新增：端到端 + 单测 |
+| `internal/importer/handler.go` | 改：`Handler` 加 `scheduleStore`；`NewHandler` 加参；`POST /api/imports/jwc_split` 端点 |
+| `internal/xlsx/xlsx.go` | 改：新增 `BuildBytes`（拆分产出字节，不绑 HTTP） |
+| `main.go` | 改：`importer.NewHandler` 传 `scheduleStore` |
+| `web/src/pages/ImportsPage.jsx` | 改：catalog/offerings/classrooms 列契约扩充；新增教务处拆分表单 |
+| `web/src/auth/api.js` | 改：`apiUpload` 支持可选 `fields`（学期 + 第一周周一随文件上传） |
+| `web/src/app.scss` | 改：拆分表单样式 |

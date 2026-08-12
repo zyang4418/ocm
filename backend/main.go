@@ -135,7 +135,7 @@ func main() {
 		importer.NewRegimesImporter(database))
 	registry.Register(importer.JobTypeBookings, authz.BookingApprove,
 		importer.NewBookingsImporter(database, classroomStore, scheduleStore))
-	importerHandler := importer.NewHandler(importerStore, registry)
+	importerHandler := importer.NewHandler(importerStore, registry, scheduleStore)
 	importerHandler.RecoverStale(ctx)
 	importerHandler.RegisterRoutes(mux, authenticate)
 

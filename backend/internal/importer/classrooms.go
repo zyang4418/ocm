@@ -9,11 +9,15 @@ import (
 )
 
 // Column names for the classrooms import (header-mapped, order-independent).
+// floor/campus are optional 教务处-derived columns (楼层/校区); legacy files
+// without them default to empty.
 const (
 	ColClassroomName        = "name"
 	ColClassroomBuilding    = "building"
 	ColClassroomCapacity    = "capacity"
 	ColClassroomType        = "type"
+	ColClassroomFloor       = "floor"
+	ColClassroomCampus      = "campus"
 	ColClassroomStatus      = "status"
 	ColClassroomDescription = "description"
 )
@@ -48,6 +52,8 @@ func (r classroomRow) toPreviewMap() map[string]any {
 		"building":    r.Building,
 		"capacity":    r.Capacity,
 		"type":        r.Type,
+		"floor":       r.Floor,
+		"campus":      r.Campus,
 		"status":      r.Status,
 		"description": r.Description,
 	}
@@ -70,6 +76,8 @@ func parseClassrooms(payload string) (clean []classroomRow, errs []RowError, dat
 			Building:    rec[ColClassroomBuilding],
 			Capacity:    atoiOr(rec[ColClassroomCapacity], 0),
 			Type:        rec[ColClassroomType],
+			Floor:       rec[ColClassroomFloor],
+			Campus:      rec[ColClassroomCampus],
 			Status:      rec[ColClassroomStatus],
 			Description: rec[ColClassroomDescription],
 		}
@@ -120,9 +128,9 @@ func commitClassrooms(ctx context.Context, db *sql.DB, payload string) (Result, 
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO classrooms (name, building, capacity, type, status, description)
-VALUES (?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE building=VALUES(building), capacity=VALUES(capacity), type=VALUES(type), status=VALUES(status), description=VALUES(description)`)
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO classrooms (name, building, capacity, type, floor, campus, status, description)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE building=VALUES(building), capacity=VALUES(capacity), type=VALUES(type), floor=VALUES(floor), campus=VALUES(campus), status=VALUES(status), description=VALUES(description)`)
 	if err != nil {
 		res.FailedRows = dataRows
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
@@ -131,7 +139,7 @@ ON DUPLICATE KEY UPDATE building=VALUES(building), capacity=VALUES(capacity), ty
 	defer func() { _ = stmt.Close() }()
 
 	for _, c := range clean {
-		if _, err := stmt.ExecContext(ctx, c.Name, c.Building, c.Capacity, c.Type, c.Status, c.Description); err != nil {
+		if _, err := stmt.ExecContext(ctx, c.Name, c.Building, c.Capacity, c.Type, c.Floor, c.Campus, c.Status, c.Description); err != nil {
 			res.FailedRows = dataRows
 			res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("upsert classroom: %w", err)

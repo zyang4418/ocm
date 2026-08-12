@@ -15,20 +15,27 @@ var (
 )
 
 // Controlled vocabulary for classroom type and status. Values are stored in
-// English; the frontend maps them to Chinese labels.
+// English; the frontend maps them to Chinese labels. The extended types
+// (stadium/drawing/language/studio/special) cover the 教务处 classroom-type
+// values that the aggregated schedule import maps to these keys.
 const (
 	TypeStandard    = "standard"
 	TypeMultimedia  = "multimedia"
 	TypeComputer    = "computer"
 	TypeLab         = "lab"
 	TypeLectureHall = "lecture_hall"
+	TypeStadium     = "stadium"  // 体育场
+	TypeDrawing     = "drawing"  // 制图教室
+	TypeLanguage    = "language" // 听力教室
+	TypeStudio      = "studio"   // 画室
+	TypeSpecial     = "special"  // 专用教室
 
 	StatusAvailable   = "available"
 	StatusMaintenance = "maintenance"
 	StatusDisabled    = "disabled"
 )
 
-const columns = "id, name, building, capacity, type, status, description, created_at"
+const columns = "id, name, building, capacity, type, floor, campus, status, description, created_at"
 
 // Store manages classroom records in the classrooms table.
 type Store struct {
@@ -40,7 +47,9 @@ func NewStore(db *sql.DB) *Store {
 }
 
 // Migrate creates the classrooms table. It is idempotent and safe to run on
-// every startup.
+// every startup. The floor/campus columns are added via idempotent ALTERs
+// (ignoring MySQL 1060 duplicate-column) so pre-existing tables are upgraded
+// in place -- these columns back the 教务处 楼层/校区 fields.
 func (s *Store) Migrate(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS classrooms (
@@ -49,12 +58,28 @@ CREATE TABLE IF NOT EXISTS classrooms (
     building    VARCHAR(64)  NOT NULL DEFAULT '',
     capacity    INT          NOT NULL,
     type        VARCHAR(32)  NOT NULL DEFAULT 'standard',
+    floor       VARCHAR(16)  NOT NULL DEFAULT '',
+    campus      VARCHAR(32)  NOT NULL DEFAULT '',
     status      VARCHAR(32)  NOT NULL DEFAULT 'available',
     description VARCHAR(255) NOT NULL DEFAULT '',
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 	if err != nil {
 		return fmt.Errorf("create classrooms table: %w", err)
+	}
+	// Upgrade pre-existing tables: add floor/campus if absent. MySQL has no
+	// "ADD COLUMN IF NOT EXISTS", so ignore the duplicate-column error (1060).
+	for _, col := range []struct{ name, def string }{
+		{"floor", "VARCHAR(16) NOT NULL DEFAULT '' AFTER type"},
+		{"campus", "VARCHAR(32) NOT NULL DEFAULT '' AFTER floor"},
+	} {
+		if _, err := s.db.ExecContext(ctx,
+			`ALTER TABLE classrooms ADD COLUMN `+col.name+` `+col.def); err != nil {
+			var mysqlErr *mysql.MySQLError
+			if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
+				return fmt.Errorf("add classrooms column %s: %w", col.name, err)
+			}
+		}
 	}
 	return nil
 }
@@ -70,7 +95,7 @@ func (s *Store) List(ctx context.Context) ([]Classroom, error) {
 	var classrooms []Classroom
 	for rows.Next() {
 		var c Classroom
-		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Status, &c.Description, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan classroom: %w", err)
 		}
 		classrooms = append(classrooms, c)
@@ -82,7 +107,7 @@ func (s *Store) GetByID(ctx context.Context, id int64) (Classroom, error) {
 	var c Classroom
 	err := s.db.QueryRowContext(ctx,
 		`SELECT `+columns+` FROM classrooms WHERE id = ?`, id,
-	).Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Status, &c.Description, &c.CreatedAt)
+	).Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Classroom{}, ErrNotFound
 	}
@@ -94,8 +119,8 @@ func (s *Store) GetByID(ctx context.Context, id int64) (Classroom, error) {
 
 func (s *Store) Create(ctx context.Context, in ClassroomInput) (Classroom, error) {
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO classrooms (name, building, capacity, type, status, description) VALUES (?, ?, ?, ?, ?, ?)`,
-		in.Name, in.Building, in.Capacity, in.Type, in.Status, in.Description,
+		`INSERT INTO classrooms (name, building, capacity, type, floor, campus, status, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		in.Name, in.Building, in.Capacity, in.Type, in.Floor, in.Campus, in.Status, in.Description,
 	)
 	if err != nil {
 		if isDuplicateEntry(err) {
@@ -112,8 +137,8 @@ func (s *Store) Create(ctx context.Context, in ClassroomInput) (Classroom, error
 
 func (s *Store) Update(ctx context.Context, id int64, in ClassroomInput) (Classroom, error) {
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE classrooms SET name = ?, building = ?, capacity = ?, type = ?, status = ?, description = ? WHERE id = ?`,
-		in.Name, in.Building, in.Capacity, in.Type, in.Status, in.Description, id,
+		`UPDATE classrooms SET name = ?, building = ?, capacity = ?, type = ?, floor = ?, campus = ?, status = ?, description = ? WHERE id = ?`,
+		in.Name, in.Building, in.Capacity, in.Type, in.Floor, in.Campus, in.Status, in.Description, id,
 	)
 	if err != nil {
 		if isDuplicateEntry(err) {

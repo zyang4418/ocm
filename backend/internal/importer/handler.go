@@ -7,10 +7,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/importer/jwc"
+	"ocm-backend/internal/schedule"
 )
 
 // maxUploadBytes caps the xlsx upload size. Imports are bounded text data; this
@@ -18,16 +23,18 @@ import (
 const maxUploadBytes = 5 << 20
 
 type Handler struct {
-	store    *Store
-	registry *Registry
-	sem      chan struct{} // limits concurrent import processing
+	store         *Store
+	registry      *Registry
+	scheduleStore *schedule.Store // jwc_split needs regimes to pre-validate expanded dates
+	sem           chan struct{}  // limits concurrent import processing
 }
 
-func NewHandler(store *Store, registry *Registry) *Handler {
+func NewHandler(store *Store, registry *Registry, scheduleStore *schedule.Store) *Handler {
 	return &Handler{
-		store:    store,
-		registry: registry,
-		sem:      make(chan struct{}, 2),
+		store:         store,
+		registry:      registry,
+		scheduleStore: scheduleStore,
+		sem:           make(chan struct{}, 2),
 	}
 }
 
@@ -39,6 +46,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	authOnly := func(handler http.HandlerFunc) http.Handler {
 		return authenticate(http.HandlerFunc(handler))
 	}
+	// jwc_split is registered before the {type} wildcard; Go 1.22 ServeMux gives
+	// the literal segment precedence over the wildcard, so POST /api/imports/jwc_split
+	// routes here while POST /api/imports/classrooms still routes to upload.
+	mux.Handle("POST /api/imports/jwc_split", authOnly(h.jwcSplit))
 	mux.Handle("POST /api/imports/{type}", authOnly(h.upload))
 	mux.Handle("GET /api/imports", authOnly(h.list))
 	mux.Handle("GET /api/imports/{id}", authOnly(h.get))
@@ -152,6 +163,111 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	// edge proxy would otherwise time out on large/slow imports).
 	go h.processJob(job.ID)
 	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{"id": job.ID, "status": job.Status})
+}
+
+// jwcSplit accepts a 教务处 aggregated schedule xlsx plus semester label + the
+// Monday of week 1, splits it into 6 canonical xlsx via jwc.Split, and creates
+// one import job per output in dependency order. Each job is processed (dry-run
+// Analyze → preview) detached from the request, exactly like a manual upload.
+//
+// The 6 jobs are independent at preview time, but offerings/sessions reference
+// catalog/teaching_classes by name, so their previews will show "课程不存在 /
+// 教学班不存在" errors until the operator commits classrooms → catalog →
+// admin_classes → teaching_classes first. Commit re-validates from the raw
+// payload (see runCommit), so committing in dependency order still succeeds;
+// the stale preview is informational only. This matches the existing manual
+// multi-file import flow.
+//
+// Fatal split errors (bad params, unparseable xlsx, regime not covering an
+// expanded date) are returned as 400 without creating any job, so the operator
+// can fix inputs and retry without orphan jobs.
+func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
+	if !h.checkPerm(w, r, authz.CourseManage) {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+	if err := r.ParseMultipartForm(2 << 20); err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "无效的上传或文件过大（上限 5MB）")
+		return
+	}
+	semester := strings.TrimSpace(r.FormValue("semester"))
+	week1Str := strings.TrimSpace(r.FormValue("week1_monday"))
+	if semester == "" || week1Str == "" {
+		httpx.RespondError(w, http.StatusBadRequest, "缺少 semester 或 week1_monday 参数")
+		return
+	}
+	week1Monday, err := time.Parse("2006-01-02", week1Str)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "week1_monday 格式应为 YYYY-MM-DD")
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "缺少 file 字段")
+		return
+	}
+	defer func() { _ = file.Close() }()
+	data, err := io.ReadAll(file)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "could not read uploaded file")
+		return
+	}
+	subject, ok := authz.SubjectFrom(r.Context())
+	if !ok {
+		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	// Load regimes once for pre-validation of every expanded session date.
+	regimes, err := h.scheduleStore.ListRegimes(r.Context())
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "加载作息制度失败")
+		return
+	}
+	res, err := jwc.Split(data, semester, week1Monday, regimes)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "拆分失败："+err.Error())
+		return
+	}
+
+	// 6 jobs in dependency order: base data first, then offerings, then sessions.
+	// Filenames carry the source stem + type so the operator can group them in
+	// the job list (e.g. 列表课程信息_classrooms.xlsx).
+	stem := strings.TrimSuffix(header.Filename, filepath.Ext(header.Filename))
+	if stem == "" {
+		stem = "jwc"
+	}
+	specs := []struct {
+		typ string
+		b   []byte
+	}{
+		{JobTypeClassrooms, res.Files.Classrooms},
+		{JobTypeCatalog, res.Files.Catalog},
+		{JobTypeAdminClasses, res.Files.AdminClasses},
+		{JobTypeTeachingClasses, res.Files.TeachingClasses},
+		{JobTypeOfferings, res.Files.Offerings},
+		{JobTypeSessions, res.Files.Sessions},
+	}
+	jobs := make([]map[string]any, 0, len(specs))
+	for _, s := range specs {
+		payload := base64.StdEncoding.EncodeToString(s.b)
+		filename := stem + "_" + s.typ + ".xlsx"
+		job, err := h.store.CreateJob(r.Context(), s.typ, filename, payload, subject.ID)
+		if err != nil {
+			httpx.RespondError(w, http.StatusInternalServerError, "创建导入任务失败："+err.Error())
+			return
+		}
+		jobs = append(jobs, map[string]any{"id": job.ID, "type": job.Type, "status": job.Status})
+		go h.processJob(job.ID)
+	}
+	warnings := res.Stats.Warnings
+	if warnings == nil {
+		warnings = []string{}
+	}
+	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{
+		"jobs":     jobs,
+		"stats":    res.Stats,
+		"warnings": warnings,
+	})
 }
 
 // processJob runs the dry-run parse/validate for one job and stores the result

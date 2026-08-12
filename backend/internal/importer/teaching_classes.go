@@ -44,11 +44,10 @@ func (i *TeachingClassesImporter) Commit(ctx context.Context, payload string) (R
 }
 
 type teachingGroup struct {
-	name         string
-	note         string
-	members      []memberRef // deduped, in first-seen order
-	rowNum       int         // first row of the group, for error reporting
-	memberLabels []string    // "grade/name" for preview
+	name    string
+	note    string
+	members []memberRef // deduped, in first-seen order
+	rowNum  int         // first row of the group, for error reporting
 }
 
 type memberRef struct {

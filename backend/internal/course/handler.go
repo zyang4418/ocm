@@ -84,10 +84,10 @@ func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
 		return
 	}
-	headers := []string{"name", "code", "description"}
+	headers := []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}
 	rows := make([][]any, 0, len(list))
 	for _, c := range list {
-		rows = append(rows, []any{c.Name, c.Code, c.Description})
+		rows = append(rows, []any{c.Name, c.Code, c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description})
 	}
 	if err := xlsx.WriteExport(w, "courses.xlsx", "catalog", headers, rows); err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not export courses")
@@ -107,6 +107,10 @@ func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
 	c, err := h.store.CreateCatalog(r.Context(), in)
 	if errors.Is(err, ErrNameTaken) {
 		httpx.RespondError(w, http.StatusConflict, "course name already taken")
+		return
+	}
+	if errors.Is(err, ErrCodeTaken) {
+		httpx.RespondError(w, http.StatusConflict, "course code already taken")
 		return
 	}
 	if err != nil {
@@ -152,6 +156,10 @@ func (h *Handler) updateCatalog(w http.ResponseWriter, r *http.Request) {
 	c, err := h.store.UpdateCatalog(r.Context(), id, in)
 	if errors.Is(err, ErrNameTaken) {
 		httpx.RespondError(w, http.StatusConflict, "course name already taken")
+		return
+	}
+	if errors.Is(err, ErrCodeTaken) {
+		httpx.RespondError(w, http.StatusConflict, "course code already taken")
 		return
 	}
 	if errors.Is(err, ErrCatalogNotFound) {
@@ -207,10 +215,10 @@ func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
 		return
 	}
-	headers := []string{"course", "teaching_class", "semester", "teacher", "note"}
+	headers := []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
 	rows := make([][]any, 0, len(list))
 	for _, o := range list {
-		rows = append(rows, []any{o.CatalogName, o.TeachingClassName, o.Semester, o.Teacher, o.Note})
+		rows = append(rows, []any{o.CatalogName, o.TeachingClassName, o.Semester, o.Teacher, o.CourseSeq, o.TeacherID, o.TeacherTitle, o.College, o.MaxStudents, o.Requirement, o.WeeklyHours, o.Note})
 	}
 	if err := xlsx.WriteExport(w, "offerings.xlsx", "offerings", headers, rows); err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not export offerings")
@@ -470,6 +478,8 @@ func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
 func normalizeCatalog(in *CatalogInput) (string, bool) {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Code = strings.TrimSpace(in.Code)
+	in.Category = strings.TrimSpace(in.Category)
+	in.ExamType = strings.TrimSpace(in.ExamType)
 	in.Description = strings.TrimSpace(in.Description)
 	if in.Name == "" {
 		return "name is required", false
@@ -485,6 +495,11 @@ func NormalizeCatalog(in *CatalogInput) (string, bool) {
 
 func normalizeOffering(in *OfferingInput) (string, bool) {
 	in.Teacher = strings.TrimSpace(in.Teacher)
+	in.CourseSeq = strings.TrimSpace(in.CourseSeq)
+	in.TeacherID = strings.TrimSpace(in.TeacherID)
+	in.TeacherTitle = strings.TrimSpace(in.TeacherTitle)
+	in.College = strings.TrimSpace(in.College)
+	in.Requirement = strings.TrimSpace(in.Requirement)
 	in.Semester = strings.TrimSpace(in.Semester)
 	in.Note = strings.TrimSpace(in.Note)
 	if in.CatalogID <= 0 {

@@ -18,6 +18,11 @@ var validTypes = map[string]bool{
 	TypeComputer:    true,
 	TypeLab:         true,
 	TypeLectureHall: true,
+	TypeStadium:     true,
+	TypeDrawing:     true,
+	TypeLanguage:    true,
+	TypeStudio:      true,
+	TypeSpecial:     true,
 }
 
 var validStatuses = map[string]bool{
@@ -69,10 +74,10 @@ func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list classrooms")
 		return
 	}
-	headers := []string{"name", "building", "capacity", "type", "status", "description"}
+	headers := []string{"name", "building", "capacity", "type", "floor", "campus", "status", "description"}
 	rows := make([][]any, 0, len(classrooms))
 	for _, c := range classrooms {
-		rows = append(rows, []any{c.Name, c.Building, c.Capacity, c.Type, c.Status, c.Description})
+		rows = append(rows, []any{c.Name, c.Building, c.Capacity, c.Type, c.Floor, c.Campus, c.Status, c.Description})
 	}
 	if err := xlsx.WriteExport(w, "classrooms.xlsx", "classrooms", headers, rows); err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not export classrooms")
@@ -180,6 +185,8 @@ func NormalizeInput(in *ClassroomInput) (string, bool) {
 func normalizeInput(in *ClassroomInput) (string, bool) {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Building = strings.TrimSpace(in.Building)
+	in.Floor = strings.TrimSpace(in.Floor)
+	in.Campus = strings.TrimSpace(in.Campus)
 	in.Description = strings.TrimSpace(in.Description)
 	if in.Name == "" {
 		return "name is required", false

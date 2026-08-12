@@ -12,8 +12,19 @@ import (
 
 // Column names for the course_offerings import. course / teaching_class /
 // semester / note are shared with the sessions import (same header values);
-// only teacher is specific to offerings.
-const ColTeacher = "teacher"
+// teacher is specific to offerings. The course_seq..weekly_hours columns are
+// optional 教务处 section-metadata (课程序号/教师工号/教师职称/开课学院/人数上限/
+// 课程类别一/周学时); legacy files without them default to empty/zero.
+const (
+	ColTeacher      = "teacher"
+	ColCourseSeq    = "course_seq"
+	ColTeacherID    = "teacher_id"
+	ColTeacherTitle = "teacher_title"
+	ColCollege      = "college"
+	ColMaxStudents  = "max_students"
+	ColRequirement  = "requirement"
+	ColWeeklyHours  = "weekly_hours"
+)
 
 // OfferingsImporter imports course_offerings (开课) from an xlsx file. It
 // resolves the course name to a catalog id and the teaching-class name to a
@@ -74,6 +85,13 @@ type offeringInsert struct {
 	catalogID         int64
 	teachingClassID   int64
 	teacher           string
+	courseSeq         string
+	teacherID         string
+	teacherTitle      string
+	college           string
+	maxStudents       int
+	requirement       string
+	weeklyHours       int
 	semester          string
 	note              string
 	courseName        string
@@ -87,6 +105,13 @@ func (o offeringInsert) toPreviewMap() map[string]any {
 		"teachingClass": o.teachingClassName,
 		"semester":      o.semester,
 		"teacher":       o.teacher,
+		"courseSeq":     o.courseSeq,
+		"teacherId":     o.teacherID,
+		"teacherTitle":  o.teacherTitle,
+		"college":       o.college,
+		"maxStudents":   o.maxStudents,
+		"requirement":   o.requirement,
+		"weeklyHours":   o.weeklyHours,
 		"note":          o.note,
 	}
 }
@@ -134,6 +159,13 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 			CatalogID:       catalogID,
 			TeachingClassID: teachingClassID,
 			Teacher:         rec[ColTeacher],
+			CourseSeq:       rec[ColCourseSeq],
+			TeacherID:       rec[ColTeacherID],
+			TeacherTitle:    rec[ColTeacherTitle],
+			College:         rec[ColCollege],
+			MaxStudents:     atoiOr(rec[ColMaxStudents], 0),
+			Requirement:     rec[ColRequirement],
+			WeeklyHours:     atoiOr(rec[ColWeeklyHours], 0),
 			Semester:        semester,
 			Note:            rec[ColNote],
 		}
@@ -146,6 +178,13 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 			catalogID:         in.CatalogID,
 			teachingClassID:   in.TeachingClassID,
 			teacher:           in.Teacher,
+			courseSeq:         in.CourseSeq,
+			teacherID:         in.TeacherID,
+			teacherTitle:      in.TeacherTitle,
+			college:           in.College,
+			maxStudents:       in.MaxStudents,
+			requirement:       in.Requirement,
+			weeklyHours:       in.WeeklyHours,
 			semester:          in.Semester,
 			note:              in.Note,
 			courseName:        courseName,
@@ -202,11 +241,21 @@ func commitOfferings(ctx context.Context, db *sql.DB, catalog, teaching map[stri
 	defer func() { _ = tx.Rollback() }()
 
 	// Upsert by (catalog_id, teaching_class_id, semester). The natural-key
-	// columns are part of the unique index and not updated; teacher/note are the
-	// mutable payload columns refreshed on conflict.
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO course_offerings (catalog_id, teaching_class_id, teacher, semester, note)
-VALUES (?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE teacher = VALUES(teacher), note = VALUES(note)`)
+	// columns are part of the unique index and not updated; the mutable payload
+	// columns (teacher + 教务处 section metadata + note) are refreshed on conflict.
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO course_offerings
+	(catalog_id, teaching_class_id, teacher, course_seq, teacher_id, teacher_title, college, max_students, requirement, weekly_hours, semester, note)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	ON DUPLICATE KEY UPDATE
+		teacher = VALUES(teacher),
+		course_seq = VALUES(course_seq),
+		teacher_id = VALUES(teacher_id),
+		teacher_title = VALUES(teacher_title),
+		college = VALUES(college),
+		max_students = VALUES(max_students),
+		requirement = VALUES(requirement),
+		weekly_hours = VALUES(weekly_hours),
+		note = VALUES(note)`)
 	if err != nil {
 		res.FailedRows = dataRows
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
@@ -215,7 +264,9 @@ ON DUPLICATE KEY UPDATE teacher = VALUES(teacher), note = VALUES(note)`)
 	defer func() { _ = stmt.Close() }()
 
 	for _, o := range clean {
-		if _, err := stmt.ExecContext(ctx, o.catalogID, o.teachingClassID, o.teacher, o.semester, o.note); err != nil {
+		if _, err := stmt.ExecContext(ctx,
+			o.catalogID, o.teachingClassID, o.teacher, o.courseSeq, o.teacherID, o.teacherTitle, o.college, o.maxStudents, o.requirement, o.weeklyHours, o.semester, o.note,
+		); err != nil {
 			res.FailedRows = dataRows
 			res.Errors = append(res.Errors, RowError{Row: o.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("upsert offering: %w", err)

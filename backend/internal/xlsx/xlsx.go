@@ -93,6 +93,22 @@ func Has(headers []string, col string) bool {
 // workbook is encoded to an in-memory buffer first so an encoding error can be
 // reported before any HTTP headers are written.
 func WriteExport(w http.ResponseWriter, filename, sheet string, headers []string, rows [][]any) error {
+	buf, err := BuildBytes(sheet, headers, rows)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	_, err = w.Write(buf)
+	return err
+}
+
+// BuildBytes builds an xlsx workbook with a single sheet and returns the encoded
+// bytes. It shares the styling/encoding logic of WriteExport so files produced
+// here are visually identical to the export downloads; callers that need the
+// bytes directly (e.g. the 教务处 split, which base64-encodes each file into an
+// import job payload rather than streaming an HTTP download) use this instead.
+func BuildBytes(sheet string, headers []string, rows [][]any) ([]byte, error) {
 	f := excelize.NewFile()
 	defer func() { _ = f.Close() }()
 
@@ -102,7 +118,7 @@ func WriteExport(w http.ResponseWriter, filename, sheet string, headers []string
 	}
 	if name != "Sheet1" {
 		if err := f.SetSheetName("Sheet1", name); err != nil {
-			return fmt.Errorf("rename sheet: %w", err)
+			return nil, fmt.Errorf("rename sheet: %w", err)
 		}
 	}
 
@@ -111,16 +127,16 @@ func WriteExport(w http.ResponseWriter, filename, sheet string, headers []string
 		Fill: excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#E8E8E8"}},
 	})
 	if err != nil {
-		return fmt.Errorf("create header style: %w", err)
+		return nil, fmt.Errorf("create header style: %w", err)
 	}
 
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		if err := f.SetCellValue(name, cell, h); err != nil {
-			return fmt.Errorf("set header %q: %w", h, err)
+			return nil, fmt.Errorf("set header %q: %w", h, err)
 		}
 		if err := f.SetCellStyle(name, cell, cell, headerStyle); err != nil {
-			return fmt.Errorf("style header %q: %w", h, err)
+			return nil, fmt.Errorf("style header %q: %w", h, err)
 		}
 		col, _ := excelize.ColumnNumberToName(i + 1)
 		width := float64(len([]rune(h))) + 6
@@ -135,25 +151,21 @@ func WriteExport(w http.ResponseWriter, filename, sheet string, headers []string
 		TopLeftCell: "A2",
 		ActivePane:  "bottomLeft",
 	}); err != nil {
-		return fmt.Errorf("freeze header: %w", err)
+		return nil, fmt.Errorf("freeze header: %w", err)
 	}
 
 	for r, row := range rows {
 		for c, v := range row {
 			cell, _ := excelize.CoordinatesToCellName(c+1, r+2)
 			if err := f.SetCellValue(name, cell, v); err != nil {
-				return fmt.Errorf("set cell row %d col %d: %w", r+2, c+1, err)
+				return nil, fmt.Errorf("set cell row %d col %d: %w", r+2, c+1, err)
 			}
 		}
 	}
 
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {
-		return fmt.Errorf("encode xlsx: %w", err)
+		return nil, fmt.Errorf("encode xlsx: %w", err)
 	}
-
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	_, err = w.Write(buf.Bytes())
-	return err
+	return buf.Bytes(), nil
 }

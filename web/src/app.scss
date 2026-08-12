@@ -588,6 +588,45 @@
   max-width: 16rem;
 }
 
+.imports-page__split-head {
+  margin-block-end: $spacing-05;
+}
+
+.imports-page__subheading {
+  @include type-style('heading-03');
+  margin-block-end: $spacing-03;
+}
+
+.imports-page__split-input {
+  max-width: 14rem;
+}
+
+.imports-page__split-result {
+  margin-block-end: $spacing-07;
+}
+
+.imports-page__warnings {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block-start: $spacing-03;
+
+  summary {
+    cursor: pointer;
+    color: var(--cds-text-primary);
+  }
+
+  ul {
+    margin-block-start: $spacing-03;
+    padding-inline-start: $spacing-05;
+    max-height: 12rem;
+    overflow-y: auto;
+  }
+
+  li {
+    margin-block-end: $spacing-02;
+  }
+}
+
 .imports-page__skill {
   @include type-style('body-01');
   color: var(--cds-text-secondary);

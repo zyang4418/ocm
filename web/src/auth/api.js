@@ -24,10 +24,15 @@ export async function apiFetch(path, { method = 'GET', body, token } = {}) {
 }
 
 // apiUpload posts a file as multipart/form-data. Unlike apiFetch it must NOT
-// set Content-Type so the browser can attach the multipart boundary.
-export async function apiUpload(path, { file, token } = {}) {
+// set Content-Type so the browser can attach the multipart boundary. The
+// optional `fields` object adds extra text form parts alongside the file (used
+// by the jwc_split endpoint, which sends semester + week1_monday with the file).
+export async function apiUpload(path, { file, token, fields = {} } = {}) {
   const form = new FormData()
   form.append('file', file)
+  for (const [k, v] of Object.entries(fields)) {
+    form.append(k, v)
+  }
   const headers = {}
   if (token) headers.Authorization = `Bearer ${token}`
 
