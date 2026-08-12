@@ -179,7 +179,6 @@ func newSeqGroup(r jwcRow) *seqGroup {
 // 记为告警并跳过该槽位。
 func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 	seqs := make(map[string]*seqGroup)
-	order := []string{}
 	for _, r := range rows {
 		if r.courseSeq == "" {
 			st.Warnings = append(st.Warnings, fmt.Sprintf("第 %d 行：课程序号为空，跳过", r.rowNum))
@@ -189,7 +188,6 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 		if !ok {
 			g = newSeqGroup(r)
 			seqs[r.courseSeq] = g
-			order = append(order, r.courseSeq)
 		}
 		// 教师（按工号去重；空工号空姓名的行不计入）。
 		if r.teacherID != "" || r.teacherName != "" {
