@@ -16,6 +16,7 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
 
@@ -185,6 +186,12 @@ export default function ScheduleConfigPage() {
             添加作息
           </Button>
         )}
+        <ExportButton
+          path="/api/schedule/regimes/export"
+          fallbackName="regimes.xlsx"
+          onError={setError}
+          className="courses-page__add"
+        />
       </Column>
 
       <Column sm={4} md={8} lg={16}>

@@ -38,7 +38,10 @@ export default function AppShell({ children }) {
   const isAdmin = user?.role === 'admin'
 
   const isActive = (path) => location.pathname === path
-  const inUsers = location.pathname.startsWith('/users')
+  const inOrg =
+    location.pathname.startsWith('/users') ||
+    location.pathname.startsWith('/admin-classes') ||
+    location.pathname.startsWith('/teaching-classes')
   const inClassrooms =
     location.pathname.startsWith('/classrooms') ||
     location.pathname.startsWith('/bookings')
@@ -157,15 +160,15 @@ export default function AppShell({ children }) {
                         isActive={isActive('/imports')}
                         onClick={go('/imports')}
                       >
-                        课表导入
+                        数据导入
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>
                   <SideNavMenu
-                    key={`org-${inUsers}`}
+                    key={`org-${inOrg}`}
                     renderIcon={UserMultiple}
                     title="组织与权限"
-                    defaultExpanded={inUsers}
+                    defaultExpanded={inOrg}
                   >
                     <SideNavMenuItem
                       href="/users"
@@ -173,6 +176,20 @@ export default function AppShell({ children }) {
                       onClick={go('/users')}
                     >
                       用户管理
+                    </SideNavMenuItem>
+                    <SideNavMenuItem
+                      href="/admin-classes"
+                      isActive={isActive('/admin-classes')}
+                      onClick={go('/admin-classes')}
+                    >
+                      行政班管理
+                    </SideNavMenuItem>
+                    <SideNavMenuItem
+                      href="/teaching-classes"
+                      isActive={isActive('/teaching-classes')}
+                      onClick={go('/teaching-classes')}
+                    >
+                      教学班管理
                     </SideNavMenuItem>
                     <SideNavMenuItem href="#">角色管理</SideNavMenuItem>
                   </SideNavMenu>

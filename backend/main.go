@@ -12,10 +12,12 @@ import (
 	"time"
 
 	"ocm-backend/internal/auth"
+	"ocm-backend/internal/authz"
 	"ocm-backend/internal/booking"
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
 	"ocm-backend/internal/db"
+	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/importer"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/user"
@@ -47,7 +49,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: httpx.Recover(mux),
 	}
 
 	go func() {
@@ -77,6 +79,9 @@ func main() {
 	auth.NewHandler(authStore, tokenService, wxService).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
+	if err := userStore.Migrate(ctx); err != nil {
+		log.Fatalf("user org migration: %v", err)
+	}
 	authenticate := func(next http.Handler) http.Handler {
 		return auth.Middleware(tokenService)(user.LoadSubject(userStore)(next))
 	}
@@ -109,7 +114,29 @@ func main() {
 	if err := importerStore.Migrate(ctx); err != nil {
 		log.Fatalf("importer migration: %v", err)
 	}
-	importerHandler := importer.NewHandler(importerStore, classroomStore, courseStore, scheduleStore)
+	// Register every business-table importer with the permission that gates its
+	// manual manage action, so importing classrooms needs classroom:manage,
+	// sessions/catalog/offerings/regimes need course:manage, etc. Bookings are a
+	// privileged restore (can recreate approved bookings) so they require
+	// booking:approve (admin only).
+	registry := importer.NewRegistry()
+	registry.Register(importer.JobTypeSessions, authz.CourseManage,
+		importer.NewSessionsImporter(database, classroomStore, courseStore, scheduleStore))
+	registry.Register(importer.JobTypeClassrooms, authz.ClassroomManage,
+		importer.NewClassroomsImporter(database))
+	registry.Register(importer.JobTypeAdminClasses, authz.AdminClassManage,
+		importer.NewAdminClassesImporter(database))
+	registry.Register(importer.JobTypeTeachingClasses, authz.TeachingClassManage,
+		importer.NewTeachingClassesImporter(database))
+	registry.Register(importer.JobTypeCatalog, authz.CourseManage,
+		importer.NewCatalogImporter(database))
+	registry.Register(importer.JobTypeOfferings, authz.CourseManage,
+		importer.NewOfferingsImporter(database, courseStore, userStore))
+	registry.Register(importer.JobTypeRegimes, authz.CourseManage,
+		importer.NewRegimesImporter(database))
+	registry.Register(importer.JobTypeBookings, authz.BookingApprove,
+		importer.NewBookingsImporter(database, classroomStore, scheduleStore))
+	importerHandler := importer.NewHandler(importerStore, registry, scheduleStore)
 	importerHandler.RecoverStale(ctx)
 	importerHandler.RegisterRoutes(mux, authenticate)
 

@@ -27,6 +27,7 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 const headers = [
   { key: 'id', header: 'ID' },
@@ -34,6 +35,8 @@ const headers = [
   { key: 'building', header: '楼栋' },
   { key: 'capacity', header: '座位数' },
   { key: 'type', header: '类型' },
+  { key: 'floor', header: '楼层' },
+  { key: 'campus', header: '校区' },
   { key: 'status', header: '状态' },
   { key: 'createdAt', header: '创建时间' },
 ]
@@ -44,6 +47,11 @@ const typeLabel = {
   computer: '机房',
   lab: '实验室',
   lecture_hall: '报告厅',
+  stadium: '体育场',
+  drawing: '制图教室',
+  language: '听力教室',
+  studio: '画室',
+  special: '专用教室',
 }
 
 const statusLabel = {
@@ -74,6 +82,8 @@ const emptyForm = {
   building: '',
   capacity: '',
   type: 'standard',
+  floor: '',
+  campus: '',
   status: 'available',
   description: '',
 }
@@ -129,6 +139,8 @@ export default function ClassroomsPage() {
     building: form.building.trim(),
     capacity: Number(form.capacity),
     type: form.type,
+    floor: form.floor.trim(),
+    campus: form.campus.trim(),
     status: form.status,
     description: form.description.trim(),
   })
@@ -164,6 +176,8 @@ export default function ClassroomsPage() {
       building: c.building,
       capacity: String(c.capacity),
       type: c.type,
+      floor: c.floor ?? '',
+      campus: c.campus ?? '',
       status: c.status,
       description: c.description,
     })
@@ -261,6 +275,11 @@ export default function ClassroomsPage() {
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
                   <TableToolbarSearch onChange={onInputChange} placeholder="搜索教室" />
+                  <ExportButton
+                    path="/api/classrooms/export"
+                    fallbackName="classrooms.xlsx"
+                    onError={setError}
+                  />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
                       添加教室
@@ -394,7 +413,26 @@ export default function ClassroomsPage() {
             <SelectItem value="computer" text="机房" />
             <SelectItem value="lab" text="实验室" />
             <SelectItem value="lecture_hall" text="报告厅" />
+            <SelectItem value="stadium" text="体育场" />
+            <SelectItem value="drawing" text="制图教室" />
+            <SelectItem value="language" text="听力教室" />
+            <SelectItem value="studio" text="画室" />
+            <SelectItem value="special" text="专用教室" />
           </Select>
+          <TextInput
+            id="create-floor"
+            labelText="楼层"
+            placeholder="如 3"
+            value={createForm.floor}
+            onChange={(e) => setCreateForm({ ...createForm, floor: e.target.value })}
+          />
+          <TextInput
+            id="create-campus"
+            labelText="校区"
+            placeholder="如 校本部"
+            value={createForm.campus}
+            onChange={(e) => setCreateForm({ ...createForm, campus: e.target.value })}
+          />
           <Select
             id="create-status"
             labelText="状态"
@@ -465,7 +503,24 @@ export default function ClassroomsPage() {
             <SelectItem value="computer" text="机房" />
             <SelectItem value="lab" text="实验室" />
             <SelectItem value="lecture_hall" text="报告厅" />
+            <SelectItem value="stadium" text="体育场" />
+            <SelectItem value="drawing" text="制图教室" />
+            <SelectItem value="language" text="听力教室" />
+            <SelectItem value="studio" text="画室" />
+            <SelectItem value="special" text="专用教室" />
           </Select>
+          <TextInput
+            id="edit-floor"
+            labelText="楼层"
+            value={editForm.floor}
+            onChange={(e) => setEditForm({ ...editForm, floor: e.target.value })}
+          />
+          <TextInput
+            id="edit-campus"
+            labelText="校区"
+            value={editForm.campus}
+            onChange={(e) => setEditForm({ ...editForm, campus: e.target.value })}
+          />
           <Select
             id="edit-status"
             labelText="状态"

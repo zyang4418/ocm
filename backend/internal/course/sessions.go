@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -18,7 +20,7 @@ func (s *Store) scanSessionView(sc interface {
 	var date time.Time
 	err := sc.Scan(
 		&v.ID, &v.OfferingID, &v.ClassroomID, &date, &v.PeriodIndex, &v.Note, &v.CreatedAt,
-		&v.CourseName, &v.CatalogCode, &v.ClassName, &v.Teacher, &v.Semester, &v.ClassroomName,
+		&v.CourseName, &v.CatalogCode, &v.TeachingClassName, &v.Teacher, &v.Semester, &v.ClassroomName,
 	)
 	if err == nil {
 		v.Date = date.Format("2006-01-02")
@@ -30,13 +32,14 @@ const sessionJoin = `
 FROM course_sessions s
 JOIN course_offerings o ON o.id = s.offering_id
 JOIN course_catalog c ON c.id = o.catalog_id
+JOIN teaching_classes tc ON tc.id = o.teaching_class_id
 JOIN classrooms cr ON cr.id = s.classroom_id`
 
 // ListSessions returns sessions matching the given filters. Zero values are
 // ignored (no filter on that field).
 func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64, from, to string) ([]SessionView, error) {
 	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_index, s.note, s.created_at,
-       c.name, c.code, o.class_name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE 1=1`
+       c.name, c.code, tc.name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE 1=1`
 	var args []any
 	if offeringID > 0 {
 		q += ` AND s.offering_id = ?`
@@ -70,17 +73,30 @@ func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64,
 		}
 		list = append(list, v)
 	}
-	return list, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	names, err := s.classNamesBySession(ctx, sessionIDs(list))
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		list[i].ClassNames = names[list[i].ID]
+		if list[i].ClassNames == nil {
+			list[i].ClassNames = []string{}
+		}
+	}
+	return list, nil
 }
 
 func (s *Store) GetSession(ctx context.Context, id int64) (SessionView, error) {
 	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_index, s.note, s.created_at,
-       c.name, c.code, o.class_name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE s.id = ?`
+       c.name, c.code, tc.name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE s.id = ?`
 	var v SessionView
 	var date time.Time
 	err := s.db.QueryRowContext(ctx, q, id).Scan(
 		&v.ID, &v.OfferingID, &v.ClassroomID, &date, &v.PeriodIndex, &v.Note, &v.CreatedAt,
-		&v.CourseName, &v.CatalogCode, &v.ClassName, &v.Teacher, &v.Semester, &v.ClassroomName,
+		&v.CourseName, &v.CatalogCode, &v.TeachingClassName, &v.Teacher, &v.Semester, &v.ClassroomName,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SessionView{}, ErrSessionNotFound
@@ -89,7 +105,63 @@ func (s *Store) GetSession(ctx context.Context, id int64) (SessionView, error) {
 		return SessionView{}, fmt.Errorf("get session: %w", err)
 	}
 	v.Date = date.Format("2006-01-02")
+	names, err := s.classNamesBySession(ctx, []int64{v.ID})
+	if err != nil {
+		return SessionView{}, err
+	}
+	v.ClassNames = names[v.ID]
+	if v.ClassNames == nil {
+		v.ClassNames = []string{}
+	}
 	return v, nil
+}
+
+// classNamesBySession loads the member admin class names for the given session
+// IDs in one query (session -> offering -> teaching class -> members),
+// returning a map keyed by session id. Used to populate SessionView.ClassNames.
+func (s *Store) classNamesBySession(ctx context.Context, ids []int64) (map[int64][]string, error) {
+	out := make(map[int64][]string)
+	if len(ids) == 0 {
+		return out, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]any, 0, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	q := fmt.Sprintf(
+		`SELECT s.id, ac.name
+		 FROM course_sessions s
+		 JOIN course_offerings o ON o.id = s.offering_id
+		 JOIN teaching_class_members m ON m.teaching_class_id = o.teaching_class_id
+		 JOIN admin_classes ac ON ac.id = m.admin_class_id
+		 WHERE s.id IN (%s)
+		 ORDER BY s.id, ac.grade, ac.name`,
+		strings.Join(placeholders, ","),
+	)
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query session class names: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var sID int64
+		var name string
+		if err := rows.Scan(&sID, &name); err != nil {
+			return nil, fmt.Errorf("scan session class name: %w", err)
+		}
+		out[sID] = append(out[sID], name)
+	}
+	return out, rows.Err()
+}
+
+func sessionIDs(list []SessionView) []int64 {
+	ids := make([]int64, 0, len(list))
+	for i := range list {
+		ids = append(ids, list[i].ID)
+	}
+	return ids
 }
 
 func (s *Store) CreateSession(ctx context.Context, in SessionInput) (SessionView, error) {
@@ -98,7 +170,7 @@ func (s *Store) CreateSession(ctx context.Context, in SessionInput) (SessionView
 		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return SessionView{}, ErrClassroomConflict
 		}
 		return SessionView{}, fmt.Errorf("create session: %w", err)
@@ -116,7 +188,7 @@ func (s *Store) UpdateSession(ctx context.Context, id int64, in SessionInput) (S
 		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note, id,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return SessionView{}, ErrClassroomConflict
 		}
 		return SessionView{}, fmt.Errorf("update session: %w", err)

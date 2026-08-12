@@ -31,13 +31,15 @@ import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 // ---- Offerings (课程/开课) ----
 const offeringHeaders = [
   { key: 'id', header: 'ID' },
   { key: 'catalogName', header: '课程' },
   { key: 'catalogCode', header: '课程代码' },
-  { key: 'className', header: '班级' },
+  { key: 'teachingClassName', header: '教学班' },
+  { key: 'classNames', header: '行政班' },
   { key: 'teacher', header: '教师' },
   { key: 'semester', header: '学期' },
 ]
@@ -50,7 +52,7 @@ const catalogHeaders = [
   { key: 'description', header: '描述' },
 ]
 
-const emptyOffering = { catalogId: '', className: '', teacher: '', semester: '', note: '' }
+const emptyOffering = { catalogId: '', teachingClassId: '', teacher: '', semester: '', note: '' }
 const emptyCatalog = { name: '', code: '', description: '' }
 
 export default function CourseManagementPage() {
@@ -60,6 +62,7 @@ export default function CourseManagementPage() {
 
   const [offerings, setOfferings] = useState([])
   const [catalog, setCatalog] = useState([])
+  const [teachingClasses, setTeachingClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -86,12 +89,14 @@ export default function CourseManagementPage() {
     try {
       setLoading(true)
       setError('')
-      const [offs, cats] = await Promise.all([
+      const [offs, cats, tcs] = await Promise.all([
         apiFetch('/api/offerings', { token }),
         apiFetch('/api/courses', { token }),
+        apiFetch('/api/teaching-classes', { token }),
       ])
       setOfferings(Array.isArray(offs) ? offs : [])
       setCatalog(Array.isArray(cats) ? cats : [])
+      setTeachingClasses(Array.isArray(tcs) ? tcs : [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -105,13 +110,13 @@ export default function CourseManagementPage() {
 
   // ---- offering handlers ----
   const submitOffering = async () => {
-    if (!offForm.catalogId || !offForm.className.trim() || !offForm.semester.trim()) {
-      setOffError('课程、班级、学期为必填项')
+    if (!offForm.catalogId || !offForm.teachingClassId || !offForm.teacher.trim() || !offForm.semester.trim()) {
+      setOffError('课程、教学班、教师、学期为必填项')
       return
     }
     const body = {
       catalogId: Number(offForm.catalogId),
-      className: offForm.className.trim(),
+      teachingClassId: Number(offForm.teachingClassId),
       teacher: offForm.teacher.trim(),
       semester: offForm.semester.trim(),
       note: offForm.note.trim(),
@@ -138,7 +143,7 @@ export default function CourseManagementPage() {
     setOffEditTarget(o)
     setOffForm({
       catalogId: String(o.catalogId),
-      className: o.className,
+      teachingClassId: String(o.teachingClassId),
       teacher: o.teacher,
       semester: o.semester,
       note: o.note,
@@ -231,6 +236,11 @@ export default function CourseManagementPage() {
           <TableToolbar {...getToolbarProps()}>
             <TableToolbarContent>
               <TableToolbarSearch onChange={onInputChange} placeholder="搜索" />
+              <ExportButton
+                path={kind === 'offering' ? '/api/offerings/export' : '/api/courses/export'}
+                fallbackName={kind === 'offering' ? 'offerings.xlsx' : 'catalog.xlsx'}
+                onError={setError}
+              />
               {canManage && (
                 <Button
                   renderIcon={Add}
@@ -280,9 +290,16 @@ export default function CourseManagementPage() {
                   const item = src.find((x) => String(x.id) === String(row.id))
                   return (
                     <TableRow key={row.id} {...getRowProps({ row })}>
-                      {row.cells.map((cell) => (
-                        <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
-                      ))}
+                      {row.cells.map((cell) => {
+                        if (cell.info.header === 'classNames') {
+                          return (
+                            <TableCell key={cell.id}>
+                              {Array.isArray(cell.value) && cell.value.length ? cell.value.join('、') : '-'}
+                            </TableCell>
+                          )
+                        }
+                        return <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
+                      })}
                       {renderActions(kind, item)}
                     </TableRow>
                   )
@@ -362,13 +379,17 @@ export default function CourseManagementPage() {
               <SelectItem key={c.id} value={String(c.id)} text={`${c.name}${c.code ? `（${c.code}）` : ''}`} />
             ))}
           </Select>
-          <TextInput
-            id="off-class"
-            labelText="班级"
-            placeholder="如 计科2201"
-            value={offForm.className}
-            onChange={(e) => setOffForm({ ...offForm, className: e.target.value })}
-          />
+          <Select
+            id="off-teaching-class"
+            labelText="教学班"
+            value={offForm.teachingClassId}
+            onChange={(e) => setOffForm({ ...offForm, teachingClassId: e.target.value })}
+          >
+            <SelectItem value="" text="请选择教学班" />
+            {teachingClasses.map((t) => (
+              <SelectItem key={t.id} value={String(t.id)} text={t.name} />
+            ))}
+          </Select>
           <TextInput
             id="off-teacher"
             labelText="教师"

@@ -27,6 +27,7 @@ import { Add } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import ExportButton from '../components/ExportButton.jsx'
 
 const statusLabel = {
   pending: '待审批',
@@ -263,6 +264,14 @@ export default function BookingsPage() {
 
   const colSpan = headers.length + 1
 
+  // The export endpoint mirrors the list filters, so the downloaded file
+  // reflects the currently-viewed (filtered) set of bookings.
+  const exportParams = new URLSearchParams()
+  if (filterClassroom) exportParams.set('classroom_id', filterClassroom)
+  if (filterStatus) exportParams.set('status', filterStatus)
+  if (from) exportParams.set('from', from)
+  if (to) exportParams.set('to', to)
+
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
@@ -354,6 +363,11 @@ export default function BookingsPage() {
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
                   <TableToolbarSearch onChange={onInputChange} placeholder="搜索预约" />
+                  <ExportButton
+                    path={`/api/bookings/export?${exportParams.toString()}`}
+                    fallbackName="bookings.xlsx"
+                    onError={setError}
+                  />
                   <Button renderIcon={Add} size="sm" onClick={openCreate}>
                     新建预约
                   </Button>
