@@ -417,68 +417,82 @@ func existingBookingConflicts(ctx context.Context, db *sql.DB, clean []bookingIn
 		pairs = append(pairs, p)
 	}
 
-	// Build tuple IN list: (cid,date),(cid,date),...
-	placeholders := make([]string, len(pairs))
-	args := make([]any, 0, len(pairs)*2)
-	for i, p := range pairs {
-		placeholders[i] = "(?, ?)"
-		args = append(args, p[0], p[1])
-	}
-	inList := strings.Join(placeholders, ",")
-
-	// Sessions: period_index point occupancy.
-	sessQ := fmt.Sprintf(
-		`SELECT classroom_id, date, period_index FROM course_sessions WHERE (classroom_id, date) IN (%s)`,
-		inList,
-	)
-	sessRows, err := db.QueryContext(ctx, sessQ, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query existing sessions: %w", err)
-	}
-	defer func() { _ = sessRows.Close() }()
-	// slotKey -> set of occupied period_index values.
+	// slotKey -> set of occupied period_index values (sessions).
 	occupied := map[string]map[int]bool{}
-	for sessRows.Next() {
-		var cid int64
-		var d time.Time
-		var p int
-		if err := sessRows.Scan(&cid, &d, &p); err != nil {
-			return nil, fmt.Errorf("scan existing session: %w", err)
-		}
-		key := slotKey(cid, d.Format("2006-01-02"))
-		if occupied[key] == nil {
-			occupied[key] = map[int]bool{}
-		}
-		occupied[key][p] = true
-	}
-	if err := sessRows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Active bookings: range occupancy.
-	bookQ := fmt.Sprintf(
-		`SELECT classroom_id, date, period_start, period_end FROM classroom_bookings WHERE (classroom_id, date) IN (%s) AND status IN ('pending','approved')`,
-		inList,
-	)
-	bookRows, err := db.QueryContext(ctx, bookQ, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query existing bookings: %w", err)
-	}
-	defer func() { _ = bookRows.Close() }()
-	// slotKey -> list of (ps,pe) ranges.
+	// slotKey -> list of (ps,pe) ranges (active bookings).
 	ranges := map[string][][2]int{}
-	for bookRows.Next() {
-		var cid int64
-		var d time.Time
-		var ps, pe int
-		if err := bookRows.Scan(&cid, &d, &ps, &pe); err != nil {
-			return nil, fmt.Errorf("scan existing booking: %w", err)
+	// Batch the tuple IN list (batchTupleSize pairs per round-trip), mirroring
+	// existingConflicts in sessions.go: a large restore with thousands of
+	// distinct (classroom, date) pairs must not build one huge IN list that
+	// risks max_allowed_packet / parser limits.
+	for start := 0; start < len(pairs); start += batchTupleSize {
+		end := start + batchTupleSize
+		if end > len(pairs) {
+			end = len(pairs)
 		}
-		key := slotKey(cid, d.Format("2006-01-02"))
-		ranges[key] = append(ranges[key], [2]int{ps, pe})
-	}
-	if err := bookRows.Err(); err != nil {
-		return nil, err
+		batch := pairs[start:end]
+		placeholders := make([]string, len(batch))
+		args := make([]any, 0, len(batch)*2)
+		for i, p := range batch {
+			placeholders[i] = "(?, ?)"
+			args = append(args, p[0], p[1])
+		}
+		inList := strings.Join(placeholders, ",")
+
+		// Sessions: period_index point occupancy.
+		sessQ := fmt.Sprintf(
+			`SELECT classroom_id, date, period_index FROM course_sessions WHERE (classroom_id, date) IN (%s)`,
+			inList,
+		)
+		sessRows, err := db.QueryContext(ctx, sessQ, args...)
+		if err != nil {
+			return nil, fmt.Errorf("query existing sessions: %w", err)
+		}
+		for sessRows.Next() {
+			var cid int64
+			var d time.Time
+			var p int
+			if err := sessRows.Scan(&cid, &d, &p); err != nil {
+				_ = sessRows.Close()
+				return nil, fmt.Errorf("scan existing session: %w", err)
+			}
+			key := slotKey(cid, d.Format("2006-01-02"))
+			if occupied[key] == nil {
+				occupied[key] = map[int]bool{}
+			}
+			occupied[key][p] = true
+		}
+		if err := sessRows.Err(); err != nil {
+			_ = sessRows.Close()
+			return nil, err
+		}
+		_ = sessRows.Close()
+
+		// Active bookings: range occupancy.
+		bookQ := fmt.Sprintf(
+			`SELECT classroom_id, date, period_start, period_end FROM classroom_bookings WHERE (classroom_id, date) IN (%s) AND status IN ('pending','approved')`,
+			inList,
+		)
+		bookRows, err := db.QueryContext(ctx, bookQ, args...)
+		if err != nil {
+			return nil, fmt.Errorf("query existing bookings: %w", err)
+		}
+		for bookRows.Next() {
+			var cid int64
+			var d time.Time
+			var ps, pe int
+			if err := bookRows.Scan(&cid, &d, &ps, &pe); err != nil {
+				_ = bookRows.Close()
+				return nil, fmt.Errorf("scan existing booking: %w", err)
+			}
+			key := slotKey(cid, d.Format("2006-01-02"))
+			ranges[key] = append(ranges[key], [2]int{ps, pe})
+		}
+		if err := bookRows.Err(); err != nil {
+			_ = bookRows.Close()
+			return nil, err
+		}
+		_ = bookRows.Close()
 	}
 
 	conflict := map[string]bool{}

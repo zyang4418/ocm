@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
+	"ocm-backend/internal/dbutil"
 )
 
 var (
@@ -104,7 +104,7 @@ func (s *Store) CreateRegime(ctx context.Context, in RegimeInput) (Regime, error
 		in.Name, in.EffectiveMonth, in.EffectiveDay,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return Regime{}, ErrNameTaken
 		}
 		return Regime{}, fmt.Errorf("create regime: %w", err)
@@ -122,7 +122,7 @@ func (s *Store) UpdateRegime(ctx context.Context, id int64, in RegimeInput) (Reg
 		in.Name, in.EffectiveMonth, in.EffectiveDay, id,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return Regime{}, ErrNameTaken
 		}
 		return Regime{}, fmt.Errorf("update regime: %w", err)
@@ -258,9 +258,4 @@ func trimSeconds(s string) string {
 		return s[:5]
 	}
 	return s
-}
-
-func isDuplicateEntry(err error) bool {
-	var mysqlErr *mysql.MySQLError
-	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }

@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 
-	"github.com/go-sql-driver/mysql"
+	"ocm-backend/internal/dbutil"
 )
 
 var (
@@ -53,13 +53,6 @@ func (s *Store) Migrate(ctx context.Context) error {
 	return nil
 }
 
-// isDuplicateEntry reports whether err is a MySQL 1062 unique-constraint
-// violation, used to detect duplicate class names on insert and update.
-func isDuplicateEntry(err error) bool {
-	var mysqlErr *mysql.MySQLError
-	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
-}
-
 // ---- Admin classes ----
 
 func (s *Store) ListAdminClasses(ctx context.Context) ([]AdminClass, error) {
@@ -101,7 +94,7 @@ func (s *Store) CreateAdminClass(ctx context.Context, in AdminClassInput) (Admin
 		in.Grade, in.Name, in.Note,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return AdminClass{}, ErrClassNameTaken
 		}
 		return AdminClass{}, fmt.Errorf("create admin class: %w", err)
@@ -119,7 +112,7 @@ func (s *Store) UpdateAdminClass(ctx context.Context, id int64, in AdminClassInp
 		in.Grade, in.Name, in.Note, id,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return AdminClass{}, ErrClassNameTaken
 		}
 		return AdminClass{}, fmt.Errorf("update admin class: %w", err)
@@ -261,10 +254,19 @@ func (s *Store) GetTeachingClass(ctx context.Context, id int64) (TeachingClassVi
 	return v, nil
 }
 
+// dbtx is the shared query surface of *sql.DB and *sql.Tx so the teaching-class
+// in-use / member checks can run either standalone (preview paths) or inside
+// the caller's write transaction (for locking reads).
+type dbtx interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // teachingClassMemberIDs returns the current member admin_class IDs of a
-// teaching class, sorted.
-func (s *Store) teachingClassMemberIDs(ctx context.Context, id int64) ([]int64, error) {
-	rows, err := s.db.QueryContext(ctx,
+// teaching class, sorted. Run on the caller's tx/db so the read is consistent
+// with a preceding row lock.
+func teachingClassMemberIDs(ctx context.Context, q dbtx, id int64) ([]int64, error) {
+	rows, err := q.QueryContext(ctx,
 		`SELECT admin_class_id FROM teaching_class_members WHERE teaching_class_id = ?`, id)
 	if err != nil {
 		return nil, fmt.Errorf("query teaching class members: %w", err)
@@ -278,19 +280,26 @@ func (s *Store) teachingClassMemberIDs(ctx context.Context, id int64) ([]int64, 
 		}
 		ids = append(ids, acID)
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	return ids, rows.Err()
 }
 
 // teachingClassInUse reports whether any course offering references the
 // teaching class. Course offerings live in the course module; this is a
 // logical cross-module FK check (no Go dependency on the course package).
-func (s *Store) teachingClassInUse(ctx context.Context, id int64) (bool, error) {
+//
+// When forUpdate is true the SELECT is a locking read that must run inside the
+// caller's transaction: under InnoDB's default REPEATABLE READ the gap lock it
+// takes on the teaching_class_id index blocks a concurrent CreateOffering
+// insert for the same class, closing the check-then-write TOCTOU that would
+// otherwise let an in-use class's members be changed.
+func teachingClassInUse(ctx context.Context, q dbtx, id int64, forUpdate bool) (bool, error) {
+	stmt := `SELECT COUNT(*) FROM course_offerings WHERE teaching_class_id = ?`
+	if forUpdate {
+		stmt += " FOR UPDATE"
+	}
 	var count int
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM course_offerings WHERE teaching_class_id = ?`, id,
-	).Scan(&count)
-	if err != nil {
+	if err := q.QueryRowContext(ctx, stmt, id).Scan(&count); err != nil {
 		return false, fmt.Errorf("count offerings for teaching class: %w", err)
 	}
 	return count > 0, nil
@@ -339,7 +348,7 @@ func (s *Store) CreateTeachingClass(ctx context.Context, in TeachingClassInput) 
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO teaching_classes (name, note) VALUES (?, ?)`, in.Name, in.Note)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return TeachingClassView{}, ErrClassNameTaken
 		}
 		return TeachingClassView{}, fmt.Errorf("create teaching class: %w", err)
@@ -365,23 +374,8 @@ func (s *Store) UpdateTeachingClass(ctx context.Context, id int64, in TeachingCl
 		return TeachingClassView{}, err
 	}
 
-	// Hardening (decision 2): once a teaching class is referenced by any
-	// offering, its member set is frozen -- editing members would rewrite the
-	// class list shown on past offerings. To change membership, create a new
-	// teaching class. Name/note remain editable.
-	current, err := s.teachingClassMemberIDs(ctx, id)
-	if err != nil {
-		return TeachingClassView{}, err
-	}
 	newMembers := append([]int64(nil), in.ClassIDs...)
-	sort.Slice(newMembers, func(i, j int) bool { return newMembers[i] < newMembers[j] })
-	inUse, err := s.teachingClassInUse(ctx, id)
-	if err != nil {
-		return TeachingClassView{}, err
-	}
-	if inUse && !sameInt64Set(current, newMembers) {
-		return TeachingClassView{}, ErrClassInUse
-	}
+	slices.Sort(newMembers)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -389,10 +383,39 @@ func (s *Store) UpdateTeachingClass(ctx context.Context, id int64, in TeachingCl
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// Lock the teaching_classes row so concurrent UpdateTeachingClass /
+	// DeleteTeachingClass serialize on it. The row-missing case surfaces here
+	// as ErrTeachingClassNotFound instead of later via RowsAffected.
+	var tcID int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT id FROM teaching_classes WHERE id = ? FOR UPDATE`, id).Scan(&tcID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return TeachingClassView{}, ErrTeachingClassNotFound
+		}
+		return TeachingClassView{}, fmt.Errorf("lock teaching class: %w", err)
+	}
+	// Hardening (decision 2): once a teaching class is referenced by any
+	// offering, its member set is frozen -- editing members would rewrite the
+	// class list shown on past offerings. To change membership, create a new
+	// teaching class. Name/note remain editable. The check + FOR UPDATE runs
+	// inside the tx so a concurrent CreateOffering cannot slip in between the
+	// check and the member rewrite.
+	current, err := teachingClassMemberIDs(ctx, tx, id)
+	if err != nil {
+		return TeachingClassView{}, err
+	}
+	inUse, err := teachingClassInUse(ctx, tx, id, true)
+	if err != nil {
+		return TeachingClassView{}, err
+	}
+	if inUse && !slices.Equal(current, newMembers) {
+		return TeachingClassView{}, ErrClassInUse
+	}
+
 	res, err := tx.ExecContext(ctx,
 		`UPDATE teaching_classes SET name = ?, note = ? WHERE id = ?`, in.Name, in.Note, id)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return TeachingClassView{}, ErrClassNameTaken
 		}
 		return TeachingClassView{}, fmt.Errorf("update teaching class: %w", err)
@@ -418,18 +441,30 @@ func (s *Store) UpdateTeachingClass(ctx context.Context, id int64, in TeachingCl
 }
 
 func (s *Store) DeleteTeachingClass(ctx context.Context, id int64) error {
-	inUse, err := s.teachingClassInUse(ctx, id)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	// Lock the row + re-check in-use inside the tx (FOR UPDATE) so a concurrent
+	// CreateOffering cannot make the class in-use between the check and the
+	// delete. The gap lock on course_offerings blocks the offering insert under
+	// InnoDB REPEATABLE READ.
+	var tcID int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT id FROM teaching_classes WHERE id = ? FOR UPDATE`, id).Scan(&tcID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrTeachingClassNotFound
+		}
+		return fmt.Errorf("lock teaching class: %w", err)
+	}
+	inUse, err := teachingClassInUse(ctx, tx, id, true)
 	if err != nil {
 		return err
 	}
 	if inUse {
 		return ErrClassInUse
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx,
 		`DELETE FROM teaching_class_members WHERE teaching_class_id = ?`, id); err != nil {
 		return fmt.Errorf("delete members: %w", err)
@@ -465,16 +500,4 @@ func insertMembers(ctx context.Context, tx *sql.Tx, teachingClassID int64, admin
 		}
 	}
 	return nil
-}
-
-func sameInt64Set(a, b []int64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

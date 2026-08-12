@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -169,7 +170,7 @@ func (s *Store) CreateSession(ctx context.Context, in SessionInput) (SessionView
 		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return SessionView{}, ErrClassroomConflict
 		}
 		return SessionView{}, fmt.Errorf("create session: %w", err)
@@ -187,7 +188,7 @@ func (s *Store) UpdateSession(ctx context.Context, id int64, in SessionInput) (S
 		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note, id,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return SessionView{}, ErrClassroomConflict
 		}
 		return SessionView{}, fmt.Errorf("update session: %w", err)

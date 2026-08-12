@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -49,22 +50,39 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 
 // bookingFilter builds a ListFilter from the query string, shared by list and
 // export so an export respects the same classroom/status/date filters the
-// operator is currently viewing.
-func bookingFilter(r *http.Request) ListFilter {
+// operator is currently viewing. from/to must be YYYY-MM-DD; anything else is
+// rejected so MySQL does not silently coerce garbage like "abc" to 0000-00-00.
+func bookingFilter(r *http.Request) (ListFilter, error) {
 	q := r.URL.Query()
 	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
 	userID, _ := strconv.ParseInt(q.Get("user_id"), 10, 64)
-	return ListFilter{
+	f := ListFilter{
 		ClassroomID: classroomID,
 		UserID:      userID,
 		Status:      strings.TrimSpace(q.Get("status")),
-		From:        q.Get("from"),
-		To:          q.Get("to"),
 	}
+	if v := q.Get("from"); v != "" {
+		if _, err := time.Parse("2006-01-02", v); err != nil {
+			return ListFilter{}, fmt.Errorf("invalid from (use YYYY-MM-DD)")
+		}
+		f.From = v
+	}
+	if v := q.Get("to"); v != "" {
+		if _, err := time.Parse("2006-01-02", v); err != nil {
+			return ListFilter{}, fmt.Errorf("invalid to (use YYYY-MM-DD)")
+		}
+		f.To = v
+	}
+	return f, nil
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.List(r.Context(), bookingFilter(r))
+	f, err := bookingFilter(r)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	list, err := h.store.List(r.Context(), f)
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
 		return
@@ -80,7 +98,12 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 // the importer's expected headers so the file round-trips; status is included
 // so an exported file can be re-imported as a faithful restore.
 func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.List(r.Context(), bookingFilter(r))
+	f, err := bookingFilter(r)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	list, err := h.store.List(r.Context(), f)
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
 		return

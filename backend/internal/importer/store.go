@@ -78,6 +78,59 @@ func (s *Store) CreateJob(ctx context.Context, typ, filename, payload string, us
 	return s.GetJob(ctx, id)
 }
 
+// JobSpec is one import job to create as part of an atomic batch.
+type JobSpec struct {
+	Type     string
+	Filename string
+	Payload  string
+}
+
+// CreateJobs inserts every spec in a single transaction: either all job rows
+// are created or none are. It returns the freshly-created jobs in order. The
+// JWC splitter produces 6 jobs in one request; without an atomic batch a
+// mid-loop failure would leave already-created jobs running with no way for
+// the operator to discover them from the error response.
+func (s *Store) CreateJobs(ctx context.Context, userID int64, specs []JobSpec) ([]Job, error) {
+	if len(specs) == 0 {
+		return nil, nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	stmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO import_jobs (type, status, filename, payload, error_report, user_id) VALUES (?, 'pending', ?, ?, '', ?)`)
+	if err != nil {
+		return nil, fmt.Errorf("prepare create job: %w", err)
+	}
+	defer func() { _ = stmt.Close() }()
+	ids := make([]int64, 0, len(specs))
+	for _, sp := range specs {
+		res, err := stmt.ExecContext(ctx, sp.Type, sp.Filename, sp.Payload, userID)
+		if err != nil {
+			return nil, fmt.Errorf("create import job: %w", err)
+		}
+		id, err := res.LastInsertId()
+		if err != nil {
+			return nil, fmt.Errorf("create import job last insert id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit create jobs: %w", err)
+	}
+	out := make([]Job, 0, len(ids))
+	for _, id := range ids {
+		j, err := s.GetJob(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("get created job %d: %w", id, err)
+		}
+		out = append(out, j)
+	}
+	return out, nil
+}
+
 func (s *Store) GetJob(ctx context.Context, id int64) (Job, error) {
 	var j Job
 	var started, finished sql.NullTime

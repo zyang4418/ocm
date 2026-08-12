@@ -26,7 +26,7 @@ type Handler struct {
 	store         *Store
 	registry      *Registry
 	scheduleStore *schedule.Store // jwc_split needs regimes to pre-validate expanded dates
-	sem           chan struct{}  // limits concurrent import processing
+	sem           chan struct{}   // limits concurrent import processing
 }
 
 func NewHandler(store *Store, registry *Registry, scheduleStore *schedule.Store) *Handler {
@@ -247,17 +247,23 @@ func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
 		{JobTypeOfferings, res.Files.Offerings},
 		{JobTypeSessions, res.Files.Sessions},
 	}
-	jobs := make([]map[string]any, 0, len(specs))
+	jobSpecs := make([]JobSpec, 0, len(specs))
 	for _, s := range specs {
-		payload := base64.StdEncoding.EncodeToString(s.b)
-		filename := stem + "_" + s.typ + ".xlsx"
-		job, err := h.store.CreateJob(r.Context(), s.typ, filename, payload, subject.ID)
-		if err != nil {
-			httpx.RespondError(w, http.StatusInternalServerError, "创建导入任务失败："+err.Error())
-			return
-		}
-		jobs = append(jobs, map[string]any{"id": job.ID, "type": job.Type, "status": job.Status})
-		go h.processJob(job.ID)
+		jobSpecs = append(jobSpecs, JobSpec{
+			Type:     s.typ,
+			Filename: stem + "_" + s.typ + ".xlsx",
+			Payload:  base64.StdEncoding.EncodeToString(s.b),
+		})
+	}
+	created, err := h.store.CreateJobs(r.Context(), subject.ID, jobSpecs)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "创建导入任务失败："+err.Error())
+		return // atomic batch: no jobs created, no goroutines started
+	}
+	jobs := make([]map[string]any, 0, len(created))
+	for _, j := range created {
+		jobs = append(jobs, map[string]any{"id": j.ID, "type": j.Type, "status": j.Status})
+		go h.processJob(j.ID) // all rows committed before any worker starts
 	}
 	warnings := res.Stats.Warnings
 	if warnings == nil {

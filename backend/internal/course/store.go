@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	"ocm-backend/internal/dbutil"
 )
 
 var (
@@ -31,8 +32,8 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-// nullableCode returns nil for an empty code so the column stores NULL (not '').
-// Multiple NULLs are distinct under UNIQUE(code); multiple '' would collide.
+// nullableCode returns nil for an empty code so the column stores NULL (not ”).
+// Multiple NULLs are distinct under UNIQUE(code); multiple ” would collide.
 // Callers that read the value back get "" either way (NULL scans to the zero
 // string), so the empty-means-uncoded convention is preserved on read.
 func nullableCode(code string) interface{} {
@@ -150,6 +151,19 @@ func (s *Store) Migrate(ctx context.Context) error {
 			}
 		}
 	}
+	// Single-column index on teaching_class_id so the in-use check
+	// (SELECT COUNT(*) ... WHERE teaching_class_id = ? FOR UPDATE) takes a
+	// precise range/gap lock instead of a full-table scan. The existing
+	// UNIQUE (catalog_id, teaching_class_id, semester) cannot serve a query
+	// on teaching_class_id alone (it is not the leading column). Idempotent:
+	// ignore 1061 duplicate-key-name.
+	if _, err := s.db.ExecContext(ctx,
+		`ALTER TABLE course_offerings ADD INDEX idx_offering_tclass (teaching_class_id)`); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1061 {
+			return fmt.Errorf("add offering teaching_class_id index: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -194,11 +208,11 @@ func (s *Store) CreateCatalog(ctx context.Context, in CatalogInput) (CatalogCour
 		in.Name, nullableCode(in.Code), in.Credits, in.TotalHours, in.Category, in.ExamType, in.Description,
 	)
 	if err != nil {
-		switch duplicateKeyName(err) {
+		switch dbutil.DuplicateKeyName(err) {
 		case "uq_catalog_code":
 			return CatalogCourse{}, ErrCodeTaken
 		case "name", "":
-			if isDuplicateEntry(err) {
+			if dbutil.IsDuplicateEntry(err) {
 				return CatalogCourse{}, ErrNameTaken
 			}
 		}
@@ -217,11 +231,11 @@ func (s *Store) UpdateCatalog(ctx context.Context, id int64, in CatalogInput) (C
 		in.Name, nullableCode(in.Code), in.Credits, in.TotalHours, in.Category, in.ExamType, in.Description, id,
 	)
 	if err != nil {
-		switch duplicateKeyName(err) {
+		switch dbutil.DuplicateKeyName(err) {
 		case "uq_catalog_code":
 			return CatalogCourse{}, ErrCodeTaken
 		case "name", "":
-			if isDuplicateEntry(err) {
+			if dbutil.IsDuplicateEntry(err) {
 				return CatalogCourse{}, ErrNameTaken
 			}
 		}
@@ -337,7 +351,7 @@ func (s *Store) CreateOffering(ctx context.Context, in OfferingInput) (OfferingV
 		in.CatalogID, in.TeachingClassID, in.Teacher, in.CourseSeq, in.TeacherID, in.TeacherTitle, in.College, in.MaxStudents, in.Requirement, in.WeeklyHours, in.Semester, in.Note,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return OfferingView{}, ErrOfferingTaken
 		}
 		return OfferingView{}, fmt.Errorf("create offering: %w", err)
@@ -358,7 +372,7 @@ func (s *Store) UpdateOffering(ctx context.Context, id int64, in OfferingInput) 
 		in.CatalogID, in.TeachingClassID, in.Teacher, in.CourseSeq, in.TeacherID, in.TeacherTitle, in.College, in.MaxStudents, in.Requirement, in.WeeklyHours, in.Semester, in.Note, id,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return OfferingView{}, ErrOfferingTaken
 		}
 		return OfferingView{}, fmt.Errorf("update offering: %w", err)
@@ -443,31 +457,4 @@ func (s *Store) DeleteOffering(ctx context.Context, id int64) error {
 		return ErrOfferingNotFound
 	}
 	return nil
-}
-
-func isDuplicateEntry(err error) bool {
-	var mysqlErr *mysql.MySQLError
-	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
-}
-
-// duplicateKeyName inspects a MySQL 1062 (duplicate entry) error and returns the
-// index name that caused the collision, e.g. "name" or "uq_catalog_code". It
-// returns "" for non-duplicate errors. Callers use it to map a 1062 to the right
-// sentinel (ErrNameTaken vs ErrCodeTaken) instead of guessing from the message.
-func duplicateKeyName(err error) string {
-	var mysqlErr *mysql.MySQLError
-	if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1062 {
-		return ""
-	}
-	// Message format: `Duplicate entry '<val>' for key '<key>'`.
-	s := mysqlErr.Message
-	i := strings.LastIndex(s, "for key '")
-	if i < 0 {
-		return ""
-	}
-	s = s[i+len("for key '"):]
-	if j := strings.Index(s, "'"); j >= 0 {
-		return s[:j]
-	}
-	return ""
 }

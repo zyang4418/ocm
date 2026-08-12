@@ -18,23 +18,23 @@ import (
 // permission (granted to every authenticated role so teachers can browse class
 // names); management requires the manage permission (admin only).
 func (h *Handler) registerOrgRoutes(mux *http.ServeMux, authenticate func(http.Handler) http.Handler) {
-	read := func(perm string, handler http.HandlerFunc) http.Handler {
+	withPerm := func(perm string, handler http.HandlerFunc) http.Handler {
 		return authenticate(authz.RequirePermission(perm)(http.HandlerFunc(handler)))
 	}
 	// Admin classes (行政班)
-	mux.Handle("GET /api/admin-classes", read(authz.AdminClassRead, h.listAdminClasses))
-	mux.Handle("POST /api/admin-classes", read(authz.AdminClassManage, h.createAdminClass))
-	mux.Handle("GET /api/admin-classes/export", read(authz.AdminClassRead, h.exportAdminClasses))
-	mux.Handle("GET /api/admin-classes/{id}", read(authz.AdminClassRead, h.getAdminClass))
-	mux.Handle("PUT /api/admin-classes/{id}", read(authz.AdminClassManage, h.updateAdminClass))
-	mux.Handle("DELETE /api/admin-classes/{id}", read(authz.AdminClassManage, h.deleteAdminClass))
+	mux.Handle("GET /api/admin-classes", withPerm(authz.AdminClassRead, h.listAdminClasses))
+	mux.Handle("POST /api/admin-classes", withPerm(authz.AdminClassManage, h.createAdminClass))
+	mux.Handle("GET /api/admin-classes/export", withPerm(authz.AdminClassRead, h.exportAdminClasses))
+	mux.Handle("GET /api/admin-classes/{id}", withPerm(authz.AdminClassRead, h.getAdminClass))
+	mux.Handle("PUT /api/admin-classes/{id}", withPerm(authz.AdminClassManage, h.updateAdminClass))
+	mux.Handle("DELETE /api/admin-classes/{id}", withPerm(authz.AdminClassManage, h.deleteAdminClass))
 	// Teaching classes (教学班)
-	mux.Handle("GET /api/teaching-classes", read(authz.TeachingClassRead, h.listTeachingClasses))
-	mux.Handle("POST /api/teaching-classes", read(authz.TeachingClassManage, h.createTeachingClass))
-	mux.Handle("GET /api/teaching-classes/export", read(authz.TeachingClassRead, h.exportTeachingClasses))
-	mux.Handle("GET /api/teaching-classes/{id}", read(authz.TeachingClassRead, h.getTeachingClass))
-	mux.Handle("PUT /api/teaching-classes/{id}", read(authz.TeachingClassManage, h.updateTeachingClass))
-	mux.Handle("DELETE /api/teaching-classes/{id}", read(authz.TeachingClassManage, h.deleteTeachingClass))
+	mux.Handle("GET /api/teaching-classes", withPerm(authz.TeachingClassRead, h.listTeachingClasses))
+	mux.Handle("POST /api/teaching-classes", withPerm(authz.TeachingClassManage, h.createTeachingClass))
+	mux.Handle("GET /api/teaching-classes/export", withPerm(authz.TeachingClassRead, h.exportTeachingClasses))
+	mux.Handle("GET /api/teaching-classes/{id}", withPerm(authz.TeachingClassRead, h.getTeachingClass))
+	mux.Handle("PUT /api/teaching-classes/{id}", withPerm(authz.TeachingClassManage, h.updateTeachingClass))
+	mux.Handle("DELETE /api/teaching-classes/{id}", withPerm(authz.TeachingClassManage, h.deleteTeachingClass))
 }
 
 // ---- Admin classes ----

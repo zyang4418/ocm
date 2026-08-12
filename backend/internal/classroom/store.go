@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
+	"ocm-backend/internal/dbutil"
 )
 
 var (
@@ -123,7 +124,7 @@ func (s *Store) Create(ctx context.Context, in ClassroomInput) (Classroom, error
 		in.Name, in.Building, in.Capacity, in.Type, in.Floor, in.Campus, in.Status, in.Description,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return Classroom{}, ErrNameTaken
 		}
 		return Classroom{}, fmt.Errorf("create classroom: %w", err)
@@ -141,7 +142,7 @@ func (s *Store) Update(ctx context.Context, id int64, in ClassroomInput) (Classr
 		in.Name, in.Building, in.Capacity, in.Type, in.Floor, in.Campus, in.Status, in.Description, id,
 	)
 	if err != nil {
-		if isDuplicateEntry(err) {
+		if dbutil.IsDuplicateEntry(err) {
 			return Classroom{}, ErrNameTaken
 		}
 		return Classroom{}, fmt.Errorf("update classroom: %w", err)
@@ -162,11 +163,4 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 		return ErrNotFound
 	}
 	return nil
-}
-
-// isDuplicateEntry reports whether err is a MySQL 1062 unique-constraint
-// violation, used to detect duplicate classroom names on insert and update.
-func isDuplicateEntry(err error) bool {
-	var mysqlErr *mysql.MySQLError
-	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }

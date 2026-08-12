@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
-
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -254,7 +253,7 @@ func commitSessions(
 		if _, err := stmt.ExecContext(ctx, ins.offeringID, ins.classroomID, ins.date, ins.periodIndex, ins.note); err != nil {
 			res.SucceededRows = 0
 			res.FailedRows = dataRows
-			if isDuplicateEntry(err) {
+			if dbutil.IsDuplicateEntry(err) {
 				res.Errors = append(res.Errors, RowError{Row: ins.rowNum, Error: "导入中断：与已有课次冲突（并发）"})
 				return res, errors.New("conflict during insert (race)")
 			}
@@ -396,9 +395,4 @@ func existingConflicts(ctx context.Context, db *sql.DB, clean []sessionInsert) (
 		}
 	}
 	return conflict, nil
-}
-
-func isDuplicateEntry(err error) bool {
-	var mysqlErr *mysql.MySQLError
-	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }

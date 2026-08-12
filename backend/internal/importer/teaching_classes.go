@@ -3,10 +3,12 @@ package importer
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/user"
 )
 
@@ -173,7 +175,7 @@ func parseTeachingClasses(ctx context.Context, db *sql.DB, payload string) (clea
 			// In-use classes whose member set would change are frozen: skip the
 			// group so the operator edits members through the UI (or creates a
 			// new teaching class), matching the update handler's ErrClassInUse.
-			if inUse[tcID] && !sameInt64Set(membersByTC[tcID], ins.memberIDs) {
+			if inUse[tcID] && !slices.Equal(membersByTC[tcID], ins.memberIDs) {
 				errs = append(errs, RowError{Row: g.rowNum, Error: "教学班「" + g.name + "」已被开课引用，成员不可修改，请新建教学班"})
 				continue
 			}
@@ -212,6 +214,7 @@ func commitTeachingClasses(ctx context.Context, db *sql.DB, payload string) (Res
 		res.FailedRows = dataRows
 		return res, nil
 	}
+	var succeeded int // only counts rows actually written (excludes skip-via-continue)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -222,14 +225,57 @@ func commitTeachingClasses(ctx context.Context, db *sql.DB, payload string) (Res
 	defer func() { _ = tx.Rollback() }()
 
 	// Reuse user.NormalizeTeachingClass for the name/required-member rule. The
-	// in-use freeze was already enforced in parse; here we just write.
+	// in-use freeze is enforced in parse; for existing classes it is re-checked
+	// inside the write tx below so a concurrent CreateOffering cannot slip in.
 	for _, c := range clean {
 		in := user.TeachingClassInput{Name: c.name, Note: c.note, ClassIDs: c.memberIDs}
 		if msg, ok := user.NormalizeTeachingClass(&in); !ok {
-			errs = append(errs, RowError{Row: c.rowNum, Error: msg})
+			res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: msg})
 			continue
 		}
 		if c.exists {
+			// Lock the teaching_classes row, then re-check the in-use freeze
+			// with a locking read. Lock order (teaching_classes -> course_offerings)
+			// matches the CRUD handler so a concurrent UpdateTeachingClass cannot
+			// deadlock against this tx. A class may have been referenced by a new
+			// offering between parse and commit; COUNT(*) ... FOR UPDATE
+			// gap-locks the teaching_class_id index range, serializing against a
+			// concurrent CreateOffering under InnoDB REPEATABLE READ. If the
+			// class is now in-use and its member set would change, skip the group.
+			var tcID int64
+			if err := tx.QueryRowContext(ctx,
+				`SELECT id FROM teaching_classes WHERE id = ? FOR UPDATE`, c.id,
+			).Scan(&tcID); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "教学班已不存在（并发）"})
+					continue
+				}
+				res.FailedRows = dataRows
+				res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
+				return res, fmt.Errorf("lock teaching class: %w", err)
+			}
+			var inUseCount int
+			if err := tx.QueryRowContext(ctx,
+				`SELECT COUNT(*) FROM course_offerings WHERE teaching_class_id = ? FOR UPDATE`, c.id,
+			).Scan(&inUseCount); err != nil {
+				res.FailedRows = dataRows
+				res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
+				return res, fmt.Errorf("recheck teaching class in-use: %w", err)
+			}
+			if inUseCount > 0 {
+				current, err := teachingClassMembersTx(ctx, tx, c.id)
+				if err != nil {
+					res.FailedRows = dataRows
+					res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
+					return res, fmt.Errorf("recheck teaching class members: %w", err)
+				}
+				if !slices.Equal(current, in.ClassIDs) {
+					res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "教学班「" + c.name + "」已开课（并发），成员不可修改"})
+					continue
+				}
+				// in-use but members unchanged: name/note rewrite + identical
+				// member replace is safe; fall through to the write.
+			}
 			if _, err := tx.ExecContext(ctx,
 				`UPDATE teaching_classes SET name = ?, note = ? WHERE id = ?`,
 				in.Name, in.Note, c.id); err != nil {
@@ -248,14 +294,15 @@ func commitTeachingClasses(ctx context.Context, db *sql.DB, payload string) (Res
 				res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
 				return res, fmt.Errorf("insert members: %w", err)
 			}
+			succeeded++
 		} else {
 			res2, err := tx.ExecContext(ctx,
 				`INSERT INTO teaching_classes (name, note) VALUES (?, ?)`, in.Name, in.Note)
 			if err != nil {
-				if isDuplicateEntry(err) {
+				if dbutil.IsDuplicateEntry(err) {
 					// A teaching class of this name was created between preview
 					// and commit; treat as a conflict and skip this group.
-					errs = append(errs, RowError{Row: c.rowNum, Error: "教学班「" + in.Name + "」已存在（并发）"})
+					res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "教学班「" + in.Name + "」已存在（并发）"})
 					continue
 				}
 				res.FailedRows = dataRows
@@ -273,6 +320,7 @@ func commitTeachingClasses(ctx context.Context, db *sql.DB, payload string) (Res
 				res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
 				return res, fmt.Errorf("insert members: %w", err)
 			}
+			succeeded++
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -280,7 +328,7 @@ func commitTeachingClasses(ctx context.Context, db *sql.DB, payload string) (Res
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
 		return res, fmt.Errorf("commit: %w", err)
 	}
-	res.SucceededRows = len(clean)
+	res.SucceededRows = succeeded
 	res.FailedRows = dataRows - res.SucceededRows
 	return res, nil
 }
@@ -299,6 +347,29 @@ func insertMembersTx(ctx context.Context, tx *sql.Tx, teachingClassID int64, adm
 		}
 	}
 	return nil
+}
+
+// teachingClassMembersTx loads the current member admin_class IDs of a teaching
+// class within the write tx (for the in-use re-check), sorted.
+func teachingClassMembersTx(ctx context.Context, tx *sql.Tx, id int64) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx,
+		`SELECT admin_class_id FROM teaching_class_members WHERE teaching_class_id = ?`, id)
+	if err != nil {
+		return nil, fmt.Errorf("query teaching class members: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var ids []int64
+	for rows.Next() {
+		var acID int64
+		if err := rows.Scan(&acID); err != nil {
+			return nil, fmt.Errorf("scan member id: %w", err)
+		}
+		ids = append(ids, acID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate teaching class members: %w", err)
+	}
+	return sortedInt64s(ids), nil
 }
 
 // loadAdminClassMap returns a map from "grade|name" to admin_class id.
@@ -341,6 +412,10 @@ func loadTeachingClassState(ctx context.Context, db *sql.DB) (nameByID map[strin
 		}
 		nameByID[strings.TrimSpace(name)] = id
 	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, nil, nil, fmt.Errorf("iterate teaching classes: %w", err)
+	}
 	_ = rows.Close()
 
 	rows, err = db.QueryContext(ctx, `SELECT teaching_class_id, admin_class_id FROM teaching_class_members`)
@@ -354,6 +429,10 @@ func loadTeachingClassState(ctx context.Context, db *sql.DB) (nameByID map[strin
 			return nil, nil, nil, fmt.Errorf("scan member: %w", err)
 		}
 		members[tcID] = append(members[tcID], acID)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, nil, nil, fmt.Errorf("iterate members: %w", err)
 	}
 	_ = rows.Close()
 	for k := range members {
@@ -372,24 +451,16 @@ func loadTeachingClassState(ctx context.Context, db *sql.DB) (nameByID map[strin
 		}
 		inUse[tcID] = true
 	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, nil, nil, fmt.Errorf("iterate offerings: %w", err)
+	}
 	_ = rows.Close()
 	return nameByID, members, inUse, nil
 }
 
 func sortedInt64s(ids []int64) []int64 {
-	out := append([]int64(nil), ids...)
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	out := slices.Clone(ids)
+	slices.Sort(out)
 	return out
-}
-
-func sameInt64Set(a, b []int64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
