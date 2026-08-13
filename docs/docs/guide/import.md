@@ -1,4 +1,6 @@
-# 课表导入
+---
+title: 课表导入
+---
 
 OCM 支持批量导入课表（course sessions）。导入是**异步**的：上传一个 CSV 文件，后端解析并写入
 `course_sessions`，前端轮询任务状态直到完成。本页说明 CSV 契约、用法，以及如何用 AI 把 Excel
