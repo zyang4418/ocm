@@ -2,4 +2,90 @@
 title: 项目结构
 ---
 
-TODO
+单仓三端 + 文档站。Go 后端、微信小程序、React Web 控制台各自独立,共享一套设计 token(品牌色 `#2B5FF6`)。
+
+```
+ocm/
+├─ backend/            Go 后端(module ocm-backend, go 1.26)
+├─ miniapp/            微信小程序(glass-easel + TDesign)
+├─ web/                Web 控制台(React 19 + Vite + Carbon)
+├─ docs/               Docusaurus 文档站(docs-only,根 / → 快速开始)
+├─ agents/             TDesign-Skyline 兼容性调查报告
+├─ docker-compose.yml          开发栈(mysql + backend air + web vite)
+├─ docker-compose.prod.yml     生产栈(fail-fast 密钥)
+├─ .env.example               环境变量模板
+└─ CLAUDE.md                  项目约定
+```
+
+## `backend/` — Go 后端
+
+```
+backend/
+├─ main.go             入口:生命周期、迁移、路由注册
+├─ go.mod / go.sum
+├─ Dockerfile / Dockerfile.dev      生产多阶段 / 开发 air
+└─ internal/
+   ├─ auth/            JWT(HS256)、code2Session、绑定、中间件
+   ├─ authz/           权限模型(role→permission,admin 通配)
+   ├─ user/            用户 + 行政班/教学班(组织)
+   ├─ classroom/       教室
+   ├─ schedule/        作息制度 + 节次
+   ├─ course/          课程库 / 开课 / 课次 / 课表
+   ├─ booking/         教室预约 + 冲突检测
+   ├─ importer/        异步导入(job 状态机、preview→commit、jwc_split)
+   ├─ jwc/             教务处聚合课表拆分器
+   ├─ xlsx/            excelize 封装(按列名映射)
+   ├─ db/ dbutil/ httpx/   基础设施(DSN/连接池、1062 helper、panic→500)
+```
+
+`net/http` ServeMux(Go 1.22+ 方法路由),无第三方 web 框架。无独立迁移工具——各 store `Migrate(ctx)` 幂等(`CREATE TABLE IF NOT EXISTS` + ALTER 忽略 1060/1061)。详见 [后端](/guide/backend)。
+
+## `miniapp/` — 微信小程序
+
+```
+miniapp/
+├─ app.js / app.json / app.wxss     纯 JS 入口 / 全局配置 / 设计 token
+├─ pages/            index login console ai messages profile(6 页,全 WebView)
+├─ config/api.ts     传输切换(callContainer / http)+ envVersion 自动选
+├─ utils/            request.ts(请求层) auth.ts(身份) storage.ts(token/user)
+├─ package.json      tdesign-miniprogram 依赖
+└─ project.config.json   appid、构建 npm 配置
+```
+
+`componentFramework: glass-easel`,**默认 WebView**(不设全局 skyline);`navigationStyle: custom`。详见 [小程序](/guide/miniapp)。
+
+## `web/` — Web 控制台
+
+```
+web/
+├─ src/
+│  ├─ main.jsx        入口(IBM Plex Sans + 全局 scss)
+│  ├─ App.jsx         BrowserRouter + RequireAuth + 路由表
+│  ├─ auth/           api.js(同源 /api、Bearer) AuthContext.jsx(token/user)
+│  ├─ components/     AppShell.jsx(Carbon UI Shell) ExportButton.jsx
+│  └─ pages/          Login/Dashboard/Bookings/Classrooms/CourseManagement/
+│                    ScheduleConfig/Timetable/Imports/Users/AdminClasses/TeachingClasses
+├─ vite.config.js     /api 代理 → VITE_API_PROXY_TARGET
+├─ edge-functions/ + edgeone.json    EdgeOne Pages 部署(SPA 重写 + /api 边缘反代)
+├─ Dockerfile / Dockerfile.dev       生产 nginx(:80)/ 开发 vite(:5173)
+```
+
+React 19 + Vite + IBM Carbon,纯 JSX(无 TS),无状态库(仅 `AuthContext`)。详见 [Web 端](/guide/web)。
+
+## `docs/` — 文档站
+
+Docusaurus 3(docs-only 模式,`routeBasePath: '/'`,根 `/` 由 [快速开始](/) 承载)。源在 `docs/docs/`,侧边栏 `docs/sidebars.ts`,自定义品牌色在 `docs/src/css/custom.css`(`--ifm-color-primary: #2B5FF6`)。
+
+## 共享设计 token
+
+品牌色 `#2B5FF6` 跨端一致:
+
+- 小程序:`miniapp/app.wxss` 的 `--color-primary` / `--td-brand-color`。
+- Web:Carbon 主题 `g10`(品牌色在组件层映射)。
+- 文档站:`docs/src/css/custom.css` 的 `--ifm-color-primary` 梯度。
+
+## 部署件
+
+- 开发:`docker compose up -d`(mysql + backend air + web vite)。
+- 生产:`docker compose -f docker-compose.prod.yml up -d`(backend alpine non-root :8080,web nginx :80,mysql)。
+- Web 静态站可独立部署到腾讯云 EdgeOne Pages(`edgeone.json` + `edge-functions/`)。
