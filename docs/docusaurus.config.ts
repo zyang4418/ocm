@@ -9,6 +9,10 @@ const config: Config = {
 
   onBrokenLinks: 'throw',
 
+  // 站点无静态资源，显式置空。
+  // Docusaurus 3 在 static glob 匹配为零文件时会报错，故禁用 static 目录。
+  staticDirectories: [],
+
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'warn',
@@ -24,11 +28,11 @@ const config: Config = {
     [
       'classic',
       {
-        // docs-only 模式:根 URL '/' 直接渲染文档落地页(docs/docs/index.md),无首页、无重定向。
+        // docs-only 模式:根 URL '/' 由 guide/getting-started.md(slug: /)承载,无首页、无重定向。
         docs: {
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/zyang4418/ocm/edit/main/docs/docs/',
+          editUrl: 'https://github.com/zyang4418/ocm/edit/main/docs/',
         },
         blog: false,
         theme: {
