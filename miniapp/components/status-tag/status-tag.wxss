@@ -1,0 +1,45 @@
+.st-tag {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.st-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+}
+
+.st-text {
+  font-size: var(--font-xs);
+  line-height: 1;
+}
+
+/* theme palettes: background tint + dot/text color */
+.st-tag--blue { background: #E8F0FF; }
+.st-tag--blue .st-dot { background: #2B5FF6; }
+.st-tag--blue .st-text { color: #2B5FF6; }
+
+.st-tag--green { background: #E0F7F0; }
+.st-tag--green .st-dot { background: #00A870; }
+.st-tag--green .st-text { color: #00A870; }
+
+.st-tag--red { background: #FDECEC; }
+.st-tag--red .st-dot { background: #D54941; }
+.st-tag--red .st-text { color: #D54941; }
+
+.st-tag--gray { background: #F2F3F5; }
+.st-tag--gray .st-dot { background: #8F959E; }
+.st-tag--gray .st-text { color: #646A73; }
+
+.st-tag--orange { background: #FFF1E8; }
+.st-tag--orange .st-dot { background: #FF7A45; }
+.st-tag--orange .st-text { color: #E65C24; }
+
+.st-tag--purple { background: #F0EBFF; }
+.st-tag--purple .st-dot { background: #7C5CFC; }
+.st-tag--purple .st-text { color: #7C5CFC; }

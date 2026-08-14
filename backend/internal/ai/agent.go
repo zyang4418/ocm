@@ -100,10 +100,9 @@ func systemPrompt(now time.Time) string {
 // is fixed; each tool checks the calling user's permissions when executed.
 func (a *Agent) Definitions() []ToolDef {
 	return []ToolDef{
-		{
-			Name:        "list_classrooms",
-			Description: "查询教室列表。可按最小容量、楼栋、教室类型或名称关键字筛选。返回教室的编号、名称、楼栋、容量、类型、楼层、校区与状态（available=可用）。",
-			Parameters: map[string]any{
+		NewToolDef("list_classrooms",
+			"查询教室列表。可按最小容量、楼栋、教室类型或名称关键字筛选。返回教室的编号、名称、楼栋、容量、类型、楼层、校区与状态（available=可用）。",
+			map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"capacityMin": map[string]any{"type": "integer", "description": "最小容纳人数，如 50"},
@@ -113,12 +112,10 @@ func (a *Agent) Definitions() []ToolDef {
 							"stadium", "drawing", "language", "studio", "special"}},
 					"q": map[string]any{"type": "string", "description": "教室名称关键字"},
 				},
-			},
-		},
-		{
-			Name:        "query_availability",
-			Description: "查询某一天某个节次区间内空闲且可用的教室（可同时按最小容量筛选）。空闲=该教室在该日期该节次区间没有课程（course session）也没有待审批/已通过的预约。必须提供具体日期（YYYY-MM-DD）与节次区间，节次必须是该日期生效作息制度中存在的节次。返回作息制度名称、节次对应时间与空闲教室列表。",
-			Parameters: map[string]any{
+			}),
+		NewToolDef("query_availability",
+			"查询某一天某个节次区间内空闲且可用的教室（可同时按最小容量筛选）。空闲=该教室在该日期该节次区间没有课程（course session）也没有待审批/已通过的预约。必须提供具体日期（YYYY-MM-DD）与节次区间，节次必须是该日期生效作息制度中存在的节次。返回作息制度名称、节次对应时间与空闲教室列表。",
+			map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"date":        map[string]any{"type": "string", "description": "日期，YYYY-MM-DD"},
@@ -127,12 +124,10 @@ func (a *Agent) Definitions() []ToolDef {
 					"capacityMin": map[string]any{"type": "integer", "description": "最小容纳人数，可选"},
 				},
 				"required": []string{"date", "periodStart", "periodEnd"},
-			},
-		},
-		{
-			Name:        "query_timetable",
-			Description: "查询课表：按教室或按教师查询某日期范围内的上课安排。日期范围由 from/to（含）、weekOf（该周周一至周日）或 date（单日）之一给出。返回每节课的日期、星期、节次区间、课程名、教师、教学班与教室。",
-			Parameters: map[string]any{
+			}),
+		NewToolDef("query_timetable",
+			"查询课表：按教室或按教师查询某日期范围内的上课安排。日期范围由 from/to（含）、weekOf（该周周一至周日）或 date（单日）之一给出。返回每节课的日期、星期、节次区间、课程名、教师、教学班与教室。",
+			map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"classroomId": map[string]any{"type": "integer", "description": "教室 ID（与 teacher 二选一）"},
@@ -143,12 +138,10 @@ func (a *Agent) Definitions() []ToolDef {
 					"date":        map[string]any{"type": "string", "description": "单日查询，YYYY-MM-DD"},
 				},
 				"required": []string{},
-			},
-		},
-		{
-			Name:        "propose_booking",
-			Description: "生成教室预约预览（不提交）。校验教室存在且可用、日期格式、节次区间在当日作息制度内、用途非空，并列出该时段该教室的冲突（课程或已提交的预约）。预览会展示给用户，用户点击确认后才真正提交预约。",
-			Parameters: map[string]any{
+			}),
+		NewToolDef("propose_booking",
+			"生成教室预约预览（不提交）。校验教室存在且可用、日期格式、节次区间在当日作息制度内、用途非空，并列出该时段该教室的冲突（课程或已提交的预约）。预览会展示给用户，用户点击确认后才真正提交预约。",
+			map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"classroomId": map[string]any{"type": "integer", "description": "教室 ID"},
@@ -158,8 +151,7 @@ func (a *Agent) Definitions() []ToolDef {
 					"purpose":     map[string]any{"type": "string", "description": "预约用途，如“补课”"},
 				},
 				"required": []string{"classroomId", "date", "periodStart", "periodEnd", "purpose"},
-			},
-		},
+			}),
 	}
 }
 

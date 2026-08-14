@@ -334,6 +334,13 @@
   overflow: hidden;
 }
 
+.schedule-empty {
+  padding: var(--space-lg);
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+}
+
 .schedule-row {
   display: flex;
   flex-direction: row;

@@ -1,0 +1,84 @@
+<view class="page">
+  <t-navbar title="教学班管理" left-arrow fixed placeholder />
+
+  <view class="search-row">
+    <input
+      class="search-input"
+      placeholder="搜索教学班"
+      placeholder-class="search-placeholder"
+      value="{{list.q}}"
+      bindinput="onSearchInput"
+    />
+  </view>
+
+  <view wx:if="{{noAdminClasses}}" class="banner">
+    <text class="banner-text">请先创建行政班，再组建教学班</text>
+  </view>
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <text class="card-name">{{item.name}}</text>
+          <view wx:if="{{canManage}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+            <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+        <text class="card-desc">成员：{{item.classesText}}</text>
+        <text wx:if="{{item.note}}" class="card-desc">{{item.note}}</text>
+        <text class="card-time">{{item.createdAtText}}</text>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的教学班' : '暂无教学班'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openCreate">
+    <text class="fab-text">＋ 添加教学班</text>
+  </view>
+
+  <form-dialog
+    visible="{{formOpen}}"
+    title="{{formTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{formLoading}}"
+    error="{{formError}}"
+    bind:cancel="closeForm"
+    bind:confirm="submitForm"
+  >
+    <view class="field">
+      <text class="field-label">教学班名称 *</text>
+      <input class="field-input" value="{{form.name}}" data-field="name" bindinput="onFormInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">成员行政班 *</text>
+      <view class="field-value" bindtap="openPicker">
+        <text class="{{form.classIds.length ? '' : 'field-placeholder'}}">已选 {{form.classIds.length}} 个行政班</text>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">备注</text>
+      <textarea class="field-textarea" value="{{form.note}}" data-field="note" bindinput="onFormInput" />
+    </view>
+  </form-dialog>
+
+  <!-- 成员多选弹层 -->
+  <t-popup visible="{{pickerOpen}}" placement="bottom" bind:visible-change="closePicker">
+    <view class="picker-panel">
+      <view class="picker-header">
+        <text class="picker-title">选择行政班</text>
+        <view class="picker-confirm" bindtap="confirmPicker">确定</view>
+      </view>
+      <scroll-view scroll-y class="picker-list">
+        <view wx:for="{{pickerItems}}" wx:key="id" class="picker-item" data-idx="{{index}}" bindtap="onPickerItemTap">
+          <view class="checkbox {{item.checked ? 'checkbox-on' : ''}}">{{item.checked ? '✓' : ''}}</view>
+          <text class="picker-item-text">{{item.text}}</text>
+        </view>
+        <empty-state wx:if="{{pickerItems.length === 0}}" text="暂无行政班"></empty-state>
+      </scroll-view>
+    </view>
+  </t-popup>
+</view>

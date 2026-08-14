@@ -1,0 +1,140 @@
+<view class="page">
+  <t-navbar title="课程管理" left-arrow fixed placeholder />
+
+  <view class="tab-row">
+    <t-segmented options="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
+  </view>
+
+  <!-- 开课列表 -->
+  <block wx:if="{{tab === 'offerings'}}">
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索开课"
+        placeholder-class="search-placeholder"
+        value="{{offList.q}}"
+        bindinput="onOffSearchInput"
+      />
+    </view>
+    <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+      <block wx:for="{{offList.items}}" wx:key="id">
+        <view class="card">
+          <view class="card-top">
+            <text class="card-name">{{item.catalogName}}</text>
+            <view wx:if="{{canManage}}" class="card-actions">
+              <view class="action-btn" data-id="{{item.id}}" bindtap="openOffEdit">编辑</view>
+              <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.catalogName}}" bindtap="onTapDeleteOffering">删除</view>
+            </view>
+          </view>
+          <view class="card-line">
+            <text class="card-meta">{{item.teachingClassName}} · {{item.teacher}} · {{item.semester}}</text>
+          </view>
+          <text wx:if="{{item.classNamesText}}" class="card-desc">{{item.classNamesText}}</text>
+          <text wx:if="{{item.note}}" class="card-desc">{{item.note}}</text>
+          <text class="card-time">{{item.createdAtText}}</text>
+        </view>
+      </block>
+      <empty-state wx:if="{{!offList.loading && offList.items.length === 0}}" text="{{offList.q ? '未找到匹配的开课' : '暂无开课'}}"></empty-state>
+      <list-footer loading="{{offList.loading}}" noMore="{{offList.items.length > 0 && !offList.hasMore}}"></list-footer>
+    </scroll-view>
+    <view class="fab" wx:if="{{canManage}}" bindtap="openOffCreate">
+      <text class="fab-text">＋ 添加开课</text>
+    </view>
+  </block>
+
+  <!-- 课程库 -->
+  <block wx:else>
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索课程"
+        placeholder-class="search-placeholder"
+        value="{{catList.q}}"
+        bindinput="onCatSearchInput"
+      />
+    </view>
+    <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+      <block wx:for="{{catList.items}}" wx:key="id">
+        <view class="card">
+          <view class="card-top">
+            <text class="card-name">{{item.name}}</text>
+            <view wx:if="{{canManage}}" class="card-actions">
+              <view class="action-btn" data-id="{{item.id}}" bindtap="openCatEdit">编辑</view>
+              <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDeleteCatalog">删除</view>
+            </view>
+          </view>
+          <text wx:if="{{item.code}}" class="card-desc">代码：{{item.code}}</text>
+          <text wx:if="{{item.description}}" class="card-desc">{{item.description}}</text>
+          <text class="card-time">{{item.createdAtText}}</text>
+        </view>
+      </block>
+      <empty-state wx:if="{{!catList.loading && catList.items.length === 0}}" text="{{catList.q ? '未找到匹配的课程' : '暂无课程'}}"></empty-state>
+      <list-footer loading="{{catList.loading}}" noMore="{{catList.items.length > 0 && !catList.hasMore}}"></list-footer>
+    </scroll-view>
+    <view class="fab" wx:if="{{canManage}}" bindtap="openCatCreate">
+      <text class="fab-text">＋ 添加课程</text>
+    </view>
+  </block>
+
+  <!-- 开课弹层 -->
+  <form-dialog
+    visible="{{offOpen}}"
+    title="{{offTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{offLoading}}"
+    error="{{offError}}"
+    bind:cancel="closeOff"
+    bind:confirm="submitOffering"
+  >
+    <view class="field">
+      <text class="field-label">课程 *</text>
+      <picker mode="selector" range="{{offCatalogOptions}}" value="{{offCatalogIndex}}" bindchange="onOffCatalogChange">
+        <view class="field-value {{offCatalogOptions[offCatalogIndex] ? '' : 'field-placeholder'}}">{{offCatalogOptions[offCatalogIndex] || '请选择课程'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">教学班 *</text>
+      <picker mode="selector" range="{{offTcOptions}}" value="{{offTcIndex}}" bindchange="onOffTcChange">
+        <view class="field-value {{offTcOptions[offTcIndex] ? '' : 'field-placeholder'}}">{{offTcOptions[offTcIndex] || '请选择教学班'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">教师 *</text>
+      <input class="field-input" value="{{offForm.teacher}}" bindinput="onOffTeacherInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">学期 *</text>
+      <input class="field-input" value="{{offForm.semester}}" placeholder="如 2024-2025-2" placeholder-class="field-placeholder" bindinput="onOffSemesterInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">备注</text>
+      <input class="field-input" value="{{offForm.note}}" bindinput="onOffNoteInput" />
+    </view>
+  </form-dialog>
+
+  <!-- 课程库弹层 -->
+  <form-dialog
+    visible="{{catOpen}}"
+    title="{{catTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{catLoading}}"
+    error="{{catError}}"
+    bind:cancel="closeCat"
+    bind:confirm="submitCatalog"
+  >
+    <view class="field">
+      <text class="field-label">课程名称 *</text>
+      <input class="field-input" value="{{catForm.name}}" bindinput="onCatNameInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">课程代码</text>
+      <input class="field-input" value="{{catForm.code}}" bindinput="onCatCodeInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">描述</text>
+      <textarea class="field-textarea" value="{{catForm.description}}" bindinput="onCatDescInput" />
+    </view>
+  </form-dialog>
+</view>

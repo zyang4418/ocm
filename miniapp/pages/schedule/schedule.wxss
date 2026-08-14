@@ -1,0 +1,229 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+.search-row {
+  padding: var(--space-sm) var(--space-md);
+  background: #FFFFFF;
+}
+
+.search-input {
+  height: 64rpx;
+  padding: 0 var(--space-md);
+  border-radius: 999rpx;
+  background: var(--color-bg);
+  font-size: var(--font-sm);
+}
+
+.search-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.list-scroll {
+  flex: 1;
+  padding: var(--space-md);
+  box-sizing: border-box;
+}
+
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.card-top {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.card-head {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-name {
+  display: block;
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8rpx;
+}
+
+.card-effective {
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+  margin-left: var(--space-sm);
+}
+
+.action-btn {
+  padding: 8rpx 24rpx;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.action-danger {
+  color: #D54941;
+  background: #FDECEC;
+}
+
+.action-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* 节次表 */
+.period-table {
+  border: 1rpx solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-sm);
+}
+
+.period-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-bottom: 1rpx solid var(--color-border);
+}
+
+.period-row:last-child {
+  border-bottom: none;
+}
+
+.period-row--head {
+  background: var(--color-bg);
+}
+
+.period-cell {
+  flex: 1;
+  text-align: center;
+  padding: 12rpx 8rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.period-cell--idx {
+  flex: 1.2;
+}
+
+.period-cell--del {
+  flex: 0 0 64rpx;
+}
+
+.period-cell--time {
+  color: var(--color-text);
+}
+
+.card-empty {
+  display: block;
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-sm);
+}
+
+.period-edit-link {
+  font-size: var(--font-sm);
+  color: var(--color-primary);
+}
+
+.fab {
+  position: fixed;
+  right: var(--space-md);
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+  padding: 20rpx 36rpx;
+  border-radius: 999rpx;
+  background: var(--color-primary);
+  box-shadow: 0 8rpx 24rpx rgba(43, 95, 246, 0.3);
+  z-index: 100;
+}
+
+.fab-text {
+  font-size: var(--font-md);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.field-label {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.field-input {
+  height: 72rpx;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+}
+
+.field-value {
+  padding: 16rpx var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+  color: var(--color-text);
+}
+
+.field-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* 节次弹层内动态行 */
+.periods-hint {
+  display: block;
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-sm);
+}
+
+.period-input {
+  flex: 1.2;
+  height: 64rpx;
+  margin: 8rpx;
+  padding: 0 12rpx;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-xs);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.period-del {
+  flex: 0 0 64rpx;
+  text-align: center;
+  font-size: var(--font-sm);
+  color: #D54941;
+}
+
+.period-add {
+  margin-top: var(--space-sm);
+  padding: 16rpx;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  border: 1rpx dashed var(--color-border);
+  font-size: var(--font-sm);
+  color: var(--color-primary);
+}

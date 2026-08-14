@@ -1,0 +1,62 @@
+<view class="page">
+  <t-navbar title="审计日志" left-arrow fixed placeholder />
+
+  <!-- 筛选 -->
+  <view class="filters">
+    <view class="filter-row">
+      <picker mode="date" value="{{from}}" bindchange="onFromChange">
+        <view class="filter-box">{{from}}</view>
+      </picker>
+      <text class="filter-sep">至</text>
+      <picker mode="date" value="{{to}}" bindchange="onToChange">
+        <view class="filter-box">{{to}}</view>
+      </picker>
+      <view class="filter-clear" bindtap="onClearFilters">清空</view>
+    </view>
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索操作人 / 内容 / 路径"
+        placeholder-class="search-placeholder"
+        value="{{list.q}}"
+        bindinput="onSearchInput"
+      />
+    </view>
+  </view>
+
+  <!-- 保留设置(仅 log:manage) -->
+  <view wx:if="{{canManage}}" class="retention-card">
+    <view class="retention-row">
+      <text class="retention-label">日志自动清理</text>
+      <switch checked="{{retentionEnabled}}" bindchange="onRetentionToggle" color="#2B5FF6" />
+    </view>
+    <view class="retention-row">
+      <text class="retention-label">保留天数（1–3650）</text>
+      <input class="retention-input" type="number" value="{{retentionDays}}" bindinput="onRetentionDaysInput" />
+    </view>
+    <view wx:if="{{retentionError}}" class="retention-error">{{retentionError}}</view>
+    <view class="retention-save {{retentionSaving || !retentionValid ? 'retention-save--disabled' : ''}}" bindtap="saveRetention">
+      {{retentionSaving ? '保存中…' : '保存设置'}}
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-summary">{{item.summary}}</text>
+            <text class="card-request">{{item.requestLine}}</text>
+          </view>
+          <status-tag text="{{item.statusText}}" theme="{{item.statusTheme}}" />
+        </view>
+        <view class="card-bottom">
+          <text class="card-meta">{{item.actorName}} · {{item.createdAtText}} · {{item.clientIp}}</text>
+        </view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的日志' : '该时间范围内暂无日志'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+</view>

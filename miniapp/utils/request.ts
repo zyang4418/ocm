@@ -27,6 +27,11 @@ export function setOnUnauthorized(fn: () => void) {
   onUnauthorized = fn
 }
 
+/** Fire the 401 handler. Also used by sse.ts / upload.ts (their own transports). */
+export function notifyUnauthorized() {
+  if (onUnauthorized) onUnauthorized()
+}
+
 function buildPath(path: string, params?: RequestOptions['params']): string {
   if (!params) return path
   const parts: string[] = []
@@ -106,8 +111,8 @@ export async function request<T = any>(opts: RequestOptions): Promise<T> {
   const res = await callTransport(opts, fullPath, header, timeout)
   const { data, statusCode } = res
 
-  if (statusCode === 401 && opts.auth !== false && onUnauthorized) {
-    onUnauthorized()
+  if (statusCode === 401 && opts.auth !== false) {
+    notifyUnauthorized()
   }
 
   if (statusCode >= 200 && statusCode < 300) {

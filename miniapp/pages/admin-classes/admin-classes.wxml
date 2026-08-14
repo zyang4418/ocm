@@ -1,0 +1,63 @@
+<view class="page">
+  <t-navbar title="行政班管理" left-arrow fixed placeholder />
+
+  <view class="search-row">
+    <input
+      class="search-input"
+      placeholder="搜索行政班"
+      placeholder-class="search-placeholder"
+      value="{{list.q}}"
+      bindinput="onSearchInput"
+    />
+  </view>
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.name}}</text>
+            <text class="card-meta">{{item.gradeText}}</text>
+          </view>
+          <view wx:if="{{canManage}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+            <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+        <text wx:if="{{item.note}}" class="card-desc">{{item.note}}</text>
+        <text class="card-time">{{item.createdAtText}}</text>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的行政班' : '暂无行政班'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openCreate">
+    <text class="fab-text">＋ 添加行政班</text>
+  </view>
+
+  <form-dialog
+    visible="{{formOpen}}"
+    title="{{formTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{formLoading}}"
+    error="{{formError}}"
+    bind:cancel="closeForm"
+    bind:confirm="submitForm"
+  >
+    <view class="field">
+      <text class="field-label">年级</text>
+      <input class="field-input" value="{{form.grade}}" data-field="grade" placeholder="如 2024" placeholder-class="field-placeholder" bindinput="onFormInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">班级名称 *</text>
+      <input class="field-input" value="{{form.name}}" data-field="name" placeholder="如 1 班" placeholder-class="field-placeholder" bindinput="onFormInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">备注</text>
+      <textarea class="field-textarea" value="{{form.note}}" data-field="note" bindinput="onFormInput" />
+    </view>
+  </form-dialog>
+</view>

@@ -2,4 +2,24 @@
   <view class="nav-bar">
     <text class="nav-title">控制台</text>
   </view>
+
+  <scroll-view type="custom" scroll-y class="scroll-content">
+    <block wx:for="{{sections}}" wx:key="title" wx:for-item="section">
+      <view class="section">
+        <text class="section-title">{{section.title}}</text>
+        <view class="section-card">
+          <view class="grid-container">
+            <block wx:for="{{section.entries}}" wx:key="name">
+              <view class="grid-item" data-url="{{item.url}}" bindtap="onTapEntry">
+                <image class="grid-icon" src="{{item.icon}}" mode="aspectFit" />
+                <text class="grid-label">{{item.name}}</text>
+              </view>
+            </block>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!hasAny}}" text="暂无可用的管理功能"></empty-state>
+  </scroll-view>
 </view>

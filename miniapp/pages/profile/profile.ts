@@ -1,5 +1,7 @@
 import { getUser, unbind, AppUser } from '../../utils/auth'
 import { getNavInfo } from '../../utils/nav'
+import { can } from '../../utils/perms'
+import { request } from '../../utils/request'
 
 // roleLabelOf renders the user's roles joined by " / ", falling back to the
 // account type when no roles are present.
@@ -16,20 +18,18 @@ Page({
     displayName: '未登录',
     roleLabel: '',
     username: '',
-    stats: [
-      { value: '18', label: '本周课时' },
-      { value: '4', label: '管理班级' },
-      { value: '156', label: '学生人数' }
-    ],
+    stats: [] as { value: string; label: string }[],
+    showStats: false,
     menuGroup1: [
-      { name: '账号与安全', icon: '/assets/icons/profile_account.png' },
-      { name: '通知设置', icon: '/assets/icons/profile_notification.png' }
+      { name: '账号与安全', icon: '/assets/icons/profile_account.png', url: '' },
+      { name: '通知设置', icon: '/assets/icons/profile_notification.png', url: '' }
     ],
     menuGroup2: [
-      { name: '帮助中心', icon: '/assets/icons/profile_help.png' },
-      { name: '隐私政策', icon: '/assets/icons/profile_privacy.png' },
-      { name: '关于我们', icon: '/assets/icons/profile_about.png' }
-    ]
+      { name: '帮助中心', icon: '/assets/icons/profile_help.png', url: '' },
+      { name: '隐私政策', icon: '/assets/icons/profile_privacy.png', url: '' },
+      { name: '关于我们', icon: '/assets/icons/profile_about.png', url: '' }
+    ],
+    settingsVisible: false
   },
 
   onShow() {
@@ -43,6 +43,41 @@ Page({
     } else {
       this.setData({ displayName: '未登录', roleLabel: '', username: '' })
     }
+    // 授权变更后菜单与统计随之刷新。
+    this.setData({ settingsVisible: can('*') })
+    this.loadStats()
+  },
+
+  /** 权限门控实时统计(page_size=1 取 total);失败静默置「-」。 */
+  async loadStats() {
+    const u = getUser()
+    if (!u) {
+      this.setData({ stats: [], showStats: false })
+      return
+    }
+    const defs: { label: string; path: string; params: Record<string, string | number>; gate: boolean }[] = [
+      { label: '我的预约', path: '/api/bookings', params: { user_id: u.id, page_size: 1 }, gate: can('classroom:read') },
+      { label: '待审批', path: '/api/bookings', params: { status: 'pending', page_size: 1 }, gate: can('booking:approve') },
+      { label: '教室数', path: '/api/classrooms', params: { page_size: 1 }, gate: can('classroom:read') },
+      { label: '用户数', path: '/api/users', params: { page_size: 1 }, gate: can('user:read') }
+    ]
+    const active = defs.filter((d) => d.gate)
+    if (!active.length) {
+      this.setData({ stats: [], showStats: false })
+      return
+    }
+    this.setData({ showStats: true })
+    const stats = await Promise.all(
+      active.map(async (d) => {
+        try {
+          const data = await request<{ total: number }>({ path: d.path, params: d.params })
+          return { value: String(data && data.total != null ? data.total : '-'), label: d.label }
+        } catch {
+          return { value: '-', label: d.label }
+        }
+      })
+    )
+    this.setData({ stats })
   },
 
   onTapAction(e: WechatMiniprogram.TouchEvent) {
@@ -51,7 +86,7 @@ Page({
   },
 
   onTapMenu(e: WechatMiniprogram.TouchEvent) {
-    const { name } = e.currentTarget.dataset
+    const { name, url } = e.currentTarget.dataset
     if (name === '清除缓存') {
       wx.showModal({
         title: '清除缓存',
@@ -64,6 +99,10 @@ Page({
           }
         }
       })
+      return
+    }
+    if (url) {
+      wx.navigateTo({ url })
       return
     }
     wx.showToast({ title: name, icon: 'none', duration: 1000 })

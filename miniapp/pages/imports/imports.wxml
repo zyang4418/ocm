@@ -1,0 +1,115 @@
+<view class="page">
+  <t-navbar title="数据导入" left-arrow fixed placeholder />
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <!-- 上传区 -->
+    <view class="upload-card">
+      <text class="section-title">上传 xlsx 导入</text>
+      <picker mode="selector" range="{{typeLabels}}" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="field-value">{{typeLabels[typeIndex]}}</view>
+      </picker>
+      <text class="schema-text">表头：{{typeNote}}</text>
+      <view class="upload-btn {{uploading ? 'upload-btn--disabled' : ''}}" bindtap="onChooseFile">
+        {{uploading ? '上传中…' : '选择文件并导入'}}
+      </view>
+      <view class="jwc-link" bindtap="openJwc">教务处整表拆分导入 ›</view>
+    </view>
+
+    <view wx:if="{{actionError}}" class="banner">
+      <text class="banner-text">{{actionError}}</text>
+    </view>
+
+    <!-- 任务列表 -->
+    <text class="section-title">导入任务</text>
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.typeLabel}}</text>
+            <text class="card-file">{{item.filename}}</text>
+          </view>
+          <status-tag text="{{item.statusText}}" theme="{{item.statusTheme}}" />
+        </view>
+        <view class="card-line">
+          <text class="card-meta">总 {{item.totalRows}} · 成功 {{item.succeededRows}} · 失败 {{item.failedRows}}</text>
+        </view>
+        <view class="card-bottom">
+          <text class="card-time">{{item.createdAtText}}</text>
+          <view class="card-actions">
+            <view wx:if="{{item.canPreview}}" class="action-btn" data-id="{{item.id}}" bindtap="openDetail">查看预览</view>
+            <view wx:if="{{item.canInspect}}" class="action-btn" data-id="{{item.id}}" bindtap="openDetail">查看明细</view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="暂无导入任务"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <!-- jwc_split 弹层 -->
+  <form-dialog
+    visible="{{jwcOpen}}"
+    title="教务处整表拆分"
+    confirm-text=""
+    cancel-text="关闭"
+    hide-footer="{{true}}"
+    error="{{jwcError}}"
+    bind:cancel="closeJwc"
+  >
+    <view class="field">
+      <text class="field-label">学期 *</text>
+      <input class="field-input" value="{{jwcSemester}}" placeholder="如 2024-2025-2" placeholder-class="field-placeholder" bindinput="onJwcSemesterInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">第 1 周周一 *</text>
+      <picker mode="date" value="{{jwcWeek1Monday}}" bindchange="onJwcDateChange">
+        <view class="field-value {{jwcWeek1Monday ? '' : 'field-placeholder'}}">{{jwcWeek1Monday || '请选择日期（须为周一）'}}</view>
+      </picker>
+    </view>
+    <view class="upload-btn {{jwcUploading ? 'upload-btn--disabled' : ''}}" bindtap="onJwcChooseFile">
+      {{jwcUploading ? '上传中…' : '选择教务处 xlsx 并拆分'}}
+    </view>
+    <view wx:if="{{jwcResult}}" class="jwc-result">
+      <text class="jwc-result-title">已创建 {{jwcResult.jobs.length}} 个导入任务</text>
+      <text wx:for="{{jwcResult.warnings}}" wx:key="*this" class="jwc-warning">⚠ {{item}}</text>
+    </view>
+  </form-dialog>
+
+  <!-- 预览/明细弹层 -->
+  <form-dialog
+    visible="{{detailOpen}}"
+    title="{{detailView.isPreview ? '确认导入' : '导入明细'}}"
+    confirm-text="确认导入"
+    cancel-text="{{detailView.isPreview ? '取消导入' : '关闭'}}"
+    loading="{{detailActing}}"
+    error="{{detailError}}"
+    hide-confirm="{{!detailView.isPreview}}"
+    bind:cancel="onDetailCancel"
+    bind:confirm="onCommit"
+  >
+    <view wx:if="{{detailLoading}}" class="detail-loading">加载中…</view>
+    <block wx:elif="{{detailView}}">
+      <text class="detail-file">{{detailView.filename}}</text>
+      <text class="detail-summary">
+        {{detailView.isPreview ? '将导入' : '成功'}} {{detailView.succeededRows}} / 失败 {{detailView.failedRows}} / 总 {{detailView.totalRows}} 行
+      </text>
+
+      <view class="preview-table">
+        <view class="preview-row preview-row--head">
+          <text wx:for="{{detailView.columns}}" wx:key="key" class="preview-cell preview-cell--head">{{item.header}}</text>
+        </view>
+        <view wx:for="{{detailView.rows}}" wx:key="index" wx:for-item="row" class="preview-row">
+          <text wx:for="{{row}}" wx:key="index" wx:for-item="cell" class="preview-cell">{{cell}}</text>
+        </view>
+      </view>
+      <text wx:if="{{detailView.truncated}}" class="detail-note">仅显示前 1000 行（共 {{detailView.rowCount}} 行）</text>
+      <text wx:if="{{detailView.rows.length === 0}}" class="detail-note">无预览行</text>
+
+      <text class="detail-subtitle">错误报告</text>
+      <text wx:if="{{detailView.errorCount === 0}}" class="detail-note">无错误</text>
+      <text wx:for="{{detailView.errors}}" wx:key="row" class="detail-error">第 {{item.row}} 行：{{item.error}}</text>
+      <text wx:if="{{detailView.errorCount > 100}}" class="detail-note">…共 {{detailView.errorCount}} 条错误</text>
+    </block>
+  </form-dialog>
+</view>

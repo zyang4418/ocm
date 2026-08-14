@@ -5,7 +5,20 @@
     "pages/console/console",
     "pages/ai/ai",
     "pages/messages/messages",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/bookings/bookings",
+    "pages/classrooms/classrooms",
+    "pages/courses/courses",
+    "pages/schedule/schedule",
+    "pages/timetable/timetable",
+    "pages/users/users",
+    "pages/roles/roles",
+    "pages/groups/groups",
+    "pages/admin-classes/admin-classes",
+    "pages/teaching-classes/teaching-classes",
+    "pages/imports/imports",
+    "pages/logs/logs",
+    "pages/settings/settings"
   ],
   "window": {
     "navigationBarTitleText": "OCM",

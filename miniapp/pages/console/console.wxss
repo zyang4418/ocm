@@ -1,3 +1,68 @@
-.page { display: flex; flex-direction: column; height: 100vh; background: #fff; }
-.nav-bar { display: flex; align-items: center; justify-content: center; height: 88rpx; }
-.nav-title { font-size: 34rpx; font-weight: 700; }
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  background: #FFFFFF;
+}
+
+.nav-title {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.scroll-content {
+  flex: 1;
+}
+
+.section {
+  padding: var(--space-md) var(--space-md) 0;
+}
+
+.section-title {
+  display: block;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.section-card {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.grid-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  width: 33.33%;
+  padding: 28rpx 0;
+  box-sizing: border-box;
+}
+
+.grid-icon {
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.grid-label {
+  font-size: var(--font-xs);
+  color: var(--color-text);
+}

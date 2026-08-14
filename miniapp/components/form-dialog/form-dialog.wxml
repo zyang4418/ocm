@@ -1,0 +1,17 @@
+<view wx:if="{{visible}}" class="fd-mask">
+  <view class="fd-panel">
+    <view class="fd-header">
+      <text class="fd-title">{{title}}</text>
+    </view>
+    <scroll-view scroll-y class="fd-body">
+      <slot></slot>
+    </scroll-view>
+    <view wx:if="{{error}}" class="fd-error">
+      <text class="fd-error-text">{{error}}</text>
+    </view>
+    <view wx:if="{{!hideFooter}}" class="fd-footer">
+      <t-button theme="light" class="fd-btn" disabled="{{loading}}" bind:tap="onCancel">{{cancelText}}</t-button>
+      <t-button wx:if="{{!hideConfirm}}" theme="primary" class="fd-btn" loading="{{loading}}" disabled="{{disabled}}" bind:tap="onConfirm">{{confirmText}}</t-button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,11 @@
+.lf-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+.lf-text {
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+}

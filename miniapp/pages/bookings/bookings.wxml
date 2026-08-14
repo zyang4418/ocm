@@ -1,0 +1,143 @@
+<view class="page">
+  <t-navbar title="教室预约" left-arrow fixed placeholder />
+
+  <!-- 筛选区 -->
+  <view class="filters">
+    <scroll-view scroll-x class="chips-scroll" enable-flex>
+      <view class="chips-row">
+        <view
+          wx:for="{{statusChips}}"
+          wx:key="value"
+          class="chip {{activeStatus === item.value ? 'chip-active' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="onTapStatus"
+        >{{item.label}}</view>
+      </view>
+    </scroll-view>
+    <view class="filter-row">
+      <picker mode="selector" range="{{classroomOptions}}" value="{{filterClassroomIndex}}" bindchange="onFilterClassroomChange">
+        <view class="filter-box">{{classroomOptions[filterClassroomIndex] || '全部教室'}}</view>
+      </picker>
+      <picker mode="date" value="{{from}}" bindchange="onFromChange">
+        <view class="filter-box">{{from}}</view>
+      </picker>
+      <text class="filter-sep">至</text>
+      <picker mode="date" value="{{to}}" bindchange="onToChange">
+        <view class="filter-box">{{to}}</view>
+      </picker>
+    </view>
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索预约"
+        placeholder-class="search-placeholder"
+        value="{{list.q}}"
+        bindinput="onSearchInput"
+      />
+    </view>
+  </view>
+
+  <!-- 列表 -->
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <view wx:if="{{actionError}}" class="banner">
+      <text class="banner-text">{{actionError}}</text>
+    </view>
+
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <text class="card-room">{{item.classroomName}}</text>
+          <status-tag text="{{item.statusText}}" theme="{{item.statusTheme}}" />
+        </view>
+        <view class="card-line">
+          <text class="card-date">{{item.date}}</text>
+          <text class="card-period">{{item.periodText}}</text>
+        </view>
+        <view class="card-purpose">{{item.purpose}}</view>
+        <view class="card-bottom">
+          <text class="card-meta">{{item.displayName}} · {{item.createdAtText}}</text>
+          <view class="card-actions">
+            <view wx:if="{{item.canCancel}}" class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" bindtap="onTapCancelRow">取消</view>
+            <view wx:if="{{item.canReview}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-decision="approve" bindtap="onTapReview">通过</view>
+            <view wx:if="{{item.canReview}}" class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-decision="reject" bindtap="onTapReview">拒绝</view>
+            <text wx:if="{{!item.canCancel && !item.canReview}}" class="card-none">—</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的预约' : '暂无预约'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <!-- 新建预约 -->
+  <view class="fab" wx:if="{{canBook}}" bindtap="openCreate">
+    <text class="fab-text">＋ 新建预约</text>
+  </view>
+
+  <!-- 新建预约弹层 -->
+  <form-dialog
+    visible="{{createOpen}}"
+    title="新建预约"
+    confirm-text="提交"
+    cancel-text="取消"
+    loading="{{createLoading}}"
+    error="{{createError}}"
+    bind:cancel="closeCreate"
+    bind:confirm="handleCreate"
+  >
+    <view class="field">
+      <text class="field-label">教室</text>
+      <picker mode="selector" range="{{createClassroomOptions}}" value="{{createClassroomIndex}}" bindchange="onCreateClassroomChange">
+        <view class="field-value">{{createClassroomOptions[createClassroomIndex] || '请选择教室'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">日期</text>
+      <picker mode="date" value="{{createForm.date}}" bindchange="onCreateDateChange">
+        <view class="field-value {{createForm.date ? '' : 'field-placeholder'}}">{{createForm.date || '请选择日期'}}</view>
+      </picker>
+    </view>
+    <block wx:if="{{periodOptions.length > 0}}">
+      <view class="field">
+        <text class="field-label">起始节次</text>
+        <picker mode="selector" range="{{periodOptions}}" value="{{periodStartIndex}}" bindchange="onCreatePeriodStartChange">
+          <view class="field-value">{{periodOptions[periodStartIndex]}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="field-label">结束节次</text>
+        <picker mode="selector" range="{{periodOptions}}" value="{{periodEndIndex}}" bindchange="onCreatePeriodEndChange">
+          <view class="field-value">{{periodOptions[periodEndIndex]}}</view>
+        </picker>
+      </view>
+      <view class="busy-hint">
+        <text class="busy-text">{{busyText}}</text>
+      </view>
+    </block>
+    <view class="field">
+      <text class="field-label">用途</text>
+      <input
+        class="field-input"
+        placeholder="如 社团活动、会议"
+        placeholder-class="field-placeholder"
+        value="{{createForm.purpose}}"
+        bindinput="onCreatePurposeInput"
+      />
+    </view>
+  </form-dialog>
+
+  <!-- 取消预约确认 -->
+  <form-dialog
+    visible="{{!!cancelTarget}}"
+    title="取消预约"
+    confirm-text="确认取消"
+    cancel-text="返回"
+    loading="{{actingId === cancelTarget.id}}"
+    error="{{actionError}}"
+    bind:cancel="closeCancel"
+    bind:confirm="handleCancel"
+  >
+    <view class="confirm-text">确定要取消「{{cancelTarget.classroomName}} · {{cancelTarget.date}} · {{cancelTarget.periodText}}」的预约吗？</view>
+  </form-dialog>
+</view>

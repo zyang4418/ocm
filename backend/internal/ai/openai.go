@@ -47,11 +47,25 @@ func NewClient(baseURL, apiKey, model string) *Client {
 	}
 }
 
-// ToolDef is the OpenAI function-calling definition of one assistant tool.
+// ToolDef is the OpenAI function-calling definition of one assistant tool,
+// in the standard wrapped wire shape (type:"function" + function:{...}).
+// DeepSeek and other strict deserializers reject the flat form.
 type ToolDef struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Parameters  map[string]any `json:"parameters"`
+	Type     string `json:"type"`
+	Function struct {
+		Name        string         `json:"name"`
+		Description string         `json:"description"`
+		Parameters  map[string]any `json:"parameters"`
+	} `json:"function"`
+}
+
+// NewToolDef builds a standard function-call tool definition.
+func NewToolDef(name, description string, params map[string]any) ToolDef {
+	t := ToolDef{Type: "function"}
+	t.Function.Name = name
+	t.Function.Description = description
+	t.Function.Parameters = params
+	return t
 }
 
 // ChatMessage is one message in the upstream request. ToolCallID/ToolCalls

@@ -1,0 +1,135 @@
+.tg-scroll {
+  width: 100%;
+}
+
+.tg-grid {
+  display: flex;
+  flex-direction: column;
+  border: 1rpx solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: visible;
+  background: #FFFFFF;
+}
+
+.tg-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border-bottom: 1rpx solid var(--color-border);
+  overflow: visible;
+}
+
+.tg-row:last-child {
+  border-bottom: none;
+}
+
+.tg-row--head {
+  background: var(--color-bg);
+  overflow: visible;
+}
+
+.tg-time {
+  flex: 0 0 130rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+  border-right: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+  padding: 4rpx;
+}
+
+.tg-time--head {
+  flex: 0 0 130rpx;
+}
+
+.tg-time-idx {
+  font-size: var(--font-xs);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.tg-time-range {
+  font-size: 20rpx;
+  color: var(--color-text-tertiary);
+}
+
+.tg-day-head {
+  flex: 0 0 240rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+  border-right: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+  padding: 4rpx;
+}
+
+.tg-day-head:last-child {
+  border-right: none;
+}
+
+.tg-day-name {
+  font-size: var(--font-xs);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.tg-day-date {
+  font-size: 20rpx;
+  color: var(--color-text-tertiary);
+}
+
+.tg-cell {
+  flex: 0 0 240rpx;
+  position: relative;
+  border-right: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.tg-cell:last-child {
+  border-right: none;
+}
+
+.tg-session {
+  position: relative;
+  z-index: 2;
+  margin: 3rpx;
+  padding: 8rpx;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-light);
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.tg-session-course {
+  font-size: var(--font-xs);
+  color: var(--color-primary);
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.tg-session-meta {
+  font-size: 20rpx;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.tg-session-note {
+  font-size: 20rpx;
+  color: var(--color-text-tertiary);
+  word-break: break-all;
+}
+
+.tg-empty {
+  height: 100%;
+}
+
+.tg-empty--tappable:active {
+  background: var(--color-bg);
+}

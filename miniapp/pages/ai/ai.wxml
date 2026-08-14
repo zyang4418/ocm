@@ -7,36 +7,92 @@
     <view class="nav-right"></view>
   </view>
 
-  <scroll-view type="custom" scroll-y class="scroll-content">
+  <scroll-view type="custom" scroll-y class="scroll-content" scroll-into-view="{{scrollInto}}" scroll-with-animation>
+    <!-- 无权限 -->
+    <empty-state wx:if="{{!canUse}}" text="没有使用权限，如需使用请联系管理员授权"></empty-state>
 
-    <!-- AI 助手头部 -->
-    <view class="hero-section">
-      <view class="hero-card">
-        <image class="hero-icon" src="/assets/icons/ai_assistant.png" mode="aspectFit" />
-        <text class="hero-title">OCM AI 助手</text>
-        <text class="hero-subtitle">你的智能教学搭档</text>
-      </view>
-    </view>
-
-    <!-- 推荐问题 -->
-    <view class="suggest-section">
-      <view class="section-header">
-        <text class="section-title">你可以这样问我</text>
-      </view>
-      <view class="suggest-card">
-        <block wx:for="{{suggestions}}" wx:key="text">
-          <view class="suggest-item {{index !== suggestions.length - 1 ? 'suggest-divider' : ''}}" data-text="{{item.text}}" bindtap="onTapSuggest">
-            <text class="suggest-text">{{item.text}}</text>
-            <view class="suggest-arrow"></view>
+    <block wx:else>
+      <!-- 空态:引导 + 推荐问题 -->
+      <block wx:if="{{messages.length === 0}}">
+        <view class="hero-section">
+          <view class="hero-card">
+            <image class="hero-icon" src="/assets/icons/ai_assistant.png" mode="aspectFit" />
+            <text class="hero-title">OCM AI 助手</text>
+            <text class="hero-subtitle">按您的权限查询教室、空闲时段与课表；预约需在预览中确认后才会提交</text>
           </view>
-        </block>
-      </view>
-    </view>
+        </view>
+        <view class="suggest-section">
+          <view class="section-header">
+            <text class="section-title">你可以这样问我</text>
+          </view>
+          <view class="suggest-card">
+            <block wx:for="{{suggestions}}" wx:key="*this">
+              <view class="suggest-item {{index !== suggestions.length - 1 ? 'suggest-divider' : ''}}" data-text="{{item}}" bindtap="onTapSuggest">
+                <text class="suggest-text">{{item}}</text>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
 
+      <!-- 错误横幅 -->
+      <view wx:if="{{error}}" class="error-banner">
+        <text class="error-text">{{error}}</text>
+      </view>
+
+      <!-- 消息流 -->
+      <block wx:for="{{messages}}" wx:key="id" wx:for-item="msg">
+        <view class="msg-row {{msg.role === 'user' ? 'msg-row--user' : 'msg-row--assistant'}}">
+          <view class="msg-bubble {{msg.role === 'user' ? 'msg-bubble--user' : 'msg-bubble--assistant'}}">
+            <text wx:if="{{msg.content}}" class="msg-text" user-select>{{msg.content}}</text>
+            <view wx:if="{{msg.streaming && !msg.content}}" class="msg-loading">
+              <view class="dot"></view>
+              <view class="dot"></view>
+              <view class="dot"></view>
+            </view>
+            <text wx:if="{{msg.streaming && msg.content}}" class="msg-cursor">▍</text>
+
+            <!-- 工具状态 -->
+            <view wx:if="{{msg.toolTags.length > 0}}" class="msg-tools">
+              <status-tag wx:for="{{msg.toolTags}}" wx:key="text" wx:for-item="tag" text="{{tag.text}}" theme="{{tag.theme}}" />
+            </view>
+
+            <!-- 预约方案卡 -->
+            <view wx:if="{{msg.proposal && msg.proposal.state !== 'dismissed'}}" class="proposal">
+              <text class="proposal-title">预约预览</text>
+              <view class="proposal-fields">
+                <text class="proposal-field">教室：{{msg.proposal.payload.classroomName}}</text>
+                <text class="proposal-field">日期：{{msg.proposal.payload.date}}</text>
+                <text class="proposal-field">节次：{{msg.proposal.payload.periodLabel}}</text>
+                <text class="proposal-field">用途：{{msg.proposal.payload.purpose}}</text>
+              </view>
+              <view wx:if="{{msg.proposal.conflictCount > 0 && msg.proposal.state === 'proposed'}}" class="proposal-conflict">
+                <text class="proposal-conflict-text">该时段存在 {{msg.proposal.conflictCount}} 项冲突：{{msg.proposal.conflictsText}}</text>
+              </view>
+              <view wx:if="{{msg.proposal.state === 'confirmed'}}" class="proposal-success">
+                <text class="proposal-success-text">已提交预约，等待管理员审批</text>
+              </view>
+              <view wx:if="{{msg.proposal.state === 'failed'}}" class="proposal-failed">
+                <text class="proposal-failed-text">{{msg.proposal.error}}</text>
+              </view>
+              <view wx:if="{{msg.proposal.state === 'proposed' || msg.proposal.state === 'submitting'}}" class="proposal-actions">
+                <view class="proposal-btn proposal-btn--primary {{msg.proposal.state === 'submitting' ? 'proposal-btn--disabled' : ''}}" data-id="{{msg.id}}" bindtap="onConfirmProposal">
+                  {{msg.proposal.state === 'submitting' ? '提交中…' : '确认预约'}}
+                </view>
+                <view class="proposal-btn {{msg.proposal.state === 'submitting' ? 'proposal-btn--disabled' : ''}}" data-id="{{msg.id}}" bindtap="onDismissProposal">取消</view>
+              </view>
+            </view>
+            <text wx:if="{{msg.proposal && msg.proposal.state === 'dismissed'}}" class="proposal-dismissed">已取消此预约方案。</text>
+          </view>
+        </view>
+      </block>
+
+      <view id="chat-bottom" class="chat-bottom"></view>
+    </block>
   </scroll-view>
 
   <!-- 底部输入框 -->
-  <view class="input-bar" style="padding-bottom: calc(12px + {{safeAreaBottom}}px)">
+  <view wx:if="{{canUse}}" class="input-bar" style="padding-bottom: calc(12px + {{safeAreaBottom}}px)">
     <view class="input-wrapper">
       <input
         class="input"
@@ -46,9 +102,13 @@
         bindinput="onInput"
         confirm-type="send"
         bindconfirm="onSend"
+        disabled="{{busy}}"
       />
     </view>
-    <view class="send-btn {{inputValue ? 'send-active' : ''}}" bindtap="onSend">
+    <view wx:if="{{busy}}" class="send-btn send-btn--stop" bindtap="onStop">
+      <view class="stop-icon"></view>
+    </view>
+    <view wx:else class="send-btn {{inputValue ? 'send-active' : ''}}" bindtap="onSend">
       <text class="send-icon">➤</text>
     </view>
   </view>
