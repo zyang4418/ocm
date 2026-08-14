@@ -104,6 +104,43 @@ func (s *Store) List(ctx context.Context) ([]Classroom, error) {
 	return classrooms, rows.Err()
 }
 
+// PageClassrooms returns one page of classrooms matching q (fuzzy contains on
+// name and building) plus the total matching count across all pages. A zero
+// Pagination means no limit (full range).
+func (s *Store) PageClassrooms(ctx context.Context, q string, p dbutil.Pagination) ([]Classroom, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND (name LIKE ? OR building LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat)
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT `+columns+` FROM classrooms`+where+` ORDER BY id`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page classrooms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	classrooms := []Classroom{}
+	for rows.Next() {
+		var c Classroom
+		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan classroom: %w", err)
+		}
+		classrooms = append(classrooms, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM classrooms`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return classrooms, total, nil
+}
+
 func (s *Store) GetByID(ctx context.Context, id int64) (Classroom, error) {
 	var c Classroom
 	err := s.db.QueryRowContext(ctx,

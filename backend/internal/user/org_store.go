@@ -74,6 +74,43 @@ func (s *Store) ListAdminClasses(ctx context.Context) ([]AdminClass, error) {
 	return list, rows.Err()
 }
 
+// PageAdminClasses returns one page of admin classes matching q (fuzzy
+// contains on name and grade) plus the total matching count across all pages.
+// A zero Pagination means no limit (full range).
+func (s *Store) PageAdminClasses(ctx context.Context, q string, p dbutil.Pagination) ([]AdminClass, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND (name LIKE ? OR grade LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat)
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT id, grade, name, note, created_at FROM admin_classes`+where+` ORDER BY grade, name`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page admin classes: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []AdminClass{}
+	for rows.Next() {
+		var c AdminClass
+		if err := rows.Scan(&c.ID, &c.Grade, &c.Name, &c.Note, &c.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan admin class: %w", err)
+		}
+		list = append(list, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM admin_classes`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
 func (s *Store) GetAdminClass(ctx context.Context, id int64) (AdminClass, error) {
 	var c AdminClass
 	err := s.db.QueryRowContext(ctx,
@@ -230,6 +267,55 @@ func (s *Store) ListTeachingClasses(ctx context.Context) ([]TeachingClassView, e
 		}
 	}
 	return list, nil
+}
+
+// PageTeachingClasses returns one page of teaching classes matching q (fuzzy
+// contains on name) plus the total matching count across all pages. Member
+// admin classes are attached for the page's rows only. A zero Pagination means
+// no limit (full range).
+func (s *Store) PageTeachingClasses(ctx context.Context, q string, p dbutil.Pagination) ([]TeachingClassView, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND name LIKE ?`
+		args = append(args, dbutil.LikePattern(dbutil.EscapeLike(q)))
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT id, name, note, created_at FROM teaching_classes`+where+` ORDER BY name`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page teaching classes: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []TeachingClassView{}
+	var ids []int64
+	for rows.Next() {
+		var v TeachingClassView
+		if err := rows.Scan(&v.ID, &v.Name, &v.Note, &v.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan teaching class: %w", err)
+		}
+		list = append(list, v)
+		ids = append(ids, v.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	members, err := s.classMembersByTeachingClass(ctx, ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range list {
+		list[i].Classes = members[list[i].ID]
+		if list[i].Classes == nil {
+			list[i].Classes = []ClassRef{}
+		}
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM teaching_classes`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (s *Store) GetTeachingClass(ctx context.Context, id int64) (TeachingClassView, error) {

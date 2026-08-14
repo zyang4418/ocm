@@ -10,6 +10,39 @@ title: API 概述
 - 仅需登录(不限权限):`GET /api/auth/me`、`POST /api/auth/wx-unbind`、`GET /api/imports`、`GET /api/imports/{id}`。
 - 其余写操作按 permission 校验;`admin` 全通配,`user` 仅 `*:read` + `classroom:book` + `repair:create`。权限检查基于 permission 字符串,不基于角色名。
 
+## 分页与搜索
+
+所有列表接口(users / admin-classes / teaching-classes / classrooms / courses / offerings / sessions / bookings / regimes / imports)均返回**分页信封**并支持模糊搜索:
+
+```json
+{ "items": [ ... ], "total": 1234, "page": 1, "pageSize": 100 }
+```
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `page` | `1` | 页码,≥1(非数字或 <1 回退 1) |
+| `page_size` | `100` | 每页行数,钳制 `1..500` |
+| `q` | 空 | 模糊搜索词(LIKE contains,`%`/`_`/`\` 已转义,逐字匹配) |
+
+`total` 为全部匹配行数(跨页),`items` 永不返回 `null`(空列表为 `[]`)。各资源可搜索字段:
+
+| 资源 | 搜索字段 |
+|------|------|
+| users | username、display_name |
+| admin-classes | name、grade |
+| teaching-classes | name |
+| classrooms | name、building |
+| courses(课程库) | name、code |
+| offerings | 课程名/代码、教学班名、教师、学期 |
+| sessions | 课程名/代码、教学班名、教室名、教师、学期 |
+| bookings | purpose、显示名、用户名、教室名 |
+| regimes | name |
+| imports | filename、type |
+
+**豁免**(不分页、无信封、无 q,保持全量):`GET /api/timetable`(周派生网格)、`GET /api/schedule/active`(单条)、全部 `GET /api/{resource}/export`、单条 GET。
+
+> 注意:原 `GET /api/imports` 的 50 条硬上限已由统一分页取代(默认 100 条/页)。
+
 ## 健康检查
 
 | 方法 | 路径 | 说明 |
@@ -104,4 +137,4 @@ job 状态:`pending` → `processing` → `preview` →(commit)→ `succeeded` /
 
 ## 导出
 
-每个资源的 `GET /api/{resource}/export` 流式输出 xlsx,表头与对应 importer 必需列对齐,可回导。
+每个资源的 `GET /api/{resource}/export` 流式输出 xlsx,表头与对应 importer 必需列对齐,可回导。导出**忽略分页与搜索参数**(不接受 `page`/`page_size`/`q`),始终覆盖全量(或列表接口支持的过滤条件,如 bookings 的 classroom_id/status/from/to)。

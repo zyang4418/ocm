@@ -9,6 +9,7 @@ import (
 
 	"ocm-backend/internal/auth"
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 )
 
@@ -41,12 +42,18 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	users, err := h.store.List(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	users, total, err := h.store.PageUsers(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list users")
 		return
 	}
-	httpx.RespondJSON(w, http.StatusOK, users)
+	if users == nil {
+		users = []User{}
+	}
+	httpx.RespondPaged(w, users, total, p)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {

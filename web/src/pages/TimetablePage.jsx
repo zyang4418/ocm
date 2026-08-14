@@ -58,10 +58,15 @@ export default function TimetablePage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([apiFetch('/api/classrooms', { token }), apiFetch('/api/offerings', { token })])
+    // Dropdowns need (near-)full lists; pull the maximum page and unwrap the
+    // pagination envelope.
+    Promise.all([
+      apiFetch('/api/classrooms?page_size=500', { token }),
+      apiFetch('/api/offerings?page_size=500', { token }),
+    ])
       .then(([cls, offs]) => {
-        setClassrooms(Array.isArray(cls) ? cls : [])
-        setOfferings(Array.isArray(offs) ? offs : [])
+        setClassrooms(Array.isArray(cls?.items) ? cls.items : [])
+        setOfferings(Array.isArray(offs?.items) ? offs.items : [])
       })
       .catch((err) => setError(err.message))
   }, [token])

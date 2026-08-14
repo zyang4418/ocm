@@ -12,6 +12,7 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/classroom"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/xlsx"
@@ -82,7 +83,10 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	list, err := h.store.List(r.Context(), f)
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageBookings(r.Context(), f, httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
 		return
@@ -90,7 +94,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []BookingView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // export streams bookings as an xlsx download, respecting the same

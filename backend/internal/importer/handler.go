@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/importer/jwc"
 	"ocm-backend/internal/schedule"
@@ -90,7 +91,10 @@ func (h *Handler) checkPerm(w http.ResponseWriter, r *http.Request, perm string)
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.store.ListJobs(r.Context(), 50)
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	jobs, total, err := h.store.PageJobs(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list import jobs")
 		return
@@ -98,7 +102,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	if jobs == nil {
 		jobs = []Job{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, jobs)
+	httpx.RespondPaged(w, jobs, total, p)
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,6 +28,8 @@ import { Add, Edit, Password as PasswordIcon, TrashCan } from '@carbon/icons-rea
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
+import usePagedList from '../hooks/usePagedList.js'
+import ListPagination from '../components/ListPagination.jsx'
 
 const headers = [
   { key: 'id', header: 'ID' },
@@ -56,9 +58,8 @@ const emptyCreate = { username: '', password: '', displayName: '', role: 'user' 
 export default function UsersPage() {
   const { token, user: currentUser } = useAuth()
   const navigate = useNavigate()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const list = usePagedList({ path: '/api/users', token })
+  const { loading } = list
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyCreate)
@@ -78,23 +79,6 @@ export default function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const data = await apiFetch('/api/users', { token })
-      setUsers(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
 
   const handleCreate = async () => {
     const { username, password, displayName, role } = createForm
@@ -116,7 +100,7 @@ export default function UsersPage() {
         },
       })
       setCreateOpen(false)
-      await fetchUsers()
+      list.reload()
     } catch (err) {
       setCreateError(err.message)
     } finally {
@@ -147,7 +131,7 @@ export default function UsersPage() {
         },
       })
       setEditTarget(null)
-      await fetchUsers()
+      list.reload()
     } catch (err) {
       setEditError(err.message)
     } finally {
@@ -197,7 +181,7 @@ export default function UsersPage() {
       setDeleteError('')
       await apiFetch(`/api/users/${deleteTarget.id}`, { method: 'DELETE', token })
       setDeleteTarget(null)
-      await fetchUsers()
+      list.reload()
     } catch (err) {
       setDeleteError(err.message)
     } finally {
@@ -227,18 +211,18 @@ export default function UsersPage() {
       </Column>
 
       <Column sm={4} md={8} lg={16}>
-        {error && (
+        {list.error && (
           <InlineNotification
             kind="error"
             title="加载失败"
-            subtitle={error}
+            subtitle={list.error}
             lowContrast
             hideCloseButton
             className="users-page__notice"
           />
         )}
 
-        <DataTable rows={users} headers={headers}>
+        <DataTable rows={list.items} headers={headers}>
           {({
             rows,
             headers: tableHeaders,
@@ -246,12 +230,11 @@ export default function UsersPage() {
             getHeaderProps,
             getRowProps,
             getToolbarProps,
-            onInputChange,
           }) => (
-            <TableContainer title="用户列表" description={`共 ${users.length} 个账号`}>
+            <TableContainer title="用户列表" description={`共 ${list.total} 个账号`}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch onChange={onInputChange} placeholder="搜索用户" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索用户" />
                   <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
                     添加用户
                   </Button>
@@ -276,12 +259,12 @@ export default function UsersPage() {
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={headers.length + 1}>
-                        {users.length === 0 ? '暂无用户' : '未找到匹配的用户'}
+                        {list.q ? '未找到匹配的用户' : '暂无用户'}
                       </TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const u = users.find((x) => String(x.id) === String(row.id))
+                      const u = list.items.find((x) => String(x.id) === String(row.id))
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
@@ -337,6 +320,13 @@ export default function UsersPage() {
             </TableContainer>
           )}
         </DataTable>
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </Column>
 
       {/* Create */}

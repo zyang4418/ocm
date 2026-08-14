@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -32,6 +32,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
 
 // ---- Offerings (课程/开课) ----
 const offeringHeaders = [
@@ -60,11 +62,16 @@ export default function CourseManagementPage() {
   const navigate = useNavigate()
   const canManage = currentUser?.role === 'admin'
 
-  const [offerings, setOfferings] = useState([])
-  const [catalog, setCatalog] = useState([])
+  const offerings = usePagedList({ path: '/api/offerings', token })
+  const catalogList = usePagedList({ path: '/api/courses', token })
+  // Dropdown options for the offering modal need (near-)full lists; pull the
+  // maximum page. optionsKey re-triggers the fetch after catalog mutations.
+  const [catalogOptions, setCatalogOptions] = useState([])
   const [teachingClasses, setTeachingClasses] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [optionsKey, setOptionsKey] = useState(0)
+  // Export errors are separate from the list fetches (the hooks own theirs).
+  const [exportError, setExportError] = useState('')
+  const error = offerings.error || catalogList.error || exportError
 
   // offering modals
   const [offCreateOpen, setOffCreateOpen] = useState(false)
@@ -85,28 +92,27 @@ export default function CourseManagementPage() {
   const [delError, setDelError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  const fetchAll = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const [offs, cats, tcs] = await Promise.all([
-        apiFetch('/api/offerings', { token }),
-        apiFetch('/api/courses', { token }),
-        apiFetch('/api/teaching-classes', { token }),
-      ])
-      setOfferings(Array.isArray(offs) ? offs : [])
-      setCatalog(Array.isArray(cats) ? cats : [])
-      setTeachingClasses(Array.isArray(tcs) ? tcs : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
   useEffect(() => {
-    fetchAll()
-  }, [fetchAll])
+    let cancelled = false
+    Promise.all([
+      apiFetch('/api/courses?page_size=500', { token }),
+      apiFetch('/api/teaching-classes?page_size=500', { token }),
+    ])
+      .then(([cats, tcs]) => {
+        if (cancelled) return
+        setCatalogOptions(Array.isArray(cats?.items) ? cats.items : [])
+        setTeachingClasses(Array.isArray(tcs?.items) ? tcs.items : [])
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalogOptions([])
+          setTeachingClasses([])
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token, optionsKey])
 
   // ---- offering handlers ----
   const submitOffering = async () => {
@@ -131,7 +137,7 @@ export default function CourseManagementPage() {
       }
       setOffCreateOpen(false)
       setOffEditTarget(null)
-      await fetchAll()
+      offerings.reload()
     } catch (err) {
       setOffError(err.message)
     } finally {
@@ -173,7 +179,8 @@ export default function CourseManagementPage() {
       }
       setCatCreateOpen(false)
       setCatEditTarget(null)
-      await fetchAll()
+      catalogList.reload()
+      setOptionsKey((k) => k + 1) // keep the modal's course dropdown in sync
     } catch (err) {
       setCatError(err.message)
     } finally {
@@ -197,7 +204,12 @@ export default function CourseManagementPage() {
       setDelError('')
       await apiFetch(url, { method: 'DELETE', token })
       setDelTarget(null)
-      await fetchAll()
+      if (kind === 'offering') {
+        offerings.reload()
+      } else {
+        catalogList.reload()
+        setOptionsKey((k) => k + 1)
+      }
     } catch (err) {
       setDelError(err.message)
     } finally {
@@ -229,17 +241,17 @@ export default function CourseManagementPage() {
       </TableCell>
     )
 
-  const renderTable = (rows, headers, kind) => (
-    <DataTable rows={rows} headers={headers}>
-      {({ rows, headers: th, getTableProps, getHeaderProps, getRowProps, getToolbarProps, onInputChange }) => (
-        <TableContainer title={kind === 'offering' ? '课程列表' : '课程库'} description={`共 ${rows.length} 项`}>
+  const renderTable = (list, headers, kind) => (
+    <DataTable rows={list.items} headers={headers}>
+      {({ rows, headers: th, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
+        <TableContainer title={kind === 'offering' ? '课程列表' : '课程库'} description={`共 ${list.total} 项`}>
           <TableToolbar {...getToolbarProps()}>
             <TableToolbarContent>
-              <TableToolbarSearch onChange={onInputChange} placeholder="搜索" />
+              <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索" />
               <ExportButton
                 path={kind === 'offering' ? '/api/offerings/export' : '/api/courses/export'}
                 fallbackName={kind === 'offering' ? 'offerings.xlsx' : 'catalog.xlsx'}
-                onError={setError}
+                onError={setExportError}
               />
               {canManage && (
                 <Button
@@ -276,18 +288,19 @@ export default function CourseManagementPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
+              {list.loading ? (
                 <TableRow>
                   <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>加载中…</TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>暂无数据</TableCell>
+                  <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>
+                    {list.q ? '未找到匹配的数据' : '暂无数据'}
+                  </TableCell>
                 </TableRow>
               ) : (
                 rows.map((row) => {
-                  const src = kind === 'offering' ? offerings : catalog
-                  const item = src.find((x) => String(x.id) === String(row.id))
+                  const item = list.items.find((x) => String(x.id) === String(row.id))
                   return (
                     <TableRow key={row.id} {...getRowProps({ row })}>
                       {row.cells.map((cell) => {
@@ -348,8 +361,26 @@ export default function CourseManagementPage() {
             <Tab>课程库</Tab>
           </TabList>
           <TabPanels>
-            <TabPanel>{renderTable(offerings, offeringHeaders, 'offering')}</TabPanel>
-            <TabPanel>{renderTable(catalog, catalogHeaders, 'catalog')}</TabPanel>
+            <TabPanel>
+              {renderTable(offerings, offeringHeaders, 'offering')}
+              <ListPagination
+                page={offerings.page}
+                pageSize={offerings.pageSize}
+                totalItems={offerings.total}
+                onPageChange={offerings.setPage}
+                onPageSizeChange={offerings.setPageSize}
+              />
+            </TabPanel>
+            <TabPanel>
+              {renderTable(catalogList, catalogHeaders, 'catalog')}
+              <ListPagination
+                page={catalogList.page}
+                pageSize={catalogList.pageSize}
+                totalItems={catalogList.total}
+                onPageChange={catalogList.setPage}
+                onPageSizeChange={catalogList.setPageSize}
+              />
+            </TabPanel>
           </TabPanels>
         </Tabs>
       </Column>
@@ -375,7 +406,7 @@ export default function CourseManagementPage() {
             onChange={(e) => setOffForm({ ...offForm, catalogId: e.target.value })}
           >
             <SelectItem value="" text="请选择课程" />
-            {catalog.map((c) => (
+            {catalogOptions.map((c) => (
               <SelectItem key={c.id} value={String(c.id)} text={`${c.name}${c.code ? `（${c.code}）` : ''}`} />
             ))}
           </Select>

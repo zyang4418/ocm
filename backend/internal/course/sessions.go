@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -34,29 +35,55 @@ JOIN course_catalog c ON c.id = o.catalog_id
 JOIN teaching_classes tc ON tc.id = o.teaching_class_id
 JOIN classrooms cr ON cr.id = s.classroom_id`
 
+// SessionFilter carries the optional list filters. Zero values are ignored
+// (no filter on that field). Q is the fuzzy search term, pre-escaped by the
+// builder.
+type SessionFilter struct {
+	OfferingID  int64
+	ClassroomID int64
+	From        string // "YYYY-MM-DD", inclusive
+	To          string // "YYYY-MM-DD", inclusive
+	Q           string // fuzzy contains on course/code/teaching class/classroom/teacher/semester
+}
+
+// buildSessionWhere returns " WHERE 1=1" plus AND clauses and args for the
+// non-zero filter fields. Shared by ListSessions and PageSessions so the two
+// cannot drift.
+func buildSessionWhere(f SessionFilter) (string, []any) {
+	where := ` WHERE 1=1`
+	var args []any
+	if f.OfferingID > 0 {
+		where += ` AND s.offering_id = ?`
+		args = append(args, f.OfferingID)
+	}
+	if f.ClassroomID > 0 {
+		where += ` AND s.classroom_id = ?`
+		args = append(args, f.ClassroomID)
+	}
+	if f.From != "" {
+		where += ` AND s.date >= ?`
+		args = append(args, f.From)
+	}
+	if f.To != "" {
+		where += ` AND s.date <= ?`
+		args = append(args, f.To)
+	}
+	if f.Q != "" {
+		where += ` AND (c.name LIKE ? OR c.code LIKE ? OR tc.name LIKE ? OR cr.name LIKE ? OR o.teacher LIKE ? OR o.semester LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(f.Q))
+		args = append(args, pat, pat, pat, pat, pat, pat)
+	}
+	return where, args
+}
+
+const sessionSelect = `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_start, s.period_end, s.note, s.created_at,
+       c.name, c.code, tc.name, o.teacher, o.semester, cr.name `
+
 // ListSessions returns sessions matching the given filters. Zero values are
 // ignored (no filter on that field).
 func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64, from, to string) ([]SessionView, error) {
-	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_start, s.period_end, s.note, s.created_at,
-       c.name, c.code, tc.name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE 1=1`
-	var args []any
-	if offeringID > 0 {
-		q += ` AND s.offering_id = ?`
-		args = append(args, offeringID)
-	}
-	if classroomID > 0 {
-		q += ` AND s.classroom_id = ?`
-		args = append(args, classroomID)
-	}
-	if from != "" {
-		q += ` AND s.date >= ?`
-		args = append(args, from)
-	}
-	if to != "" {
-		q += ` AND s.date <= ?`
-		args = append(args, to)
-	}
-	q += ` ORDER BY s.date, s.period_start, s.period_end`
+	where, args := buildSessionWhere(SessionFilter{OfferingID: offeringID, ClassroomID: classroomID, From: from, To: to})
+	q := sessionSelect + sessionJoin + where + ` ORDER BY s.date, s.period_start, s.period_end`
 
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -86,6 +113,47 @@ func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64,
 		}
 	}
 	return list, nil
+}
+
+// PageSessions returns one page of sessions matching f plus the total matching
+// count across all pages. ClassNames are attached for the page's rows only. A
+// zero Pagination means no limit (full range).
+func (s *Store) PageSessions(ctx context.Context, f SessionFilter, p dbutil.Pagination) ([]SessionView, int64, error) {
+	where, args := buildSessionWhere(f)
+	query, queryArgs := p.AppendLimit(
+		sessionSelect+sessionJoin+where+` ORDER BY s.date, s.period_start, s.period_end`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []SessionView{}
+	for rows.Next() {
+		v, err := s.scanSessionView(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan session: %w", err)
+		}
+		list = append(list, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	names, err := s.classNamesBySession(ctx, sessionIDs(list))
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range list {
+		list[i].ClassNames = names[list[i].ID]
+		if list[i].ClassNames == nil {
+			list[i].ClassNames = []string{}
+		}
+	}
+	total, err := dbutil.CountRows(ctx, s.db, sessionJoin+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (s *Store) GetSession(ctx context.Context, id int64) (SessionView, error) {

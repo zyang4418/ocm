@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/xlsx"
 )
@@ -42,7 +43,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 }
 
 func (h *Handler) listRegimes(w http.ResponseWriter, r *http.Request) {
-	regimes, err := h.store.ListRegimes(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	regimes, total, err := h.store.PageRegimes(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list regimes")
 		return
@@ -50,7 +54,7 @@ func (h *Handler) listRegimes(w http.ResponseWriter, r *http.Request) {
 	if regimes == nil {
 		regimes = []Regime{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, regimes)
+	httpx.RespondPaged(w, regimes, total, p)
 }
 
 // exportRegimes streams all regimes as an xlsx download, flattened to one row

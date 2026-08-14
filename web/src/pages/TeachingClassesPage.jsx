@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -26,6 +26,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
 
 // 教学班 (teaching class): a named group of admin classes taught together (合班).
 // An offering is taught to exactly one teaching class; two offerings of the same
@@ -57,10 +59,12 @@ export default function TeachingClassesPage() {
   const navigate = useNavigate()
   const canManage = currentUser?.role === 'admin'
 
-  const [teachingClasses, setTeachingClasses] = useState([])
+  const list = usePagedList({ path: '/api/teaching-classes', token })
+  const { loading } = list
   const [adminClasses, setAdminClasses] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  // Export errors are separate from the list fetch (the hook owns its error).
+  const [exportError, setExportError] = useState('')
+  const error = list.error || exportError
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
@@ -76,26 +80,21 @@ export default function TeachingClassesPage() {
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  const fetchAll = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const [tc, ac] = await Promise.all([
-        apiFetch('/api/teaching-classes', { token }),
-        apiFetch('/api/admin-classes', { token }),
-      ])
-      setTeachingClasses(Array.isArray(tc) ? tc : [])
-      setAdminClasses(Array.isArray(ac) ? ac : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+  // The admin-class dropdown needs the full option list; pull the maximum page.
+  useEffect(() => {
+    let cancelled = false
+    apiFetch('/api/admin-classes?page_size=500', { token })
+      .then((data) => {
+        if (cancelled) return
+        setAdminClasses(Array.isArray(data?.items) ? data.items : [])
+      })
+      .catch(() => {
+        if (!cancelled) setAdminClasses([])
+      })
+    return () => {
+      cancelled = true
     }
   }, [token])
-
-  useEffect(() => {
-    fetchAll()
-  }, [fetchAll])
 
   const validate = (form) => {
     if (!form.name.trim()) return '教学班名称为必填项'
@@ -121,7 +120,7 @@ export default function TeachingClassesPage() {
       await apiFetch('/api/teaching-classes', { method: 'POST', token, body: buildBody(createForm) })
       setCreateOpen(false)
       setCreateForm(emptyForm)
-      await fetchAll()
+      list.reload()
     } catch (err) {
       setCreateError(err.message)
     } finally {
@@ -150,7 +149,7 @@ export default function TeachingClassesPage() {
       setEditError('')
       await apiFetch(`/api/teaching-classes/${editTarget.id}`, { method: 'PUT', token, body: buildBody(editForm) })
       setEditTarget(null)
-      await fetchAll()
+      list.reload()
     } catch (err) {
       setEditError(err.message)
     } finally {
@@ -169,7 +168,7 @@ export default function TeachingClassesPage() {
       setDeleteError('')
       await apiFetch(`/api/teaching-classes/${deleteTarget.id}`, { method: 'DELETE', token })
       setDeleteTarget(null)
-      await fetchAll()
+      list.reload()
     } catch (err) {
       setDeleteError(err.message)
     } finally {
@@ -182,7 +181,7 @@ export default function TeachingClassesPage() {
   // object references match what MultiSelect holds.
   const selectionFor = (ids) => adminClasses.filter((a) => ids.includes(a.id))
 
-  const rows = teachingClasses.map((t) => ({
+  const rows = list.items.map((t) => ({
     id: String(t.id),
     name: t.name,
     members: (t.classes || []).map(classLabel).join('、') || '-',
@@ -249,15 +248,15 @@ export default function TeachingClassesPage() {
         )}
 
         <DataTable rows={rows} headers={headers}>
-          {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps, onInputChange }) => (
-            <TableContainer title="教学班列表" description={`共 ${teachingClasses.length} 个教学班`}>
+          {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
+            <TableContainer title="教学班列表" description={`共 ${list.total} 个教学班`}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch onChange={onInputChange} placeholder="搜索教学班" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索教学班" />
                   <ExportButton
                     path="/api/teaching-classes/export"
                     fallbackName="teaching-classes.xlsx"
-                    onError={setError}
+                    onError={setExportError}
                   />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
@@ -285,12 +284,12 @@ export default function TeachingClassesPage() {
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {teachingClasses.length === 0 ? '暂无教学班' : '未找到匹配的教学班'}
+                        {list.q ? '未找到匹配的教学班' : '暂无教学班'}
                       </TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const t = teachingClasses.find((x) => String(x.id) === String(row.id))
+                      const t = list.items.find((x) => String(x.id) === String(row.id))
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
@@ -330,6 +329,13 @@ export default function TeachingClassesPage() {
             </TableContainer>
           )}
         </DataTable>
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </Column>
 
       {/* Create */}

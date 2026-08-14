@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"ocm-backend/internal/dbutil"
 )
 
 var (
@@ -68,30 +70,44 @@ type ListFilter struct {
 	To          string // "YYYY-MM-DD", inclusive
 }
 
-func (s *Store) List(ctx context.Context, f ListFilter) ([]BookingView, error) {
-	q := `SELECT ` + selectColumns + bookingJoin + ` WHERE 1=1`
+// buildBookingWhere returns " WHERE 1=1" plus AND clauses and args for the
+// non-zero ListFilter fields plus an optional fuzzy search term (purpose,
+// display name, username, classroom name). Shared by List and PageBookings so
+// the two cannot drift; q is always "" on the export path.
+func buildBookingWhere(f ListFilter, q string) (string, []any) {
+	where := ` WHERE 1=1`
 	var args []any
 	if f.ClassroomID > 0 {
-		q += ` AND b.classroom_id = ?`
+		where += ` AND b.classroom_id = ?`
 		args = append(args, f.ClassroomID)
 	}
 	if f.UserID > 0 {
-		q += ` AND b.user_id = ?`
+		where += ` AND b.user_id = ?`
 		args = append(args, f.UserID)
 	}
 	if f.Status != "" {
-		q += ` AND b.status = ?`
+		where += ` AND b.status = ?`
 		args = append(args, f.Status)
 	}
 	if f.From != "" {
-		q += ` AND b.date >= ?`
+		where += ` AND b.date >= ?`
 		args = append(args, f.From)
 	}
 	if f.To != "" {
-		q += ` AND b.date <= ?`
+		where += ` AND b.date <= ?`
 		args = append(args, f.To)
 	}
-	q += ` ORDER BY b.date DESC, b.period_start DESC, b.id DESC`
+	if q != "" {
+		where += ` AND (b.purpose LIKE ? OR u.display_name LIKE ? OR u.username LIKE ? OR cr.name LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat, pat, pat)
+	}
+	return where, args
+}
+
+func (s *Store) List(ctx context.Context, f ListFilter) ([]BookingView, error) {
+	where, args := buildBookingWhere(f, "")
+	q := `SELECT ` + selectColumns + bookingJoin + where + ` ORDER BY b.date DESC, b.period_start DESC, b.id DESC`
 
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -108,6 +124,38 @@ func (s *Store) List(ctx context.Context, f ListFilter) ([]BookingView, error) {
 		list = append(list, v)
 	}
 	return list, rows.Err()
+}
+
+// PageBookings returns one page of bookings matching f plus q (fuzzy contains
+// on purpose, display name, username and classroom name), plus the total
+// matching count across all pages. A zero Pagination means no limit (full
+// range).
+func (s *Store) PageBookings(ctx context.Context, f ListFilter, q string, p dbutil.Pagination) ([]BookingView, int64, error) {
+	where, args := buildBookingWhere(f, q)
+	query, queryArgs := p.AppendLimit(
+		`SELECT `+selectColumns+bookingJoin+where+` ORDER BY b.date DESC, b.period_start DESC, b.id DESC`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page bookings: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []BookingView{}
+	for rows.Next() {
+		v, err := scanBookingView(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan booking: %w", err)
+		}
+		list = append(list, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, bookingJoin+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (s *Store) GetByID(ctx context.Context, id int64) (BookingView, error) {

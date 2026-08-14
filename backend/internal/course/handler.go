@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/xlsx"
@@ -65,7 +67,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 // ---- Catalog ----
 
 func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.ListCatalog(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageCatalog(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
 		return
@@ -73,7 +78,7 @@ func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []CatalogCourse{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // exportCatalog streams the course catalog as an xlsx download. Columns match
@@ -196,7 +201,10 @@ func (h *Handler) deleteCatalog(w http.ResponseWriter, r *http.Request) {
 // ---- Offerings ----
 
 func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.ListOfferings(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageOfferings(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
 		return
@@ -204,7 +212,7 @@ func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []OfferingView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // exportOfferings streams all offerings as an xlsx download, using display names
@@ -319,7 +327,12 @@ func (h *Handler) deleteOffering(w http.ResponseWriter, r *http.Request) {
 // ---- Sessions ----
 
 func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
-	list, err := h.querySessions(r)
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	f := sessionFilterFromQuery(q)
+	f.Q = httpx.ParseSearch(q)
+	list, total, err := h.store.PageSessions(r.Context(), f,
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
 		return
@@ -327,16 +340,24 @@ func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []SessionView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
+}
+
+// sessionFilterFromQuery parses the list/export filter params (offering_id,
+// classroom_id, from, to), shared by listSessions and exportSessions so the two
+// stay in sync. Search (q) and pagination are not read here — exports always
+// cover the full filtered range.
+func sessionFilterFromQuery(q url.Values) SessionFilter {
+	offeringID, _ := strconv.ParseInt(q.Get("offering_id"), 10, 64)
+	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
+	return SessionFilter{OfferingID: offeringID, ClassroomID: classroomID, From: q.Get("from"), To: q.Get("to")}
 }
 
 // querySessions parses the list/export filter params and returns the matching
 // sessions, shared by listSessions and exportSessions so the two stay in sync.
 func (h *Handler) querySessions(r *http.Request) ([]SessionView, error) {
-	q := r.URL.Query()
-	offeringID, _ := strconv.ParseInt(q.Get("offering_id"), 10, 64)
-	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
-	return h.store.ListSessions(r.Context(), offeringID, classroomID, q.Get("from"), q.Get("to"))
+	f := sessionFilterFromQuery(r.URL.Query())
+	return h.store.ListSessions(r.Context(), f.OfferingID, f.ClassroomID, f.From, f.To)
 }
 
 // exportSessions streams sessions as an xlsx download, honoring the same

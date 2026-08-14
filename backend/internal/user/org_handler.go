@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/xlsx"
 )
@@ -40,7 +41,10 @@ func (h *Handler) registerOrgRoutes(mux *http.ServeMux, authenticate func(http.H
 // ---- Admin classes ----
 
 func (h *Handler) listAdminClasses(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.ListAdminClasses(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageAdminClasses(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list admin classes")
 		return
@@ -48,7 +52,7 @@ func (h *Handler) listAdminClasses(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []AdminClass{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // exportAdminClasses streams all admin classes as an xlsx download. Columns
@@ -179,7 +183,10 @@ func NormalizeAdminClass(in *AdminClassInput) (string, bool) {
 // ---- Teaching classes ----
 
 func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.ListTeachingClasses(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageTeachingClasses(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list teaching classes")
 		return
@@ -187,7 +194,7 @@ func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []TeachingClassView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // exportTeachingClasses streams all teaching classes as an xlsx download,

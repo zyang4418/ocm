@@ -31,6 +31,8 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 
 业务路由前缀 `/api`,Go 1.22+ 方法路由。按资源分组:auth、users、admin-classes、teaching-classes、classrooms、schedule(regimes/periods)、course(catalog/offerings/sessions/timetable)、bookings、imports。完整路由表(方法+路径+权限)见 [API 概述](/api)。
 
+**列表分页约定**:列表接口经 `httpx.ParsePageParams`(`page`/`page_size`,默认 100、上限 500)+ `httpx.ParseSearch`(`q`)解析后调各 store 的 `Page*` 方法,返回 `httpx.Paged` 信封 `{items,total,page,pageSize}`。`Page*` 与既有 `List*` 并存:`List*` 保持全量(零值 `dbutil.Pagination` = 不分页),供导出、importer `loadRefs`、Timetable、校验路径等内部调用方使用;搜索与分页仅存在于 `Page*`(sessions/bookings 的 WHERE 构建分别抽为 `buildSessionWhere`/`buildBookingWhere`,List 与 Page 共用,SQL 逐字节一致)。q 一律走绑定参数 + `dbutil.EscapeLike` 转义。
+
 ## 鉴权
 
 **JWT** —— `internal/auth/token.go`:HS256;密钥取 `JWT_SECRET`(空则回落开发串 `ocm-dev-secret-do-not-use-in-production` 并告警);TTL 24h;签发 issuer `ocm-backend`、subject = 用户名;`Parse` 先校验签名方法是 HMAC 再用密钥。

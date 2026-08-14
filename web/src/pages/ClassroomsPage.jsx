@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,6 +28,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
 
 const headers = [
   { key: 'id', header: 'ID' },
@@ -93,9 +95,11 @@ export default function ClassroomsPage() {
   const navigate = useNavigate()
   const canManage = currentUser?.role === 'admin'
 
-  const [classrooms, setClassrooms] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const list = usePagedList({ path: '/api/classrooms', token })
+  const { loading } = list
+  // Export errors are separate from the list fetch (the hook owns its error).
+  const [exportError, setExportError] = useState('')
+  const error = list.error || exportError
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
@@ -110,23 +114,6 @@ export default function ClassroomsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
-
-  const fetchClassrooms = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const data = await apiFetch('/api/classrooms', { token })
-      setClassrooms(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => {
-    fetchClassrooms()
-  }, [fetchClassrooms])
 
   const validate = (form) => {
     if (!form.name.trim()) return '教室编号为必填项'
@@ -161,7 +148,7 @@ export default function ClassroomsPage() {
       })
       setCreateOpen(false)
       setCreateForm(emptyForm)
-      await fetchClassrooms()
+      list.reload()
     } catch (err) {
       setCreateError(err.message)
     } finally {
@@ -199,7 +186,7 @@ export default function ClassroomsPage() {
         body: buildBody(editForm),
       })
       setEditTarget(null)
-      await fetchClassrooms()
+      list.reload()
     } catch (err) {
       setEditError(err.message)
     } finally {
@@ -218,7 +205,7 @@ export default function ClassroomsPage() {
       setDeleteError('')
       await apiFetch(`/api/classrooms/${deleteTarget.id}`, { method: 'DELETE', token })
       setDeleteTarget(null)
-      await fetchClassrooms()
+      list.reload()
     } catch (err) {
       setDeleteError(err.message)
     } finally {
@@ -261,7 +248,7 @@ export default function ClassroomsPage() {
           />
         )}
 
-        <DataTable rows={classrooms} headers={headers}>
+        <DataTable rows={list.items} headers={headers}>
           {({
             rows,
             headers: tableHeaders,
@@ -269,16 +256,15 @@ export default function ClassroomsPage() {
             getHeaderProps,
             getRowProps,
             getToolbarProps,
-            onInputChange,
           }) => (
-            <TableContainer title="教室列表" description={`共 ${classrooms.length} 间教室`}>
+            <TableContainer title="教室列表" description={`共 ${list.total} 间教室`}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch onChange={onInputChange} placeholder="搜索教室" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索教室" />
                   <ExportButton
                     path="/api/classrooms/export"
                     fallbackName="classrooms.xlsx"
-                    onError={setError}
+                    onError={setExportError}
                   />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
@@ -306,12 +292,12 @@ export default function ClassroomsPage() {
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {classrooms.length === 0 ? '暂无教室' : '未找到匹配的教室'}
+                        {list.q ? '未找到匹配的教室' : '暂无教室'}
                       </TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const c = classrooms.find((x) => String(x.id) === String(row.id))
+                      const c = list.items.find((x) => String(x.id) === String(row.id))
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
@@ -367,6 +353,13 @@ export default function ClassroomsPage() {
             </TableContainer>
           )}
         </DataTable>
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </Column>
 
       {/* Create */}

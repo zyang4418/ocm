@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,6 +19,7 @@ import {
   TableRow,
   TableToolbar,
   TableToolbarContent,
+  TableToolbarSearch,
   Tag,
   TextInput,
 } from '@carbon/react'
@@ -26,6 +27,8 @@ import { Upload } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch, apiUpload } from '../auth/api.js'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
 
 // IMPORT_TYPES describes each business-table import: the upload label, the
 // xlsx header contract (order-independent, matched by name), and the preview
@@ -217,9 +220,8 @@ export default function ImportsPage() {
   const navigate = useNavigate()
   const fileRef = useRef(null)
 
-  const [jobs, setJobs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const list = usePagedList({ path: '/api/imports', token })
+  const { loading } = list
 
   const [importType, setImportType] = useState('sessions')
   const [selectedFile, setSelectedFile] = useState(null)
@@ -240,29 +242,14 @@ export default function ImportsPage() {
   const [splitResult, setSplitResult] = useState(null)
   const splitFileRef = useRef(null)
 
-  const fetchJobs = useCallback(async () => {
-    try {
-      setError('')
-      const data = await apiFetch('/api/imports', { token })
-      setJobs(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
+  // Poll while any job is still pending or processing. The poll refetches the
+  // current page (a fresh job always lands on page 1, newest first).
   useEffect(() => {
-    fetchJobs()
-  }, [fetchJobs])
-
-  // Poll while any job is still pending or processing.
-  useEffect(() => {
-    const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'processing')
+    const hasActive = list.items.some((j) => j.status === 'pending' || j.status === 'processing')
     if (!hasActive) return undefined
-    const t = setInterval(fetchJobs, 3000)
+    const t = setInterval(list.reload, 3000)
     return () => clearInterval(t)
-  }, [jobs, fetchJobs])
+  }, [list.items, list.reload])
 
   const handleUpload = async () => {
     if (!selectedFile) return
@@ -272,7 +259,7 @@ export default function ImportsPage() {
       await apiUpload(`/api/imports/${importType}`, { file: selectedFile, token })
       setSelectedFile(null)
       if (fileRef.current) fileRef.current.value = ''
-      await fetchJobs()
+      list.reload()
     } catch (err) {
       setUploadError(err.message)
     } finally {
@@ -300,7 +287,7 @@ export default function ImportsPage() {
       setSplitResult(data)
       setSplitFile(null)
       if (splitFileRef.current) splitFileRef.current.value = ''
-      await fetchJobs()
+      list.reload()
     } catch (err) {
       setSplitError(err.message)
     } finally {
@@ -334,7 +321,7 @@ export default function ImportsPage() {
     try {
       await apiFetch(`/api/imports/${detailJob.id}/commit`, { method: 'POST', token })
       setDetailJob(null)
-      await fetchJobs()
+      list.reload()
     } catch (err) {
       setActionError(err.message)
     } finally {
@@ -349,7 +336,7 @@ export default function ImportsPage() {
     try {
       await apiFetch(`/api/imports/${detailJob.id}/cancel`, { method: 'POST', token })
       setDetailJob(null)
-      await fetchJobs()
+      list.reload()
     } catch (err) {
       setActionError(err.message)
     } finally {
@@ -374,7 +361,7 @@ export default function ImportsPage() {
   // uploaded, not the currently-selected type selector.
   const previewColumns = (detailJob && IMPORT_TYPES[detailJob.type]?.columns) || []
 
-  const rows = jobs.map((j) => ({
+  const rows = list.items.map((j) => ({
     id: String(j.id),
     type: j.type,
     filename: j.filename || '(未命名)',
@@ -407,11 +394,11 @@ export default function ImportsPage() {
         <p className="courses-page__subtitle">
           上传 xlsx 文件异步导入业务数据。先选择导入类型，再上传文件；解析后可预览并确认。
         </p>
-        {error && (
+        {list.error && (
           <InlineNotification
             kind="error"
             title="加载失败"
-            subtitle={error}
+            subtitle={list.error}
             lowContrast
             hideCloseButton
             className="courses-page__notice"
@@ -544,9 +531,11 @@ export default function ImportsPage() {
       <Column sm={4} md={8} lg={16}>
         <DataTable rows={rows} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="导入任务" description={`共 ${jobs.length} 个任务`}>
+            <TableContainer title="导入任务" description={`共 ${list.total} 个任务`}>
               <TableToolbar {...getToolbarProps()}>
-                <TableToolbarContent />
+                <TableToolbarContent>
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索导入任务" />
+                </TableToolbarContent>
               </TableToolbar>
               <Table {...getTableProps()}>
                 <TableHead>
@@ -566,11 +555,11 @@ export default function ImportsPage() {
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>暂无导入任务</TableCell>
+                      <TableCell colSpan={colSpan}>{list.q ? '未找到匹配的导入任务' : '暂无导入任务'}</TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const j = jobs.find((x) => String(x.id) === String(row.id))
+                      const j = list.items.find((x) => String(x.id) === String(row.id))
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
@@ -613,6 +602,13 @@ export default function ImportsPage() {
             </TableContainer>
           )}
         </DataTable>
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </Column>
 
       <Modal
