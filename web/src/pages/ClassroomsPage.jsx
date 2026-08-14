@@ -91,9 +91,9 @@ const emptyForm = {
 }
 
 export default function ClassroomsPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('classroom:manage')
 
   const list = usePagedList({ path: '/api/classrooms', token })
   const { loading } = list

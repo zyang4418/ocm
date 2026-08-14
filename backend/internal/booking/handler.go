@@ -178,7 +178,7 @@ func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	isAdmin := authz.Can(subject.Role, authz.BookingApprove)
+	isAdmin := subject.Has(authz.BookingApprove)
 	v, err := h.store.Cancel(r.Context(), id, subject.ID, isAdmin)
 	switch {
 	case errors.Is(err, ErrBookingNotFound):

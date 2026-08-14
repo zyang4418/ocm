@@ -83,9 +83,9 @@ function periodLabel(b) {
 const emptyForm = { classroomId: '', date: '', periodStart: '', periodEnd: '', purpose: '' }
 
 export default function BookingsPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, user: currentUser, can } = useAuth()
   const navigate = useNavigate()
-  const isAdmin = currentUser?.role === 'admin'
+  const canApprove = can('booking:approve')
 
   const [classrooms, setClassrooms] = useState([])
 
@@ -391,8 +391,8 @@ export default function BookingsPage() {
                       const canCancel =
                         b &&
                         (b.status === 'pending' || b.status === 'approved') &&
-                        (isAdmin || Number(currentUser?.id) === b.userId)
-                      const canReview = isAdmin && b && b.status === 'pending'
+                        (canApprove || Number(currentUser?.id) === b.userId)
+                      const canReview = canApprove && b && b.status === 'pending'
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {

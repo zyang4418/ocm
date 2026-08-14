@@ -18,6 +18,7 @@ import (
 	"ocm-backend/internal/course"
 	"ocm-backend/internal/db"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/iam"
 	"ocm-backend/internal/importer"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/user"
@@ -76,16 +77,24 @@ func main() {
 	if err := authStore.Migrate(ctx); err != nil {
 		log.Fatalf("auth migration: %v", err)
 	}
-	auth.NewHandler(authStore, tokenService, wxService).RegisterRoutes(mux)
+	// iam.Migrate must run after auth.Migrate (users table exists) and before
+	// any route serves traffic: it migrates the legacy users.role column into
+	// user_roles grants, then drops the column.
+	iamStore := iam.NewStore(database)
+	if err := iamStore.Migrate(ctx); err != nil {
+		log.Fatalf("iam migration: %v", err)
+	}
+	auth.NewHandler(authStore, tokenService, wxService, iamStore).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
 	if err := userStore.Migrate(ctx); err != nil {
 		log.Fatalf("user org migration: %v", err)
 	}
 	authenticate := func(next http.Handler) http.Handler {
-		return auth.Middleware(tokenService)(user.LoadSubject(userStore)(next))
+		return auth.Middleware(tokenService)(user.LoadSubject(userStore, iamStore)(next))
 	}
-	user.NewHandler(userStore).RegisterRoutes(mux, authenticate)
+	user.NewHandler(userStore, iamStore).RegisterRoutes(mux, authenticate)
+	iam.NewHandler(iamStore).RegisterRoutes(mux, authenticate)
 
 	classroomStore := classroom.NewStore(database)
 	if err := classroomStore.Migrate(ctx); err != nil {

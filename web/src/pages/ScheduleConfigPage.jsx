@@ -25,9 +25,9 @@ const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七
 const emptyRegime = { name: '', effectiveMonth: 5, effectiveDay: 1 }
 
 export default function ScheduleConfigPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('course:manage')
 
   const list = usePagedList({ path: '/api/schedule/regimes', token })
   const { loading } = list

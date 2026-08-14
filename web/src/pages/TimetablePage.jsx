@@ -40,9 +40,9 @@ function addDays(d, n) {
 }
 
 export default function TimetablePage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('course:manage')
 
   const [classrooms, setClassrooms] = useState([])
   const [offerings, setOfferings] = useState([])

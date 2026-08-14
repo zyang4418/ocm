@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/iam"
 )
 
 // Handler exposes the /api/auth endpoints.
@@ -15,10 +17,11 @@ type Handler struct {
 	store  *Store
 	tokens *TokenService
 	wx     *WxService
+	iam    *iam.Store
 }
 
-func NewHandler(store *Store, tokens *TokenService, wx *WxService) *Handler {
-	return &Handler{store: store, tokens: tokens, wx: wx}
+func NewHandler(store *Store, tokens *TokenService, wx *WxService, iamStore *iam.Store) *Handler {
+	return &Handler{store: store, tokens: tokens, wx: wx, iam: iamStore}
 }
 
 // RegisterRoutes mounts the auth endpoints on mux.
@@ -38,9 +41,47 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+// userView is the identity shape returned by every endpoint that hands the
+// client a user: base account fields plus the resolved RBAC state, so the
+// console and the mini-program can gate UI immediately after login without a
+// follow-up /api/auth/me call.
+type userView struct {
+	ID          int64            `json:"id"`
+	Username    string           `json:"username"`
+	DisplayName string           `json:"displayName"`
+	Type        string           `json:"type"`
+	Roles       []iam.RoleBrief  `json:"roles"`
+	Groups      []iam.GroupBrief `json:"groups"`
+	Permissions []string         `json:"permissions"`
+}
+
 type loginResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+	Token string   `json:"token"`
+	User  userView `json:"user"`
+}
+
+// enrichUser resolves a user's effective permissions, roles and groups.
+func (h *Handler) enrichUser(ctx context.Context, u User) (userView, error) {
+	eff, err := h.iam.EffectivePermissions(ctx, u.ID)
+	if err != nil {
+		return userView{}, err
+	}
+	groups, err := h.iam.GroupBriefs(ctx, u.ID)
+	if err != nil {
+		return userView{}, err
+	}
+	view := userView{
+		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Type: u.Type,
+		Roles: []iam.RoleBrief{}, Groups: groups, Permissions: []string{},
+	}
+	for _, role := range eff.Roles {
+		view.Roles = append(view.Roles, iam.RoleBrief{ID: role.ID, Code: role.Code, Name: role.Name})
+	}
+	for perm := range eff.Permissions {
+		view.Permissions = append(view.Permissions, perm)
+	}
+	sort.Strings(view.Permissions)
+	return view, nil
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +111,12 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
 		return
 	}
-	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: user})
+	view, err := h.enrichUser(r.Context(), user)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +134,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
 		return
 	}
-	httpx.RespondJSON(w, http.StatusOK, user)
+	view, err := h.enrichUser(r.Context(), user)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, view)
 }
 
 // ---- Mini-program (WeChat) login ----
@@ -130,7 +181,12 @@ func (h *Handler) wxLogin(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
 		return
 	}
-	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: user})
+	view, err := h.enrichUser(r.Context(), user)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
 }
 
 type wxBindRequest struct {
@@ -186,7 +242,12 @@ func (h *Handler) wxBind(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
 		return
 	}
-	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: user})
+	view, err := h.enrichUser(r.Context(), user)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
 }
 
 // wxUnbind clears the WeChat openid bound to the authenticated account. After

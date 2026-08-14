@@ -58,9 +58,9 @@ const emptyOffering = { catalogId: '', teachingClassId: '', teacher: '', semeste
 const emptyCatalog = { name: '', code: '', description: '' }
 
 export default function CourseManagementPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('course:manage')
 
   const offerings = usePagedList({ path: '/api/offerings', token })
   const catalogList = usePagedList({ path: '/api/courses', token })

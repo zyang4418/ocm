@@ -458,6 +458,133 @@
   @include type-style('body-01');
 }
 
+.users-page__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-02;
+}
+
+.users-page__readonly {
+  @include type-style('helper-text-01');
+  color: var(--cds-text-secondary);
+}
+
+.users-page__grants {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-06;
+}
+
+.users-page__grants-section {
+  h3 {
+    @include type-style('heading-03');
+    margin-block-end: $spacing-02;
+  }
+}
+
+.users-page__grants-hint {
+  @include type-style('helper-text-01');
+  color: var(--cds-text-secondary);
+  margin-block-end: $spacing-04;
+}
+
+.users-page__grant-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-04;
+  padding-block: $spacing-02;
+}
+
+.users-page__perm-group {
+  margin-block-end: $spacing-04;
+}
+
+.users-page__grants-empty {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+// --- Roles page --------------------------------------------------------------
+.roles-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.roles-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.roles-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.roles-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.roles-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.roles-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.roles-page__perm-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.roles-page__confirm-text {
+  @include type-style('body-01');
+}
+
+// --- Groups page -------------------------------------------------------------
+.groups-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.groups-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.groups-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.groups-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.groups-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.groups-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.groups-page__confirm-text {
+  @include type-style('body-01');
+}
+
 .classrooms-page {
   padding-block: $spacing-07 $spacing-09;
 }

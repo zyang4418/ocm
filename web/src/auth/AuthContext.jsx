@@ -58,9 +58,19 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  // can reports whether the current user holds a permission. The backend is
+  // the enforcement authority; this only gates UI visibility.
+  const can = useCallback(
+    (perm) => {
+      const perms = Array.isArray(user?.permissions) ? user.permissions : []
+      return perms.includes('*') || perms.includes(perm)
+    },
+    [user],
+  )
+
   const value = useMemo(
-    () => ({ token, user, bootstrapping, login, logout }),
-    [token, user, bootstrapping, login, logout],
+    () => ({ token, user, bootstrapping, login, logout, can }),
+    [token, user, bootstrapping, login, logout, can],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

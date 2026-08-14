@@ -11,6 +11,8 @@ import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
 import TimetablePage from './pages/TimetablePage.jsx'
 import ImportsPage from './pages/ImportsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
+import RolesPage from './pages/RolesPage.jsx'
+import GroupsPage from './pages/GroupsPage.jsx'
 import AdminClassesPage from './pages/AdminClassesPage.jsx'
 import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
 
@@ -54,6 +56,8 @@ export default function App() {
             <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/imports" element={<ImportsPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/roles" element={<RolesPage />} />
+            <Route path="/groups" element={<GroupsPage />} />
             <Route path="/admin-classes" element={<AdminClassesPage />} />
             <Route path="/teaching-classes" element={<TeachingClassesPage />} />
           </Route>

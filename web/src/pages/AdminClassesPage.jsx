@@ -53,9 +53,9 @@ function formatDate(value) {
 const emptyForm = { grade: '', name: '', note: '' }
 
 export default function AdminClassesPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('admin_class:manage')
 
   const list = usePagedList({ path: '/api/admin-classes', token })
   const { loading } = list

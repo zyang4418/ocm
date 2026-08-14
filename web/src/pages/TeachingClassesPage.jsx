@@ -55,9 +55,9 @@ const classLabel = (c) => (c.grade ? `${c.grade}/${c.name}` : c.name)
 const emptyForm = { name: '', note: '', classIds: [] }
 
 export default function TeachingClassesPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('teaching_class:manage')
 
   const list = usePagedList({ path: '/api/teaching-classes', token })
   const { loading } = list

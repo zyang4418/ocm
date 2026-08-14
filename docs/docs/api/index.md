@@ -2,13 +2,14 @@
 title: API 概述
 ---
 
-后端 HTTP API。所有业务路由前缀 `/api`,Go 1.22+ ServeMux 方法路由。鉴权 `Authorization: Bearer <JWT>`(HS256、24h)。角色 `admin`(通配放行)/ `user`(只读 + 预约 + 报修)。后端实现细节见 [后端](/guide/backend)。
+后端 HTTP API。所有业务路由前缀 `/api`,Go 1.22+ ServeMux 方法路由。鉴权 `Authorization: Bearer <JWT>`(HS256、24h)。权限模型为 RBAC:角色、用户组、直接授权均可配置,有效权限 = 直接角色授权 ∪ 组角色授权 ∪ 直接权限授权(过期授权自动失效)。系统内置 `admin`(通配 `*`)、`teacher`、`student` 三个角色,其余角色可在控制台自定义。后端实现细节见 [后端](/guide/backend)。
 
 ## 鉴权与权限
 
 - 公开端点(无需登录):`POST /api/auth/login`、`POST /api/auth/wx-bind`、`POST /api/auth/wx-login`。
-- 仅需登录(不限权限):`GET /api/auth/me`、`POST /api/auth/wx-unbind`、`GET /api/imports`、`GET /api/imports/{id}`。
-- 其余写操作按 permission 校验;`admin` 全通配,`user` 仅 `*:read` + `classroom:book` + `repair:create`。权限检查基于 permission 字符串,不基于角色名。
+- 仅需登录(不限权限):`POST /api/auth/wx-unbind`、`GET /api/imports`、`GET /api/imports/{id}`。
+- 其余端点按 permission 字符串校验,不基于角色名;持有 `*` 通配者(内置 admin 角色)放行一切。JWT 只携带 username,权限每请求实时查询 —— 授权、撤销与过期即时生效。
+- 返回用户身份的端点(`login`/`me`/`wx-login`/`wx-bind`)统一返回 `{id, username, displayName, type, roles[], groups[], permissions[]}`,前端据此做界面门控(后端才是鉴权权威)。
 
 ## 分页与搜索
 
@@ -60,16 +61,46 @@ title: API 概述
 | POST | `/api/auth/wx-login` | 公开 | 静默登录(openid 已绑) |
 | POST | `/api/auth/wx-unbind` | 登录 | 解绑 openid |
 
-## 用户(`/api/users`,perm `UserManage`)
+## 用户(`/api/users`)
 
-| 方法 | 路径 |
-|------|------|
-| GET | `/api/users` |
-| POST | `/api/users` |
-| GET | `/api/users/{id}` |
-| PUT | `/api/users/{id}` |
-| PATCH | `/api/users/{id}/password` |
-| DELETE | `/api/users/{id}` |
+账号字段:`id / username / displayName / type(student|teacher|staff)/ createdAt`;列表项额外含 `roles`、`groups` 摘要。创建/更新 body:`{username, password, displayName, type}`(创建)、`{displayName, type}`(更新,PUT 不再改角色,角色走授权端点)。
+
+| 方法 | 路径 | 权限 |
+|------|------|------|
+| GET | `/api/users` | `user:read` 或 `group:manage`(组编辑需选成员) |
+| POST | `/api/users` | `user:manage` |
+| GET | `/api/users/{id}` | `user:read` |
+| PUT | `/api/users/{id}` | `user:manage` |
+| PATCH | `/api/users/{id}/password` | `user:manage` |
+| DELETE | `/api/users/{id}` | `user:manage`(级联清理授权行) |
+| GET | `/api/users/{id}/grants` | `user:read` |
+| PUT | `/api/users/{id}/roles` | `user:manage` |
+| PUT | `/api/users/{id}/permissions` | `user:manage` |
+
+授权端点(replace-set 语义,`expiresAt` 为 RFC3339 或 null = 长期):
+
+- `GET /api/users/{id}/grants` → `{roles:[{roleId, code, name, expiresAt}], permissions:[{permission, expiresAt}], groups:[{id, name}]}`(含已过期行,前端标记展示)
+- `PUT /api/users/{id}/roles` body `{"roles":[{"roleCode","expiresAt"}]}` —— 清空 `[]` 即撤销全部角色。授予 `admin` 角色要求操作者持有 `*`
+- `PUT /api/users/{id}/permissions` body `{"permissions":[{"permission","expiresAt"}]}` —— `*` 不在权限目录中,天然被拒
+
+典型场景:学生被临时授予自定义「办公室助理」角色(含 `classroom:manage` 等)并设置 `expiresAt`,到期自动失效,或由管理员 `PUT roles:[]` 手动撤销。
+
+## 权限目录(`/api/permissions`)与角色(`/api/roles`)
+
+- `GET /api/permissions`(需 `role:read` / `role:manage` / `user:manage` 之一):权限目录,代码中定义,`{code, name, category, categoryName, description}` 数组。
+- `GET /api/roles`(同上):角色列表,`{id, code, name, description, isSystem, permissions[]}`。
+- `POST /api/roles`(`role:manage`):body `{code, name, description, permissions[]}`;code 匹配 `^[a-z][a-z0-9_]{0,63}$` 且创建后不可改;permissions 须全部存在于目录(`*` 被拒)。
+- `PUT /api/roles/{id}`(`role:manage`):更新 name/description/permissions,忽略 code;系统内置角色 409。
+- `DELETE /api/roles/{id}`(`role:manage`):系统内置 409;仍被用户/用户组使用时 409 并附使用计数(需先移除关联,不静默级联)。
+
+## 用户组(`/api/groups`)
+
+- `GET /api/groups`(需 `group:read` / `group:manage` / `user:manage` 之一):`{id, name, description, createdAt, memberCount}` 数组。
+- `GET /api/groups/{id}`(`group:read` 或 `group:manage`):组详情,含 `members[{id, username, displayName}]` 与 `roles[{id, code, name}]`。
+- `POST /api/groups`、`PUT /api/groups/{id}`(`group:manage`):body `{name, description, members:[userId], roles:[roleId]}`(replace-set)。组 roles 含 admin 角色时要求操作者持有 `*`。
+- `DELETE /api/groups/{id}`(`group:manage`):级联删除组成员与组角色授权。
+
+组成员的有效权限 = 个人授权 ∪ 所在组角色授权;批量调整时改组即可。
 
 ## 行政班(`/api/admin-classes`)与教学班(`/api/teaching-classes`)
 
@@ -107,8 +138,8 @@ title: API 概述
 | POST | `/api/bookings` | `ClassroomBook` |
 | GET | `/api/bookings/export` | `ClassroomRead` |
 | GET | `/api/bookings/{id}` | `ClassroomRead` |
-| POST | `/api/bookings/{id}/cancel` | `ClassroomBook`(预约人或 admin) |
-| POST | `/api/bookings/{id}/review` | `BookingApprove`(admin) |
+| POST | `/api/bookings/{id}/cancel` | `ClassroomBook`(预约人本人或持有 `booking:approve` 者) |
+| POST | `/api/bookings/{id}/review` | `BookingApprove` |
 
 ## 导入(`/api/imports`,异步)
 
@@ -132,7 +163,7 @@ title: API 概述
 | `catalog` | `CourseManage` | `name`(+ `code, credits, total_hours, category, exam_type, description`) |
 | `offerings` | `CourseManage` | `course, teaching_class, semester, teacher, note`(+ 其余教务元数据) |
 | `regimes` | `CourseManage` | `regime_name, effective_month, effective_day, period_index, start_time, end_time` |
-| `bookings` | `BookingApprove`(admin) | `classroom, username, date, period_start, period_end, status, purpose` |
+| `bookings` | `BookingApprove` | `classroom, username, date, period_start, period_end, status, purpose` |
 
 job 状态:`pending` → `processing` → `preview` →(commit)→ `succeeded` / `failed`;`cancelled`。部分行失败仍 `succeeded`,`failedRows` 与逐行 `errorReport` 见 `GET /api/imports/{id}`。
 

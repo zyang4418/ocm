@@ -83,7 +83,7 @@ func (h *Handler) checkPerm(w http.ResponseWriter, r *http.Request, perm string)
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return false
 	}
-	if !authz.Can(subject.Role, perm) {
+	if !subject.Has(perm) {
 		httpx.RespondError(w, http.StatusForbidden, "insufficient permissions")
 		return false
 	}

@@ -1,5 +1,13 @@
-import { getUser, unbind } from '../../utils/auth'
+import { getUser, unbind, AppUser } from '../../utils/auth'
 import { getNavInfo } from '../../utils/nav'
+
+// roleLabelOf renders the user's roles joined by " / ", falling back to the
+// account type when no roles are present.
+function roleLabelOf(u: AppUser): string {
+  const roles = u.roles || []
+  if (roles.length > 0) return roles.map((r) => r.name).join(' / ')
+  return u.type === 'student' ? '学生' : u.type === 'teacher' ? '教师' : '职员'
+}
 
 Page({
   data: {
@@ -30,7 +38,7 @@ Page({
       this.setData({
         displayName: u.displayName || u.username,
         username: u.username,
-        roleLabel: u.role === 'admin' ? '管理员' : '教师'
+        roleLabel: roleLabelOf(u)
       })
     } else {
       this.setData({ displayName: '未登录', roleLabel: '', username: '' })

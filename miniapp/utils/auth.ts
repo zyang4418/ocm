@@ -7,7 +7,10 @@ export interface AppUser {
   id: number
   username: string
   displayName: string
-  role: string
+  type: string // student | teacher | staff
+  roles?: { id: number; code: string; name: string }[]
+  groups?: { id: number; name: string }[]
+  permissions?: string[]
 }
 
 interface AuthResponse {
