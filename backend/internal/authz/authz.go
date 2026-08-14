@@ -99,6 +99,28 @@ func RequirePermission(permission string) func(http.Handler) http.Handler {
 	}
 }
 
+// RequireAdmin returns a middleware that admits a request only when the
+// Subject holds the "*" wildcard — the seeded system admin role. It is
+// stricter than RequirePermission: a regular permission can be granted to
+// other roles, the wildcard cannot (it is absent from the catalog). Used for
+// system-level configuration (e.g. mail/storage settings) that must stay
+// admin-only regardless of role grants. Must run after the auth pipeline has
+// populated the Subject in the request context.
+func RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s, ok := SubjectFrom(r.Context())
+		if !ok {
+			httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+		if !s.Has(Wildcard) {
+			httpx.RespondError(w, http.StatusForbidden, "insufficient permissions")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RequireAny returns a middleware that admits a request when the Subject
 // holds at least one of the given permissions. Used for catalog/list
 // endpoints (e.g. role and group listings) that several management roles

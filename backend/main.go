@@ -20,8 +20,10 @@ import (
 	"ocm-backend/internal/iam"
 	"ocm-backend/internal/importer"
 	"ocm-backend/internal/logging"
+	"ocm-backend/internal/mail"
 	"ocm-backend/internal/middleware"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/storage"
 	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/user"
 )
@@ -103,6 +105,18 @@ func main() {
 		logging.L.Error("systemlog migration", "err", err)
 		os.Exit(1)
 	}
+	// mail/storage settings have no dependencies; migrate them here so the
+	// settings routes below can serve immediately.
+	mailStore := mail.NewStore(database)
+	if err := mailStore.Migrate(ctx); err != nil {
+		logging.L.Error("mail migration", "err", err)
+		os.Exit(1)
+	}
+	storageStore := storage.NewStore(database)
+	if err := storageStore.Migrate(ctx); err != nil {
+		logging.L.Error("storage migration", "err", err)
+		os.Exit(1)
+	}
 	auth.NewHandler(authStore, tokenService, wxService, iamStore, systemlogStore).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
@@ -180,6 +194,9 @@ func main() {
 	importerHandler.RegisterRoutes(mux, authenticate)
 
 	systemlog.NewHandler(systemlogStore).RegisterRoutes(mux, authenticate)
+	// Admin-only system settings (admin-gated inside the handlers).
+	mail.NewHandler(mailStore).RegisterRoutes(mux, authenticate)
+	storage.NewHandler(storageStore).RegisterRoutes(mux, authenticate)
 
 	// Retention cleanup: purge once now and then daily. Recording itself is
 	// never disabled by settings — retention only controls deletion.

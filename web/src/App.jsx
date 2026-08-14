@@ -16,6 +16,7 @@ import GroupsPage from './pages/GroupsPage.jsx'
 import AdminClassesPage from './pages/AdminClassesPage.jsx'
 import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
 import LogsPage from './pages/LogsPage.jsx'
+import SettingsPage from './pages/SettingsPage.jsx'
 
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/admin-classes" element={<AdminClassesPage />} />
             <Route path="/teaching-classes" element={<TeachingClassesPage />} />
             <Route path="/logs" element={<LogsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
