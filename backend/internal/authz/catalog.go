@@ -61,6 +61,8 @@ func sortedCatalog() []Permission {
 			Description: "查看系统操作日志与日志保留设置"},
 		{Code: LogManage, Name: "日志管理", Category: "log", CategoryName: "系统日志",
 			Description: "修改日志保留策略（开关与保留天数）"},
+		{Code: AiChat, Name: "AI 助手", Category: "ai", CategoryName: "AI 助手",
+			Description: "与 AI 助手对话，查询教室、空闲教室与课表，并生成预约方案（需人工确认）"},
 	}
 	sort.Slice(perms, func(i, j int) bool {
 		if perms[i].Category != perms[j].Category {

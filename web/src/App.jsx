@@ -17,6 +17,7 @@ import AdminClassesPage from './pages/AdminClassesPage.jsx'
 import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
 import LogsPage from './pages/LogsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import AiPage from './pages/AiPage.jsx'
 
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
@@ -51,6 +52,7 @@ export default function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/ai" element={<AiPage />} />
             <Route path="/classrooms" element={<ClassroomsPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
             <Route path="/courses" element={<CourseManagementPage />} />

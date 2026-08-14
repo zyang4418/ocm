@@ -277,6 +277,86 @@ function StorageSection({ disabled }) {
   )
 }
 
+function isHttpUrl(value) {
+  try {
+    const u = new URL(value)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const aiDefaults = {
+  enabled: false,
+  baseUrl: '',
+  model: '',
+  apiKey: '',
+  apiKeySet: false,
+}
+
+function AiSection({ disabled }) {
+  const s = useSettings('/api/settings/ai', aiDefaults, 'AI 助手配置已保存')
+  const { form, setForm } = s
+  // Mirrors the server-side validation for enabled services so the save
+  // button stays disabled on invalid input.
+  const valid =
+    !form.enabled ||
+    (isHttpUrl(form.baseUrl.trim()) &&
+      form.model.trim() !== '' &&
+      (form.apiKey.trim() !== '' || form.apiKeySet))
+
+  return (
+    <section className="settings-page__section">
+      <h2 className="settings-page__section-heading">AI 助手</h2>
+      <p className="settings-page__section-hint">
+        大模型接口配置（OpenAI 兼容）。密钥仅保存在后端，不会发送给浏览器；启用后由权限「AI 助手」控制谁可以使用。
+      </p>
+      {s.error && (
+        <InlineNotification kind="error" lowContrast title="操作失败" subtitle={s.error} />
+      )}
+      {s.notice && <InlineNotification kind="success" lowContrast title={s.notice} />}
+      <Toggle
+        id="ai-enabled"
+        labelText="启用 AI 助手"
+        toggled={form.enabled}
+        disabled={disabled || !s.loaded}
+        onToggle={(checked) => setForm({ ...form, enabled: checked })}
+      />
+      <TextInput
+        id="ai-base-url"
+        labelText="API 地址 (Base URL)"
+        placeholder="https://api.openai.com/v1"
+        value={form.baseUrl}
+        disabled={disabled || !s.loaded}
+        onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+      />
+      <TextInput
+        id="ai-model"
+        labelText="模型名称"
+        placeholder="gpt-4o-mini"
+        value={form.model}
+        disabled={disabled || !s.loaded}
+        onChange={(e) => setForm({ ...form, model: e.target.value })}
+      />
+      <PasswordInput
+        id="ai-api-key"
+        labelText="API 密钥"
+        placeholder={form.apiKeySet ? '已设置，留空保持不变' : '未设置'}
+        value={form.apiKey}
+        disabled={disabled || !s.loaded}
+        onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
+        showPasswordLabel="显示密钥"
+        hidePasswordLabel="隐藏密钥"
+      />
+      {!disabled && (
+        <Button size="md" disabled={s.saving || !s.loaded || !valid} onClick={s.save}>
+          保存配置
+        </Button>
+      )}
+    </section>
+  )
+}
+
 export default function SettingsPage() {
   const { can } = useAuth()
   const isAdmin = can('*')
@@ -291,10 +371,11 @@ export default function SettingsPage() {
           </Breadcrumb>
           <h1 className="settings-page__heading">参数配置</h1>
           <p className="settings-page__subtitle">
-            邮件与对象存储服务配置，仅系统管理员可查看和修改。
+            邮件、对象存储与 AI 助手服务配置，仅系统管理员可查看和修改。
           </p>
           <MailSection disabled={!isAdmin} />
           <StorageSection disabled={!isAdmin} />
+          <AiSection disabled={!isAdmin} />
         </Column>
       </Grid>
     </div>

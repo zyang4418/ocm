@@ -24,6 +24,7 @@ const metrics = [
 ]
 
 const quickLinks = [
+  { title: 'AI 助手', description: '问答查询教室与课表，生成预约方案', href: '/ai', perm: 'ai:chat' },
   { title: '用户管理', description: '维护组织成员与账号状态' },
   { title: '角色管理', description: '配置角色与访问权限' },
   { title: '参数配置', description: '调整系统级运行参数', href: '/settings', adminOnly: true },
@@ -65,7 +66,7 @@ export default function DashboardPage() {
           <h2 className="dashboard__section">快速开始</h2>
         </Column>
         {quickLinks
-          .filter((l) => !l.adminOnly || can('*'))
+          .filter((l) => (!l.adminOnly || can('*')) && (!l.perm || can(l.perm)))
           .map(({ title, description, href }) => (
             <Column key={title} sm={4} md={4} lg={4}>
               <ClickableTile href={href ?? '#'} className="dashboard__quicklink">

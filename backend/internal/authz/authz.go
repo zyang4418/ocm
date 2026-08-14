@@ -34,6 +34,7 @@ const (
 	RepairAssign        = "repair:assign"
 	LogRead             = "log:read"
 	LogManage           = "log:manage"
+	AiChat              = "ai:chat"
 )
 
 // Wildcard is the special permission that grants everything. It is only held

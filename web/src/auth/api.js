@@ -90,6 +90,67 @@ export async function apiDownload(path, { token, fallbackName = 'export.xlsx' } 
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+// apiStream POSTs JSON and consumes a text/event-stream response (the AI
+// assistant's SSE endpoint), invoking onEvent(eventName, dataObject) for every
+// frame. Non-2xx responses are read as JSON and thrown like apiFetch. Returns
+// { promise, controller } — abort the controller to stop the stream mid-way.
+export function apiStream(path, { body, token, onEvent }) {
+  const controller = new AbortController()
+  const promise = (async () => {
+    const headers = { Accept: 'text/event-stream' }
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    let res
+    try {
+      res = await fetch(path, {
+        method: 'POST',
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
+    } catch (err) {
+      if (err.name === 'AbortError') throw err
+      throw new Error('无法连接到服务器，请稍后重试')
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      const err = new Error(data?.error || `请求失败（${res.status}）`)
+      err.status = res.status
+      throw err
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      let idx
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, idx)
+        buf = buf.slice(idx + 2)
+        let eventName = 'message'
+        let dataLine = ''
+        for (const line of frame.split('\n')) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim()
+          else if (line.startsWith('data:')) dataLine += line.slice(5).trim()
+        }
+        if (!dataLine) continue
+        let parsed = null
+        try {
+          parsed = JSON.parse(dataLine)
+        } catch {
+          // Malformed frame: skip it rather than failing the whole turn.
+        }
+        onEvent(eventName, parsed)
+      }
+    }
+  })()
+  return { promise, controller }
+}
+
 // parseFilename extracts the filename from a Content-Disposition header,
 // handling both the ASCII `filename="x.xlsx"` and the UTF-8
 // `filename*=UTF-8''<percent-encoded>` forms. Returns '' when not found.

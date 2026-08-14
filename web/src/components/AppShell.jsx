@@ -17,6 +17,7 @@ import {
 } from '@carbon/react'
 import {
   Building,
+  Chat,
   Dashboard,
   Education,
   Logout,
@@ -110,6 +111,16 @@ export default function AppShell({ children }) {
                   >
                     概览
                   </SideNavLink>
+                  {can('ai:chat') && (
+                    <SideNavLink
+                      renderIcon={Chat}
+                      href="/ai"
+                      isActive={isActive('/ai')}
+                      onClick={go('/ai')}
+                    >
+                      AI 助手
+                    </SideNavLink>
+                  )}
                   <SideNavMenu
                     key={`cls-${inClassrooms}`}
                     renderIcon={Building}

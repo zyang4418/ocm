@@ -109,9 +109,9 @@ func (s *Store) seedSystemRoles(ctx context.Context) error {
 	seed := []Role{
 		{Code: CodeAdmin, Name: "管理员", Description: "系统内置管理员角色，拥有全部权限", IsSystem: true,
 			Perms: []string{authz.Wildcard}},
-		{Code: CodeTeacher, Name: "教师", Description: "教师角色：查看课程与教室、预约教室、提交报修", IsSystem: true,
+		{Code: CodeTeacher, Name: "教师", Description: "教师角色：查看课程与教室、预约教室、提交报修、使用 AI 助手", IsSystem: true,
 			Perms: []string{authz.ClassroomRead, authz.CourseRead, authz.ClassroomBook,
-				authz.RepairCreate, authz.AdminClassRead, authz.TeachingClassRead}},
+				authz.RepairCreate, authz.AdminClassRead, authz.TeachingClassRead, authz.AiChat}},
 		{Code: CodeStudent, Name: "学生", Description: "学生角色：查看课程与教室、预约教室、提交报修", IsSystem: true,
 			Perms: []string{authz.ClassroomRead, authz.CourseRead, authz.ClassroomBook,
 				authz.RepairCreate, authz.AdminClassRead, authz.TeachingClassRead}},
