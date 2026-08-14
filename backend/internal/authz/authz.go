@@ -32,6 +32,8 @@ const (
 	TeachingClassManage = "teaching_class:manage"
 	RepairCreate        = "repair:create"
 	RepairAssign        = "repair:assign"
+	LogRead             = "log:read"
+	LogManage           = "log:manage"
 )
 
 // Wildcard is the special permission that grants everything. It is only held
@@ -46,10 +48,13 @@ const Wildcard = "*"
 // Permissions is the merged effective set (direct role grants ∪ group role
 // grants ∪ direct permission grants), already filtered for expired grants.
 // Roles/Groups carry the de-duplicated role codes and group IDs that produced
-// it, for display purposes.
+// it, for display purposes. Username/DisplayName identify the actor for
+// audit records (systemlog).
 type Subject struct {
 	ID          int64
 	Type        string
+	Username    string
+	DisplayName string
 	Permissions map[string]bool
 	Roles       []string
 	Groups      []int64

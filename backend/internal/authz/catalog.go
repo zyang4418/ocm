@@ -57,6 +57,10 @@ func sortedCatalog() []Permission {
 			Description: "提交教室报修"},
 		{Code: RepairAssign, Name: "指派报修", Category: "repair", CategoryName: "报修",
 			Description: "指派处理报修"},
+		{Code: LogRead, Name: "查看日志", Category: "log", CategoryName: "系统日志",
+			Description: "查看系统操作日志与日志保留设置"},
+		{Code: LogManage, Name: "日志管理", Category: "log", CategoryName: "系统日志",
+			Description: "修改日志保留策略（开关与保留天数）"},
 	}
 	sort.Slice(perms, func(i, j int) bool {
 		if perms[i].Category != perms[j].Category {

@@ -10,6 +10,8 @@ import (
 
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/iam"
+	"ocm-backend/internal/logging"
+	"ocm-backend/internal/systemlog"
 )
 
 // Handler exposes the /api/auth endpoints.
@@ -18,10 +20,18 @@ type Handler struct {
 	tokens *TokenService
 	wx     *WxService
 	iam    *iam.Store
+	logs   *systemlog.Store
 }
 
-func NewHandler(store *Store, tokens *TokenService, wx *WxService, iamStore *iam.Store) *Handler {
-	return &Handler{store: store, tokens: tokens, wx: wx, iam: iamStore}
+func NewHandler(store *Store, tokens *TokenService, wx *WxService, iamStore *iam.Store, logStore *systemlog.Store) *Handler {
+	return &Handler{store: store, tokens: tokens, wx: wx, iam: iamStore, logs: logStore}
+}
+
+// record writes an audit row for auth endpoints, which sit outside the
+// audit middleware (they authenticate with credentials, not a JWT Subject).
+func (h *Handler) record(r *http.Request, e systemlog.Entry) {
+	e.ClientIP = httpx.ClientIP(r)
+	h.logs.Record(r.Context(), e)
 }
 
 // RegisterRoutes mounts the auth endpoints on mux.
@@ -98,24 +108,30 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.Authenticate(r.Context(), req.Username, req.Password)
 	if errors.Is(err, ErrInvalidCredentials) {
+		h.record(r, systemlog.Entry{
+			ActorName: req.Username, Method: http.MethodPost, Path: "/api/auth/login",
+			StatusCode: http.StatusUnauthorized, Summary: "登录失败"})
 		httpx.RespondError(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "login failed")
+		httpx.Error500(w, r, "login failed", err)
 		return
 	}
 
 	token, err := h.tokens.Issue(user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
+		httpx.Error500(w, r, "could not issue token", err)
 		return
 	}
 	view, err := h.enrichUser(r.Context(), user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		httpx.Error500(w, r, "could not load account", err)
 		return
 	}
+	h.record(r, systemlog.Entry{
+		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/login",
+		StatusCode: http.StatusOK, Summary: "用户登录成功"})
 	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
 }
 
@@ -131,12 +147,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		httpx.Error500(w, r, "could not load account", err)
 		return
 	}
 	view, err := h.enrichUser(r.Context(), user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		httpx.Error500(w, r, "could not load account", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, view)
@@ -169,23 +185,29 @@ func (h *Handler) wxLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := h.store.GetByOpenid(r.Context(), openid)
 	if errors.Is(err, ErrNotBound) {
+		h.record(r, systemlog.Entry{
+			Method: http.MethodPost, Path: "/api/auth/wx-login",
+			StatusCode: http.StatusNotFound, Summary: "微信登录失败：微信号未绑定"})
 		httpx.RespondError(w, http.StatusNotFound, "微信号未绑定账号")
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "登录失败")
+		httpx.Error500(w, r, "登录失败", err)
 		return
 	}
 	token, err := h.tokens.Issue(user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
+		httpx.Error500(w, r, "could not issue token", err)
 		return
 	}
 	view, err := h.enrichUser(r.Context(), user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		httpx.Error500(w, r, "could not load account", err)
 		return
 	}
+	h.record(r, systemlog.Entry{
+		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/wx-login",
+		StatusCode: http.StatusOK, Summary: "微信小程序登录成功"})
 	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
 }
 
@@ -214,11 +236,14 @@ func (h *Handler) wxBind(w http.ResponseWriter, r *http.Request) {
 	// the single-use WeChat code.
 	user, err := h.store.Authenticate(r.Context(), req.Username, req.Password)
 	if errors.Is(err, ErrInvalidCredentials) {
+		h.record(r, systemlog.Entry{
+			ActorName: req.Username, Method: http.MethodPost, Path: "/api/auth/wx-bind",
+			StatusCode: http.StatusUnauthorized, Summary: "微信绑定失败"})
 		httpx.RespondError(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "登录失败")
+		httpx.Error500(w, r, "登录失败", err)
 		return
 	}
 	openid, err := h.wx.CodeToOpenid(r.Context(), req.Code)
@@ -233,20 +258,23 @@ func (h *Handler) wxBind(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrOpenidTaken):
 			httpx.RespondError(w, http.StatusConflict, "该微信号已绑定其他账号")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "绑定失败")
+			httpx.Error500(w, r, "绑定失败", err)
 		}
 		return
 	}
 	token, err := h.tokens.Issue(user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not issue token")
+		httpx.Error500(w, r, "could not issue token", err)
 		return
 	}
 	view, err := h.enrichUser(r.Context(), user)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load account")
+		httpx.Error500(w, r, "could not load account", err)
 		return
 	}
+	h.record(r, systemlog.Entry{
+		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/wx-bind",
+		StatusCode: http.StatusOK, Summary: "绑定微信账号"})
 	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
 }
 
@@ -258,10 +286,22 @@ func (h *Handler) wxUnbind(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	if err := h.store.UnbindOpenid(r.Context(), username); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "解绑失败")
+	user, err := h.store.ByUsername(r.Context(), username)
+	if errors.Is(err, ErrInvalidCredentials) {
+		httpx.RespondError(w, http.StatusUnauthorized, "account no longer exists")
 		return
 	}
+	if err != nil {
+		httpx.Error500(w, r, "解绑失败", err)
+		return
+	}
+	if err := h.store.UnbindOpenid(r.Context(), username); err != nil {
+		httpx.Error500(w, r, "解绑失败", err)
+		return
+	}
+	h.record(r, systemlog.Entry{
+		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/wx-unbind",
+		StatusCode: http.StatusNoContent, Summary: "解绑微信账号"})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -289,6 +329,9 @@ func Middleware(tokens *TokenService) func(http.Handler) http.Handler {
 				httpx.RespondError(w, http.StatusUnauthorized, "invalid or expired token")
 				return
 			}
+			// Make the username visible to the access-log middleware, which sits
+			// upstream and cannot see derived request contexts.
+			logging.WithUser(r.Context(), username)
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, username)))
 		})
 	}

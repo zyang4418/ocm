@@ -1,8 +1,9 @@
 package httpx
 
 import (
-	"log"
 	"net/http"
+
+	"ocm-backend/internal/logging"
 )
 
 // Recover is an HTTP middleware that converts a handler panic into a logged
@@ -15,7 +16,12 @@ func Recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				log.Printf("http: panic %s %s: %v", r.Method, r.URL.Path, rec)
+				logging.L.Error("http: panic",
+					"method", r.Method,
+					"path", r.URL.Path,
+					"request_id", logging.RequestIDFrom(r.Context()),
+					"panic", rec,
+				)
 				RespondError(w, http.StatusInternalServerError, "internal error")
 			}
 		}()

@@ -3,6 +3,7 @@ package schedule
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/xlsx"
 )
 
@@ -48,7 +50,7 @@ func (h *Handler) listRegimes(w http.ResponseWriter, r *http.Request) {
 	regimes, total, err := h.store.PageRegimes(r.Context(), httpx.ParseSearch(q),
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list regimes")
+		httpx.Error500(w, r, "could not list regimes", err)
 		return
 	}
 	if regimes == nil {
@@ -63,7 +65,7 @@ func (h *Handler) listRegimes(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportRegimes(w http.ResponseWriter, r *http.Request) {
 	regimes, err := h.store.ListRegimes(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list regimes")
+		httpx.Error500(w, r, "could not list regimes", err)
 		return
 	}
 	headers := []string{"regime_name", "effective_month", "effective_day", "period_index", "start_time", "end_time"}
@@ -74,7 +76,7 @@ func (h *Handler) exportRegimes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := xlsx.WriteExport(w, "regimes.xlsx", "regimes", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export regimes")
+		httpx.Error500(w, r, "could not export regimes", err)
 	}
 }
 
@@ -94,9 +96,10 @@ func (h *Handler) createRegime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create regime")
+		httpx.Error500(w, r, "could not create regime", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建作息制度 %s", regime.Name))
 	httpx.RespondJSON(w, http.StatusCreated, regime)
 }
 
@@ -112,7 +115,7 @@ func (h *Handler) getRegime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load regime")
+		httpx.Error500(w, r, "could not load regime", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, regime)
@@ -143,9 +146,10 @@ func (h *Handler) updateRegime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update regime")
+		httpx.Error500(w, r, "could not update regime", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新作息制度 %s", regime.Name))
 	httpx.RespondJSON(w, http.StatusOK, regime)
 }
 
@@ -155,14 +159,24 @@ func (h *Handler) deleteRegime(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid regime id")
 		return
 	}
+	existing, err := h.store.GetRegime(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, ErrRegimeNotFound) {
+			httpx.RespondError(w, http.StatusNotFound, "regime not found")
+			return
+		}
+		httpx.Error500(w, r, "could not load regime", err)
+		return
+	}
 	if err := h.store.DeleteRegime(r.Context(), id); err != nil {
 		if errors.Is(err, ErrRegimeNotFound) {
 			httpx.RespondError(w, http.StatusNotFound, "regime not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete regime")
+		httpx.Error500(w, r, "could not delete regime", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除作息制度 %s", existing.Name))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -184,7 +198,7 @@ func (h *Handler) replacePeriods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.store.ReplacePeriods(r.Context(), id, in.Periods); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not save periods")
+		httpx.Error500(w, r, "could not save periods", err)
 		return
 	}
 	regime, err := h.store.GetRegime(r.Context(), id)
@@ -193,9 +207,10 @@ func (h *Handler) replacePeriods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load regime")
+		httpx.Error500(w, r, "could not load regime", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("调整作息制度 %s 节次", regime.Name))
 	httpx.RespondJSON(w, http.StatusOK, regime)
 }
 
@@ -211,7 +226,7 @@ func (h *Handler) activeRegime(w http.ResponseWriter, r *http.Request) {
 	}
 	regimes, err := h.store.ListRegimes(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list regimes")
+		httpx.Error500(w, r, "could not list regimes", err)
 		return
 	}
 	regime, ok := ActiveFor(regimes, date)

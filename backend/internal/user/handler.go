@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/iam"
+	"ocm-backend/internal/logging"
+	"ocm-backend/internal/systemlog"
 )
 
 type Handler struct {
@@ -61,7 +62,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	users, total, err := h.store.PageUsers(r.Context(), httpx.ParseSearch(q),
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list users")
+		httpx.Error500(w, r, "could not list users", err)
 		return
 	}
 	if users == nil {
@@ -76,7 +77,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		}
 		summaries, err := h.iam.BatchSummaries(r.Context(), ids)
 		if err != nil {
-			log.Printf("user list summaries: %v", err)
+			logging.L.Error("user list summaries", "err", err)
 		} else {
 			for i := range users {
 				s, ok := summaries[users[i].ID]
@@ -117,9 +118,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create user")
+		httpx.Error500(w, r, "could not create user", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建用户 %s", u.DisplayName))
 	httpx.RespondJSON(w, http.StatusCreated, u)
 }
 
@@ -135,7 +137,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load user")
+		httpx.Error500(w, r, "could not load user", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, u)
@@ -168,9 +170,10 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update user")
+		httpx.Error500(w, r, "could not update user", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新用户 %s", u.DisplayName))
 	httpx.RespondJSON(w, http.StatusOK, u)
 }
 
@@ -195,9 +198,10 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update password")
+		httpx.Error500(w, r, "could not update password", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("重置密码：用户 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -211,20 +215,30 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusConflict, "cannot delete your own account")
 		return
 	}
+	target, err := h.store.GetByID(r.Context(), id)
+	if errors.Is(err, ErrNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load user", err)
+		return
+	}
 	err = h.store.Delete(r.Context(), id)
 	if errors.Is(err, ErrNotFound) {
 		httpx.RespondError(w, http.StatusNotFound, "user not found")
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete user")
+		httpx.Error500(w, r, "could not delete user", err)
 		return
 	}
 	// Clean up grant rows (role grants, direct permissions, group
 	// membership). A failure only leaves harmless orphan rows, so log it.
 	if err := h.iam.DeleteUserGrants(r.Context(), id); err != nil {
-		log.Printf("user delete grants cleanup: %v", err)
+		logging.L.Error("user delete grants cleanup", "err", err, "user_id", id)
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除用户 %s", target.DisplayName))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -243,12 +257,12 @@ func (h *Handler) getGrants(w http.ResponseWriter, r *http.Request) {
 			httpx.RespondError(w, http.StatusNotFound, "user not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load user")
+		httpx.Error500(w, r, "could not load user", err)
 		return
 	}
 	view, err := h.iam.UserGrants(r.Context(), id)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load grants")
+		httpx.Error500(w, r, "could not load grants", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, view)
@@ -272,12 +286,13 @@ func (h *Handler) putRoles(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	if _, err := h.store.GetByID(r.Context(), id); err != nil {
+	target, err := h.store.GetByID(r.Context(), id)
+	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httpx.RespondError(w, http.StatusNotFound, "user not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load user")
+		httpx.Error500(w, r, "could not load user", err)
 		return
 	}
 	var req putRolesRequest
@@ -287,7 +302,7 @@ func (h *Handler) putRoles(w http.ResponseWriter, r *http.Request) {
 	}
 	roles, err := h.iam.ListRoles(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load roles")
+		httpx.Error500(w, r, "could not load roles", err)
 		return
 	}
 	byCode := make(map[string]iam.Role, len(roles))
@@ -306,9 +321,10 @@ func (h *Handler) putRoles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := h.iam.ReplaceUserRoles(r.Context(), id, req.Roles, subject.ID); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update roles")
+		httpx.Error500(w, r, "could not update roles", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("调整用户 %s 的角色", target.DisplayName))
 	h.respondGrants(w, r, id)
 }
 
@@ -329,12 +345,13 @@ func (h *Handler) putPermissions(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	if _, err := h.store.GetByID(r.Context(), id); err != nil {
+	target, err := h.store.GetByID(r.Context(), id)
+	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httpx.RespondError(w, http.StatusNotFound, "user not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load user")
+		httpx.Error500(w, r, "could not load user", err)
 		return
 	}
 	var req putPermissionsRequest
@@ -349,9 +366,10 @@ func (h *Handler) putPermissions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := h.iam.ReplaceUserPermissions(r.Context(), id, req.Permissions, subject.ID); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update permissions")
+		httpx.Error500(w, r, "could not update permissions", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("调整用户 %s 的权限", target.DisplayName))
 	h.respondGrants(w, r, id)
 }
 
@@ -360,7 +378,7 @@ func (h *Handler) putPermissions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) respondGrants(w http.ResponseWriter, r *http.Request, id int64) {
 	view, err := h.iam.UserGrants(r.Context(), id)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load grants")
+		httpx.Error500(w, r, "could not load grants", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, view)
@@ -389,12 +407,14 @@ func LoadSubject(userStore *Store, iamStore *iam.Store) func(http.Handler) http.
 			if err != nil {
 				// Permissions failed to load: this is a server error, not a
 				// denial — failing open here would bypass every check.
-				httpx.RespondError(w, http.StatusInternalServerError, "could not load permissions")
+				httpx.Error500(w, r, "could not load permissions", err)
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(authz.WithSubject(r.Context(), authz.Subject{
 				ID:          u.ID,
 				Type:        u.Type,
+				Username:    u.Username,
+				DisplayName: u.DisplayName,
 				Permissions: eff.Permissions,
 				Roles:       eff.RoleCodes(),
 				Groups:      eff.GroupIDs,

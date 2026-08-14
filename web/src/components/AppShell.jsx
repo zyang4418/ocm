@@ -51,6 +51,7 @@ export default function AppShell({ children }) {
     location.pathname.startsWith('/timetable') ||
     location.pathname.startsWith('/schedule-config') ||
     location.pathname.startsWith('/imports')
+  const inLogs = location.pathname.startsWith('/logs')
 
   return (
     <HeaderContainer
@@ -213,10 +214,23 @@ export default function AppShell({ children }) {
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>
-                  <SideNavMenu renderIcon={Settings} title="系统设置">
-                    <SideNavMenuItem href="#">参数配置</SideNavMenuItem>
-                    <SideNavMenuItem href="#">审计日志</SideNavMenuItem>
-                  </SideNavMenu>
+                  {can('log:read') && (
+                    <SideNavMenu
+                      key={`settings-${inLogs}`}
+                      renderIcon={Settings}
+                      title="系统设置"
+                      defaultExpanded={inLogs}
+                    >
+                      <SideNavMenuItem href="#">参数配置</SideNavMenuItem>
+                      <SideNavMenuItem
+                        href="/logs"
+                        isActive={isActive('/logs')}
+                        onClick={go('/logs')}
+                      >
+                        审计日志
+                      </SideNavMenuItem>
+                    </SideNavMenu>
+                  )}
                 </SideNavItems>
               </SideNav>
             </Header>

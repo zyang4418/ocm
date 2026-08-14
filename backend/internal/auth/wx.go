@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"ocm-backend/internal/logging"
 )
 
 // WxService exchanges WeChat mini-program login codes for openids via the
@@ -37,7 +38,7 @@ func NewWxService() *WxService {
 		client: &http.Client{Timeout: 10 * time.Second},
 	}
 	if !s.Enabled() {
-		log.Print("auth: WX_APP_ID/WX_APP_SECRET not set; mini-program login (wx-bind/wx-login) will be unavailable")
+		logging.L.Warn("auth: WX_APP_ID/WX_APP_SECRET not set; mini-program login (wx-bind/wx-login) will be unavailable")
 	}
 	return s
 }

@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
+
+	"ocm-backend/internal/logging"
 )
 
 const defaultAdminPassword = "admin123"
@@ -94,7 +95,8 @@ CREATE TABLE IF NOT EXISTS users (
 	password := os.Getenv("ADMIN_PASSWORD")
 	if password == "" {
 		password = defaultAdminPassword
-		log.Printf("auth: ADMIN_PASSWORD not set, seeding admin with default password %q -- change it before production use", defaultAdminPassword)
+		logging.L.Warn("auth: ADMIN_PASSWORD not set, seeding admin with default password -- change it before production use",
+			"password", defaultAdminPassword)
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -106,7 +108,7 @@ CREATE TABLE IF NOT EXISTS users (
 	); err != nil {
 		return fmt.Errorf("seed admin user: %w", err)
 	}
-	log.Print("auth: seeded initial admin account (username: admin)")
+	logging.L.Info("auth: seeded initial admin account", "username", "admin")
 	return nil
 }
 

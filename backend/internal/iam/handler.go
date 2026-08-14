@@ -11,6 +11,7 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/systemlog"
 )
 
 // roleCodeRe validates role codes: lowercase start, then lowercase letters,
@@ -55,7 +56,7 @@ func (h *Handler) listPermissions(w http.ResponseWriter, _ *http.Request) {
 func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 	roles, err := h.store.ListRoles(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list roles")
+		httpx.Error500(w, r, "could not list roles", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, roles)
@@ -99,9 +100,10 @@ func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create role")
+		httpx.Error500(w, r, "could not create role", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建角色 %s", role.Name))
 	httpx.RespondJSON(w, http.StatusCreated, role)
 }
 
@@ -117,7 +119,7 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load role")
+		httpx.Error500(w, r, "could not load role", err)
 		return
 	}
 	if existing.IsSystem {
@@ -141,9 +143,10 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update role")
+		httpx.Error500(w, r, "could not update role", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新角色 %s", role.Name))
 	httpx.RespondJSON(w, http.StatusOK, role)
 }
 
@@ -159,7 +162,7 @@ func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load role")
+		httpx.Error500(w, r, "could not load role", err)
 		return
 	}
 	if existing.IsSystem {
@@ -168,7 +171,7 @@ func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 	users, groups, err := h.store.RoleUsageCounts(r.Context(), id)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not check role usage")
+		httpx.Error500(w, r, "could not check role usage", err)
 		return
 	}
 	if users+groups > 0 {
@@ -179,16 +182,17 @@ func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.store.DeleteRole(r.Context(), id); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete role")
+		httpx.Error500(w, r, "could not delete role", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除角色 %s", existing.Name))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) listGroups(w http.ResponseWriter, r *http.Request) {
 	groups, err := h.store.ListGroups(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list groups")
+		httpx.Error500(w, r, "could not list groups", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, groups)
@@ -206,7 +210,7 @@ func (h *Handler) getGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load group")
+		httpx.Error500(w, r, "could not load group", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, group)
@@ -225,7 +229,7 @@ func (h *Handler) validateGroupInput(w http.ResponseWriter, r *http.Request, in 
 	}
 	ok, err := h.store.UsersExist(r.Context(), in.Members)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not verify members")
+		httpx.Error500(w, r, "could not verify members", err)
 		return false
 	}
 	if !ok {
@@ -235,7 +239,7 @@ func (h *Handler) validateGroupInput(w http.ResponseWriter, r *http.Request, in 
 	if len(in.Roles) > 0 {
 		roles, err := h.store.ListRoles(r.Context())
 		if err != nil {
-			httpx.RespondError(w, http.StatusInternalServerError, "could not load roles")
+			httpx.Error500(w, r, "could not load roles", err)
 			return false
 		}
 		byID := make(map[int64]Role, len(roles))
@@ -273,9 +277,10 @@ func (h *Handler) createGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create group")
+		httpx.Error500(w, r, "could not create group", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建用户组 %s", group.Name))
 	httpx.RespondJSON(w, http.StatusCreated, group)
 }
 
@@ -303,9 +308,10 @@ func (h *Handler) updateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update group")
+		httpx.Error500(w, r, "could not update group", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新用户组 %s", group.Name))
 	httpx.RespondJSON(w, http.StatusOK, group)
 }
 
@@ -315,14 +321,24 @@ func (h *Handler) deleteGroup(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid group id")
 		return
 	}
+	existing, err := h.store.GetGroupByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			httpx.RespondError(w, http.StatusNotFound, "group not found")
+			return
+		}
+		httpx.Error500(w, r, "could not load group", err)
+		return
+	}
 	if err := h.store.DeleteGroup(r.Context(), id); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httpx.RespondError(w, http.StatusNotFound, "group not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete group")
+		httpx.Error500(w, r, "could not delete group", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除用户组 %s", existing.Name))
 	w.WriteHeader(http.StatusNoContent)
 }
 

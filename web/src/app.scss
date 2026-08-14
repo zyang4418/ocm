@@ -1017,3 +1017,48 @@
 .timetable__delete {
   margin-block-start: $spacing-05;
 }
+
+/* ---- logs page ---- */
+.logs-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.logs-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.logs-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.logs-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-05;
+  align-items: flex-end;
+  margin-block-end: $spacing-05;
+}
+
+.logs-page__table {
+  margin-block-end: $spacing-05;
+}
+
+.logs-page__settings {
+  margin-block-start: $spacing-09;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  max-inline-size: 24rem;
+}
+
+.logs-page__settings-heading {
+  @include type-style('heading-03');
+}
+
+.logs-page__settings-hint {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}

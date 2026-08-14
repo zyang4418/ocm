@@ -46,7 +46,7 @@ func (h *Handler) listAdminClasses(w http.ResponseWriter, r *http.Request) {
 	list, total, err := h.store.PageAdminClasses(r.Context(), httpx.ParseSearch(q),
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list admin classes")
+		httpx.Error500(w, r, "could not list admin classes", err)
 		return
 	}
 	if list == nil {
@@ -60,7 +60,7 @@ func (h *Handler) listAdminClasses(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportAdminClasses(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.ListAdminClasses(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list admin classes")
+		httpx.Error500(w, r, "could not list admin classes", err)
 		return
 	}
 	headers := []string{"grade", "name", "note"}
@@ -69,7 +69,7 @@ func (h *Handler) exportAdminClasses(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{c.Grade, c.Name, c.Note})
 	}
 	if err := xlsx.WriteExport(w, "admin-classes.xlsx", "admin-classes", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export admin classes")
+		httpx.Error500(w, r, "could not export admin classes", err)
 	}
 }
 
@@ -89,7 +89,7 @@ func (h *Handler) createAdminClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create admin class")
+		httpx.Error500(w, r, "could not create admin class", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusCreated, c)
@@ -107,7 +107,7 @@ func (h *Handler) getAdminClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load admin class")
+		httpx.Error500(w, r, "could not load admin class", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, c)
@@ -138,7 +138,7 @@ func (h *Handler) updateAdminClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update admin class")
+		httpx.Error500(w, r, "could not update admin class", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, c)
@@ -157,7 +157,7 @@ func (h *Handler) deleteAdminClass(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrAdminClassNotFound):
 			httpx.RespondError(w, http.StatusNotFound, "admin class not found")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "could not delete admin class")
+			httpx.Error500(w, r, "could not delete admin class", err)
 		}
 		return
 	}
@@ -188,7 +188,7 @@ func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
 	list, total, err := h.store.PageTeachingClasses(r.Context(), httpx.ParseSearch(q),
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list teaching classes")
+		httpx.Error500(w, r, "could not list teaching classes", err)
 		return
 	}
 	if list == nil {
@@ -204,7 +204,7 @@ func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportTeachingClasses(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.ListTeachingClasses(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list teaching classes")
+		httpx.Error500(w, r, "could not list teaching classes", err)
 		return
 	}
 	headers := []string{"name", "note", "admin_grade", "admin_name"}
@@ -215,7 +215,7 @@ func (h *Handler) exportTeachingClasses(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if err := xlsx.WriteExport(w, "teaching-classes.xlsx", "teaching-classes", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export teaching classes")
+		httpx.Error500(w, r, "could not export teaching classes", err)
 	}
 }
 
@@ -243,7 +243,7 @@ func (h *Handler) createTeachingClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create teaching class")
+		httpx.Error500(w, r, "could not create teaching class", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusCreated, v)
@@ -261,7 +261,7 @@ func (h *Handler) getTeachingClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load teaching class")
+		httpx.Error500(w, r, "could not load teaching class", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -304,7 +304,7 @@ func (h *Handler) updateTeachingClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update teaching class")
+		httpx.Error500(w, r, "could not update teaching class", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -323,7 +323,7 @@ func (h *Handler) deleteTeachingClass(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrTeachingClassNotFound):
 			httpx.RespondError(w, http.StatusNotFound, "teaching class not found")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "could not delete teaching class")
+			httpx.Error500(w, r, "could not delete teaching class", err)
 		}
 		return
 	}

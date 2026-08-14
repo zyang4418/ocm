@@ -15,6 +15,7 @@ import RolesPage from './pages/RolesPage.jsx'
 import GroupsPage from './pages/GroupsPage.jsx'
 import AdminClassesPage from './pages/AdminClassesPage.jsx'
 import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
+import LogsPage from './pages/LogsPage.jsx'
 
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/admin-classes" element={<AdminClassesPage />} />
             <Route path="/teaching-classes" element={<TeachingClassesPage />} />
+            <Route path="/logs" element={<LogsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

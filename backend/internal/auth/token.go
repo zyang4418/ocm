@@ -3,11 +3,12 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"ocm-backend/internal/logging"
 )
 
 const tokenTTL = 24 * time.Hour
@@ -23,7 +24,7 @@ func NewTokenService() *TokenService {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "ocm-dev-secret-do-not-use-in-production"
-		log.Print("auth: JWT_SECRET not set, using built-in development secret -- set JWT_SECRET in production")
+		logging.L.Warn("auth: JWT_SECRET not set, using built-in development secret -- set JWT_SECRET in production")
 	}
 	return &TokenService{secret: []byte(secret)}
 }

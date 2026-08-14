@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,14 +19,18 @@ import (
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/iam"
 	"ocm-backend/internal/importer"
+	"ocm-backend/internal/logging"
+	"ocm-backend/internal/middleware"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/user"
 )
 
 func main() {
-	// Container platforms often surface only stdout; route logs there so a
-	// crash-looping or startup-blocked process stays diagnosable.
-	log.SetOutput(os.Stdout)
+	// Structured terminal logging for developers and operators (business audit
+	// records live in system_logs, see internal/systemlog). Must run before
+	// anything logs.
+	logging.Init()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -48,25 +51,32 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// Handler stack order matters: AccessLog must stay OUTSIDE Recover so a
+	// recovered panic still gets its final 500 recorded in the access line
+	// (inverted, the panic unwinds past AccessLog first and the line shows
+	// status 0). Recover logs the panic itself; AccessLog logs the completed
+	// request — each event exactly once.
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: httpx.Recover(mux),
+		Handler: middleware.AccessLog(httpx.Recover(mux)),
 	}
 
 	go func() {
-		log.Printf("ocm-backend listening on :%s", port)
+		logging.L.Info("ocm-backend listening", "port", port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
+			logging.L.Error("server error", "err", err)
+			os.Exit(1)
 		}
 	}()
 
 	database, err := openDB(ctx)
 	if err != nil {
-		log.Fatalf("database: %v", err)
+		logging.L.Error("database", "err", err)
+		os.Exit(1)
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
-			log.Printf("database close: %v", err)
+			logging.L.Error("database close", "err", err)
 		}
 	}()
 
@@ -75,53 +85,73 @@ func main() {
 
 	authStore := auth.NewStore(database)
 	if err := authStore.Migrate(ctx); err != nil {
-		log.Fatalf("auth migration: %v", err)
+		logging.L.Error("auth migration", "err", err)
+		os.Exit(1)
 	}
 	// iam.Migrate must run after auth.Migrate (users table exists) and before
 	// any route serves traffic: it migrates the legacy users.role column into
 	// user_roles grants, then drops the column.
 	iamStore := iam.NewStore(database)
 	if err := iamStore.Migrate(ctx); err != nil {
-		log.Fatalf("iam migration: %v", err)
+		logging.L.Error("iam migration", "err", err)
+		os.Exit(1)
 	}
-	auth.NewHandler(authStore, tokenService, wxService, iamStore).RegisterRoutes(mux)
+	// systemlog depends on nothing; migrate it before auth routes register
+	// because the auth handler writes explicit audit rows (login events).
+	systemlogStore := systemlog.NewStore(database)
+	if err := systemlogStore.Migrate(ctx); err != nil {
+		logging.L.Error("systemlog migration", "err", err)
+		os.Exit(1)
+	}
+	auth.NewHandler(authStore, tokenService, wxService, iamStore, systemlogStore).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
 	if err := userStore.Migrate(ctx); err != nil {
-		log.Fatalf("user org migration: %v", err)
+		logging.L.Error("user org migration", "err", err)
+		os.Exit(1)
 	}
+	// The audit middleware sits inside the auth pipeline — after LoadSubject
+	// (Subject available, zero extra queries) and before RequirePermission
+	// (403 rejections recorded too). Auth routes are not inside this chain and
+	// record login/bind events explicitly instead.
 	authenticate := func(next http.Handler) http.Handler {
-		return auth.Middleware(tokenService)(user.LoadSubject(userStore, iamStore)(next))
+		return auth.Middleware(tokenService)(user.LoadSubject(userStore, iamStore)(
+			systemlog.Audit(systemlogStore)(next)))
 	}
 	user.NewHandler(userStore, iamStore).RegisterRoutes(mux, authenticate)
 	iam.NewHandler(iamStore).RegisterRoutes(mux, authenticate)
 
 	classroomStore := classroom.NewStore(database)
 	if err := classroomStore.Migrate(ctx); err != nil {
-		log.Fatalf("classroom migration: %v", err)
+		logging.L.Error("classroom migration", "err", err)
+		os.Exit(1)
 	}
 	classroom.NewHandler(classroomStore).RegisterRoutes(mux, authenticate)
 	scheduleStore := schedule.NewStore(database)
 	if err := scheduleStore.Migrate(ctx); err != nil {
-		log.Fatalf("schedule migration: %v", err)
+		logging.L.Error("schedule migration", "err", err)
+		os.Exit(1)
 	}
 	schedule.NewHandler(scheduleStore).RegisterRoutes(mux, authenticate)
 
 	courseStore := course.NewStore(database)
 	if err := courseStore.Migrate(ctx); err != nil {
-		log.Fatalf("course migration: %v", err)
+		logging.L.Error("course migration", "err", err)
+		os.Exit(1)
 	}
 	course.NewHandler(courseStore, classroomStore, scheduleStore).RegisterRoutes(mux, authenticate)
 
 	bookingStore := booking.NewStore(database)
 	if err := bookingStore.Migrate(ctx); err != nil {
-		log.Fatalf("booking migration: %v", err)
+		logging.L.Error("booking migration", "err", err)
+		os.Exit(1)
 	}
 	booking.NewHandler(bookingStore, classroomStore, scheduleStore).RegisterRoutes(mux, authenticate)
 
 	importerStore := importer.NewStore(database)
 	if err := importerStore.Migrate(ctx); err != nil {
-		log.Fatalf("importer migration: %v", err)
+		logging.L.Error("importer migration", "err", err)
+		os.Exit(1)
 	}
 	// Register every business-table importer with the permission that gates its
 	// manual manage action, so importing classrooms needs classroom:manage,
@@ -145,9 +175,15 @@ func main() {
 		importer.NewRegimesImporter(database))
 	registry.Register(importer.JobTypeBookings, authz.BookingApprove,
 		importer.NewBookingsImporter(database, classroomStore, scheduleStore))
-	importerHandler := importer.NewHandler(importerStore, registry, scheduleStore)
+	importerHandler := importer.NewHandler(importerStore, registry, scheduleStore, systemlogStore)
 	importerHandler.RecoverStale(ctx)
 	importerHandler.RegisterRoutes(mux, authenticate)
+
+	systemlog.NewHandler(systemlogStore).RegisterRoutes(mux, authenticate)
+
+	// Retention cleanup: purge once now and then daily. Recording itself is
+	// never disabled by settings — retention only controls deletion.
+	go systemlogStore.RunRetentionLoop(ctx, 24*time.Hour)
 
 	// Readiness probe - the process can serve requests (database reachable).
 	// Registered after the DB is connected so it only reports ready once the
@@ -176,9 +212,9 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("graceful shutdown error: %v", err)
+		logging.L.Error("graceful shutdown error", "err", err)
 	}
-	log.Print("server stopped")
+	logging.L.Info("server stopped")
 }
 
 func openDB(ctx context.Context) (*sql.DB, error) {
@@ -192,6 +228,6 @@ func openDB(ctx context.Context) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("database connected: %s:%s/%s", cfg.Host, cfg.Port, cfg.Name)
+	logging.L.Info("database connected", "host", cfg.Host, "port", cfg.Port, "name", cfg.Name)
 	return d, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/xlsx"
 )
 
@@ -75,7 +77,7 @@ func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
 	list, total, err := h.store.PageCatalog(r.Context(), httpx.ParseSearch(q),
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
+		httpx.Error500(w, r, "could not list courses", err)
 		return
 	}
 	if list == nil {
@@ -89,7 +91,7 @@ func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.ListCatalog(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
+		httpx.Error500(w, r, "could not list courses", err)
 		return
 	}
 	headers := []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}
@@ -98,7 +100,7 @@ func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{c.Name, c.Code, c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description})
 	}
 	if err := xlsx.WriteExport(w, "courses.xlsx", "catalog", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export courses")
+		httpx.Error500(w, r, "could not export courses", err)
 	}
 }
 
@@ -122,9 +124,10 @@ func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create course")
+		httpx.Error500(w, r, "could not create course", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建课程 %s", c.Name))
 	httpx.RespondJSON(w, http.StatusCreated, c)
 }
 
@@ -140,7 +143,7 @@ func (h *Handler) getCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load course")
+		httpx.Error500(w, r, "could not load course", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, c)
@@ -175,9 +178,10 @@ func (h *Handler) updateCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update course")
+		httpx.Error500(w, r, "could not update course", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新课程 %s", c.Name))
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
@@ -194,10 +198,11 @@ func (h *Handler) deleteCatalog(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrCatalogNotFound):
 			httpx.RespondError(w, http.StatusNotFound, "course not found")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "could not delete course")
+			httpx.Error500(w, r, "could not delete course", err)
 		}
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除课程 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -209,7 +214,7 @@ func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
 	list, total, err := h.store.PageOfferings(r.Context(), httpx.ParseSearch(q),
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
+		httpx.Error500(w, r, "could not list offerings", err)
 		return
 	}
 	if list == nil {
@@ -223,7 +228,7 @@ func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.ListOfferings(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
+		httpx.Error500(w, r, "could not list offerings", err)
 		return
 	}
 	headers := []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
@@ -232,7 +237,7 @@ func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{o.CatalogName, o.TeachingClassName, o.Semester, o.Teacher, o.CourseSeq, o.TeacherID, o.TeacherTitle, o.College, o.MaxStudents, o.Requirement, o.WeeklyHours, o.Note})
 	}
 	if err := xlsx.WriteExport(w, "offerings.xlsx", "offerings", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export offerings")
+		httpx.Error500(w, r, "could not export offerings", err)
 	}
 }
 
@@ -252,9 +257,10 @@ func (h *Handler) createOffering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create offering")
+		httpx.Error500(w, r, "could not create offering", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建开课 %s", v.CatalogName))
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
@@ -270,7 +276,7 @@ func (h *Handler) getOffering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load offering")
+		httpx.Error500(w, r, "could not load offering", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -301,9 +307,10 @@ func (h *Handler) updateOffering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update offering")
+		httpx.Error500(w, r, "could not update offering", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新开课 %s", v.CatalogName))
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
@@ -320,10 +327,11 @@ func (h *Handler) deleteOffering(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrOfferingNotFound):
 			httpx.RespondError(w, http.StatusNotFound, "offering not found")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "could not delete offering")
+			httpx.Error500(w, r, "could not delete offering", err)
 		}
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除开课 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -337,7 +345,7 @@ func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
 	list, total, err := h.store.PageSessions(r.Context(), f,
 		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
+		httpx.Error500(w, r, "could not list sessions", err)
 		return
 	}
 	if list == nil {
@@ -370,7 +378,7 @@ func (h *Handler) querySessions(r *http.Request) ([]SessionView, error) {
 func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
 	list, err := h.querySessions(r)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
+		httpx.Error500(w, r, "could not list sessions", err)
 		return
 	}
 	headers := []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
@@ -379,7 +387,7 @@ func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{s.Date, s.PeriodStart, s.PeriodEnd, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
 	}
 	if err := xlsx.WriteExport(w, "sessions.xlsx", "sessions", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export sessions")
+		httpx.Error500(w, r, "could not export sessions", err)
 	}
 }
 
@@ -399,9 +407,10 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create session")
+		httpx.Error500(w, r, "could not create session", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建课次 %s %s", v.CourseName, v.Date))
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
@@ -417,7 +426,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load session")
+		httpx.Error500(w, r, "could not load session", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -448,9 +457,10 @@ func (h *Handler) updateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update session")
+		httpx.Error500(w, r, "could not update session", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新课次 %s %s", v.CourseName, v.Date))
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
@@ -465,9 +475,10 @@ func (h *Handler) deleteSession(w http.ResponseWriter, r *http.Request) {
 			httpx.RespondError(w, http.StatusNotFound, "session not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete session")
+		httpx.Error500(w, r, "could not delete session", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除课次 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -499,7 +510,7 @@ func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
 	}
 	days, err := h.store.Timetable(r.Context(), classroomID, from, to, h.regimes)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not build timetable")
+		httpx.Error500(w, r, "could not build timetable", err)
 		return
 	}
 	if days == nil {
@@ -523,17 +534,17 @@ func (h *Handler) timetableExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load classroom")
+		httpx.Error500(w, r, "could not load classroom", err)
 		return
 	}
 	days, err := h.store.Timetable(r.Context(), classroomID, from, to, h.regimes)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not build timetable")
+		httpx.Error500(w, r, "could not build timetable", err)
 		return
 	}
 	display := timetableExportFilename(cr.Name, from, to)
 	if err := xlsx.WriteCustom(w, "classroom-timetable.xlsx", display, populateTimetable(days)); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export timetable")
+		httpx.Error500(w, r, "could not export timetable", err)
 	}
 }
 
