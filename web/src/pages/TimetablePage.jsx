@@ -219,8 +219,8 @@ export default function TimetablePage() {
             <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronRight} iconDescription="下一周" onClick={() => setWeekStart(addDays(weekStart, 7))} />
           </div>
           <ExportButton
-            path={`/api/sessions/export?classroom_id=${classroomId}&from=${from}&to=${to}`}
-            fallbackName="sessions.xlsx"
+            path={`/api/timetable/export?classroom_id=${classroomId}&from=${from}&to=${to}`}
+            fallbackName="教室周课表.xlsx"
             label="导出课表"
             onError={setError}
             disabled={!classroomId}
@@ -272,7 +272,12 @@ export default function TimetablePage() {
                           onClick={() => canManage && openCell(d.date, p.periodIndex, session)}
                         >
                           {session ? (
-                            <div className="timetable__session">
+                            <div
+                              className="timetable__session"
+                              title={[session.courseName, session.teachingClassName, session.teacher]
+                                .filter(Boolean)
+                                .join('\n')}
+                            >
                               <strong>{session.courseName}</strong>
                               {session.teachingClassName && <span>{session.teachingClassName}</span>}
                               {session.teacher && <span>{session.teacher}</span>}

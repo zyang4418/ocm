@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
@@ -18,12 +19,13 @@ import (
 )
 
 type Handler struct {
-	store   *Store
-	regimes *schedule.Store
+	store      *Store
+	classrooms *classroom.Store
+	regimes    *schedule.Store
 }
 
-func NewHandler(store *Store, regimes *schedule.Store) *Handler {
-	return &Handler{store: store, regimes: regimes}
+func NewHandler(store *Store, classrooms *classroom.Store, regimes *schedule.Store) *Handler {
+	return &Handler{store: store, classrooms: classrooms, regimes: regimes}
 }
 
 // RegisterRoutes mounts the catalog, offering, session and timetable
@@ -62,6 +64,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 
 	// Classroom timetable (教室课表)
 	mux.Handle("GET /api/timetable", read(h.timetable))
+	mux.Handle("GET /api/timetable/export", read(h.timetableExport))
 }
 
 // ---- Catalog ----
@@ -470,17 +473,28 @@ func (h *Handler) deleteSession(w http.ResponseWriter, r *http.Request) {
 
 // ---- Timetable ----
 
-func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
+// parseTimetableParams parses the classroom_id/from/to query params shared by
+// the timetable JSON grid and its xlsx export, keeping their validation (and
+// error messages) identical.
+func parseTimetableParams(w http.ResponseWriter, r *http.Request) (classroomID int64, from, to string, ok bool) {
 	q := r.URL.Query()
 	classroomID, err := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
 	if err != nil || classroomID <= 0 {
 		httpx.RespondError(w, http.StatusBadRequest, "classroom_id is required")
-		return
+		return 0, "", "", false
 	}
-	from := q.Get("from")
-	to := q.Get("to")
+	from = q.Get("from")
+	to = q.Get("to")
 	if from == "" || to == "" {
 		httpx.RespondError(w, http.StatusBadRequest, "from and to dates are required (YYYY-MM-DD)")
+		return 0, "", "", false
+	}
+	return classroomID, from, to, true
+}
+
+func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
+	classroomID, from, to, ok := parseTimetableParams(w, r)
+	if !ok {
 		return
 	}
 	days, err := h.store.Timetable(r.Context(), classroomID, from, to, h.regimes)
@@ -492,6 +506,35 @@ func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
 		days = []TimetableDay{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, days)
+}
+
+// timetableExport streams the weekly grid as an xlsx download replicating the
+// browser table: days as columns, periods as rows, multi-period sessions
+// merged into one cell. The filename carries the classroom name and the date
+// range shown on the page.
+func (h *Handler) timetableExport(w http.ResponseWriter, r *http.Request) {
+	classroomID, from, to, ok := parseTimetableParams(w, r)
+	if !ok {
+		return
+	}
+	cr, err := h.classrooms.GetByID(r.Context(), classroomID)
+	if errors.Is(err, classroom.ErrNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "classroom not found")
+		return
+	}
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not load classroom")
+		return
+	}
+	days, err := h.store.Timetable(r.Context(), classroomID, from, to, h.regimes)
+	if err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not build timetable")
+		return
+	}
+	display := timetableExportFilename(cr.Name, from, to)
+	if err := xlsx.WriteCustom(w, "classroom-timetable.xlsx", display, populateTimetable(days)); err != nil {
+		httpx.RespondError(w, http.StatusInternalServerError, "could not export timetable")
+	}
 }
 
 // ---- validation ----

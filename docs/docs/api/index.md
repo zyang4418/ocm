@@ -97,6 +97,7 @@ title: API 概述
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | GET | `/api/timetable` | `CourseRead` | 课表;必填 `classroom_id` + `from` + `to`(YYYY-MM-DD) |
+| GET | `/api/timetable/export` | `CourseRead` | 周课表网格导出;参数同上;输出与页面一致的二维网格 xlsx(合并单元格、居中、边框),文件名含教室名+日期段,不可回导 |
 
 ## 预约(`/api/bookings`)
 
@@ -138,3 +139,5 @@ job 状态:`pending` → `processing` → `preview` →(commit)→ `succeeded` /
 ## 导出
 
 每个资源的 `GET /api/{resource}/export` 流式输出 xlsx,表头与对应 importer 必需列对齐,可回导。导出**忽略分页与搜索参数**(不接受 `page`/`page_size`/`q`),始终覆盖全量(或列表接口支持的过滤条件,如 bookings 的 classroom_id/status/from/to)。
+
+**例外**:`GET /api/timetable/export` 按浏览器样式输出可视化二维周课表网格(合并单元格、表头/节次列居中、边框),非导入列格式,**不可回导**;课次数据回导仍用 `GET /api/sessions/export`。

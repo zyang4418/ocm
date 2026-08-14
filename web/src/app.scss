@@ -792,7 +792,11 @@
 
 .timetable__grid {
   border-collapse: collapse;
-  min-width: 100%;
+  // Fixed layout: every day column gets the same width regardless of cell
+  // content, so a long course name no longer stretches one column.
+  table-layout: fixed;
+  width: 100%;
+  min-width: 62rem; // corner 6rem + 7 day columns at ~8rem, then scroll
 
   th,
   td {
@@ -803,12 +807,14 @@
 
   thead th {
     text-align: center;
+    vertical-align: middle; // corner + day headers centered both ways
     background: var(--cds-layer-01);
   }
 }
 
 .timetable__corner {
-  min-inline-size: 6rem;
+  // First-row cell width doubles as the column width under table-layout: fixed.
+  width: 6rem;
 }
 
 .timetable__date {
@@ -823,8 +829,11 @@
   @include type-style('label-01');
 }
 
-.timetable__period {
+.timetable__grid .timetable__period {
   text-align: center;
+  // Scoped to the grid so it wins over the `vertical-align: top` shared by
+  // all grid cells; period labels should sit in the middle of their rows.
+  vertical-align: middle;
   background: var(--cds-layer-01);
 }
 
@@ -835,8 +844,12 @@
 }
 
 .timetable__cell {
-  min-inline-size: 8rem;
-  min-block-size: 3.5rem;
+  // NOTE: min-height/min-block-size on a table cell is undefined per CSS and
+  // browsers may ignore it. `height` on a cell acts as a minimum height in
+  // table layout, so every period row gets at least this height and rows
+  // stay uniform.
+  height: 4.25rem;
+  overflow: hidden; // truncated content must not widen its fixed column
   cursor: default;
 }
 
@@ -853,6 +866,15 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+
+  // One line per field: long names are ellipsized instead of wrapping, which
+  // also keeps period rows the same height across the week.
+  strong,
+  span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 
   span {
     color: var(--cds-text-secondary);

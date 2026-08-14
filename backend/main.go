@@ -102,7 +102,7 @@ func main() {
 	if err := courseStore.Migrate(ctx); err != nil {
 		log.Fatalf("course migration: %v", err)
 	}
-	course.NewHandler(courseStore, scheduleStore).RegisterRoutes(mux, authenticate)
+	course.NewHandler(courseStore, classroomStore, scheduleStore).RegisterRoutes(mux, authenticate)
 
 	bookingStore := booking.NewStore(database)
 	if err := bookingStore.Migrate(ctx); err != nil {

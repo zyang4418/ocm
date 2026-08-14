@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -97,10 +98,42 @@ func WriteExport(w http.ResponseWriter, filename, sheet string, headers []string
 	if err != nil {
 		return err
 	}
+	return serveDownload(w, filename, filename, buf)
+}
+
+// serveDownload writes the xlsx bytes with an RFC 6266 Content-Disposition
+// carrying both an ASCII fallback filename and a UTF-8 percent-encoded
+// filename* (RFC 5987), so Chinese filenames survive modern browsers; clients
+// that ignore filename* still get the ASCII fallback. url.QueryEscape is used
+// rather than PathEscape: the latter leaves ';' and single quotes unescaped, which
+// would corrupt the header value and the frontend's filename* capture group.
+func serveDownload(w http.ResponseWriter, asciiFilename, displayFilename string, buf []byte) error {
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	_, err = w.Write(buf)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(
+		`attachment; filename="%s"; filename*=UTF-8''%s`,
+		asciiFilename, url.QueryEscape(displayFilename)))
+	_, err := w.Write(buf)
 	return err
+}
+
+// WriteCustom writes an xlsx workbook populated by the caller to w. populate
+// owns the sheet content entirely (sheet names, styles, merges), so the helper
+// stays layout-agnostic for exports that do not fit WriteExport's header/rows
+// shape. Like WriteExport, the workbook is encoded to an in-memory buffer
+// first so an encoding error can be reported before any HTTP headers are
+// written.
+func WriteCustom(w http.ResponseWriter, asciiFilename, displayFilename string, populate func(*excelize.File) error) error {
+	f := excelize.NewFile()
+	defer func() { _ = f.Close() }()
+
+	if err := populate(f); err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return fmt.Errorf("encode xlsx: %w", err)
+	}
+	return serveDownload(w, asciiFilename, displayFilename, buf.Bytes())
 }
 
 // BuildBytes builds an xlsx workbook with a single sheet and returns the encoded
