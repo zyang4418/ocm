@@ -83,10 +83,11 @@ func (s *Store) Migrate(ctx context.Context) error {
     offering_id  BIGINT NOT NULL,
     classroom_id BIGINT NOT NULL,
     date         DATE NOT NULL,
-    period_index INT NOT NULL,
+    period_start INT NOT NULL,
+    period_end   INT NOT NULL,
     note         VARCHAR(255) NOT NULL DEFAULT '',
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (classroom_id, date, period_index)
+    INDEX idx_session_room_date (classroom_id, date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	}
 	for _, q := range stmts {

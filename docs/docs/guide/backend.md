@@ -104,7 +104,7 @@ authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore))
 
 - **预约**:并发 `Create` 锁 `classrooms` 行 `FOR UPDATE`(以教室行为锁锚,序列化同槽位竞争)。
 - **教学班成员**:被开课引用后冻结;`teachingClassInUse` 用 `SELECT COUNT(*) ... FOR UPDATE` 在 REPEATABLE READ 下 gap-lock,关闭 check-then-write TOCTOU。
-- **预约冲突模型**:与任一 `period_index` 落在 `[period_start, period_end]` 的 `course_session`、或任一重叠区间的活跃预约冲突;sessions 与 bookings 共享 `(classroom_id, date, period)` 网格。
+- **预约冲突模型**:与任一节次区间 `[period_start, period_end]` 重叠的 `course_session`、或任一重叠区间的活跃预约冲突;sessions 与 bookings 同为 `(classroom_id, date, 节次区间)` 模型,双向互查。
 - **预约状态机**:`pending → approved/rejected`(review,admin);`pending/approved → cancelled`(cancel,预约人或 admin);仅 `pending`+`approved` 占槽位并参与冲突检测。
 
 ## 导出 ↔ 导入回环

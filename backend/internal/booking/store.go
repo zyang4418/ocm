@@ -283,8 +283,8 @@ func conflicts(ctx context.Context, q interface {
 	var one int
 
 	err := q.QueryRowContext(ctx,
-		`SELECT 1 FROM course_sessions WHERE classroom_id = ? AND date = ? AND period_index BETWEEN ? AND ? LIMIT 1`,
-		classroomID, date, ps, pe,
+		`SELECT 1 FROM course_sessions WHERE classroom_id = ? AND date = ? AND period_start <= ? AND period_end >= ? LIMIT 1`,
+		classroomID, date, pe, ps,
 	).Scan(&one)
 	if err == nil {
 		return true, nil

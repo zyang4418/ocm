@@ -417,9 +417,8 @@ func existingBookingConflicts(ctx context.Context, db *sql.DB, clean []bookingIn
 		pairs = append(pairs, p)
 	}
 
-	// slotKey -> set of occupied period_index values (sessions).
-	occupied := map[string]map[int]bool{}
-	// slotKey -> list of (ps,pe) ranges (active bookings).
+	// slotKey -> list of occupied (ps,pe) ranges (existing sessions + active
+	// bookings; both are period ranges now, so one shared structure suffices).
 	ranges := map[string][][2]int{}
 	// Batch the tuple IN list (batchTupleSize pairs per round-trip), mirroring
 	// existingConflicts in sessions.go: a large restore with thousands of
@@ -439,9 +438,9 @@ func existingBookingConflicts(ctx context.Context, db *sql.DB, clean []bookingIn
 		}
 		inList := strings.Join(placeholders, ",")
 
-		// Sessions: period_index point occupancy.
+		// Sessions: range occupancy (period_start..period_end).
 		sessQ := fmt.Sprintf(
-			`SELECT classroom_id, date, period_index FROM course_sessions WHERE (classroom_id, date) IN (%s)`,
+			`SELECT classroom_id, date, period_start, period_end FROM course_sessions WHERE (classroom_id, date) IN (%s)`,
 			inList,
 		)
 		sessRows, err := db.QueryContext(ctx, sessQ, args...)
@@ -451,16 +450,13 @@ func existingBookingConflicts(ctx context.Context, db *sql.DB, clean []bookingIn
 		for sessRows.Next() {
 			var cid int64
 			var d time.Time
-			var p int
-			if err := sessRows.Scan(&cid, &d, &p); err != nil {
+			var ps, pe int
+			if err := sessRows.Scan(&cid, &d, &ps, &pe); err != nil {
 				_ = sessRows.Close()
 				return nil, fmt.Errorf("scan existing session: %w", err)
 			}
 			key := slotKey(cid, d.Format("2006-01-02"))
-			if occupied[key] == nil {
-				occupied[key] = map[int]bool{}
-			}
-			occupied[key][p] = true
+			ranges[key] = append(ranges[key], [2]int{ps, pe})
 		}
 		if err := sessRows.Err(); err != nil {
 			_ = sessRows.Close()
@@ -501,25 +497,11 @@ func existingBookingConflicts(ctx context.Context, db *sql.DB, clean []bookingIn
 			continue
 		}
 		key := slotKey(b.classroomID, b.date)
-		hit := false
-		// Session point overlap.
-		for p := range occupied[key] {
-			if p >= b.periodStart && p <= b.periodEnd {
-				hit = true
+		for _, r := range ranges[key] {
+			if rangesOverlap(b.periodStart, b.periodEnd, r[0], r[1]) {
+				conflict[key+fmt.Sprintf("|%d|%d", b.periodStart, b.periodEnd)] = true
 				break
 			}
-		}
-		// Booking range overlap.
-		if !hit {
-			for _, r := range ranges[key] {
-				if rangesOverlap(b.periodStart, b.periodEnd, r[0], r[1]) {
-					hit = true
-					break
-				}
-			}
-		}
-		if hit {
-			conflict[key+fmt.Sprintf("|%d|%d", b.periodStart, b.periodEnd)] = true
 		}
 	}
 	return conflict, nil

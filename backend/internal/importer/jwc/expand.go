@@ -8,32 +8,29 @@ import (
 	"time"
 )
 
-// parsePeriods 把「节次」展开为逐节序号切片。
+// parsePeriods 把「节次」解析为连续区间 [start, end]。
 //
 // 格式：区间 "3-4"/"1-4"/"9-10"，或单节 "1-1"/"2-2"/"3-3"（等价于单节）。
-// 返回 [a..b] 升序。空串或非正整数返回错误，便于上层定位到行。
-func parsePeriods(s string) ([]int, error) {
+// 连上多节（如 "3-4"）保持为一个区间而不是逐节展开：同一次上课实例占一节与
+// 占两节是同一件事。空串或非正整数返回错误，便于上层定位到行。
+func parsePeriods(s string) (int, int, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return nil, fmt.Errorf("节次为空")
+		return 0, 0, fmt.Errorf("节次为空")
 	}
 	parts := strings.SplitN(s, "-", 2)
 	a, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 	if err != nil || a < 1 {
-		return nil, fmt.Errorf("节次格式非法：%q", s)
+		return 0, 0, fmt.Errorf("节次格式非法：%q", s)
 	}
 	if len(parts) == 1 {
-		return []int{a}, nil
+		return a, a, nil
 	}
 	b, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 	if err != nil || b < a {
-		return nil, fmt.Errorf("节次格式非法：%q", s)
+		return 0, 0, fmt.Errorf("节次格式非法：%q", s)
 	}
-	out := make([]int, 0, b-a+1)
-	for p := a; p <= b; p++ {
-		out = append(out, p)
-	}
-	return out, nil
+	return a, b, nil
 }
 
 // expandWeeks 把「起止周」展开为具体周次集合（升序去重）。
@@ -109,26 +106,27 @@ func weekDate(week1Monday time.Time, week, weekday int) time.Time {
 	return week1Monday.AddDate(0, 0, (week-1)*7+(weekday-1))
 }
 
-// sessionCell 是展开后的一个具体课次（L3）：某教室在某日期某节次的一次上课。
+// sessionCell 是展开后的一个具体课次（L3）：某教室在某日期的一次上课，占连续
+// 节次区间 [periodStart, periodEnd]（连上多节记为一个实例，不逐节拆分）。
 type sessionCell struct {
 	date        string // "YYYY-MM-DD"
-	periodIndex int
+	periodStart int
+	periodEnd   int
 	classroom   string
 }
 
-// expandSlot 把一个周槽位（教室 + 星期 + 节次集 + 周集）展开为逐个 sessionCell。
-// 输出顺序为按周、按节次，便于测试断言与可读性。
-func expandSlot(classroom string, weekday int, periods []int, weeks []int, week1Monday time.Time) []sessionCell {
-	out := make([]sessionCell, 0, len(weeks)*len(periods))
+// expandSlot 把一个周槽位（教室 + 星期 + 节次区间 + 周集）展开为逐个 sessionCell：
+// 每周一个课次，节次保持区间。输出顺序为按周升序，便于测试断言与可读性。
+func expandSlot(classroom string, weekday int, periodStart, periodEnd int, weeks []int, week1Monday time.Time) []sessionCell {
+	out := make([]sessionCell, 0, len(weeks))
 	for _, w := range weeks {
 		d := weekDate(week1Monday, w, weekday)
-		for _, p := range periods {
-			out = append(out, sessionCell{
-				date:        d.Format("2006-01-02"),
-				periodIndex: p,
-				classroom:   classroom,
-			})
-		}
+		out = append(out, sessionCell{
+			date:        d.Format("2006-01-02"),
+			periodStart: periodStart,
+			periodEnd:   periodEnd,
+			classroom:   classroom,
+		})
 	}
 	return out
 }

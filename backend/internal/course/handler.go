@@ -349,10 +349,10 @@ func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
 		return
 	}
-	headers := []string{"date", "period_index", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
+	headers := []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
 	rows := make([][]any, 0, len(list))
 	for _, s := range list {
-		rows = append(rows, []any{s.Date, s.PeriodIndex, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
+		rows = append(rows, []any{s.Date, s.PeriodStart, s.PeriodEnd, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
 	}
 	if err := xlsx.WriteExport(w, "sessions.xlsx", "sessions", headers, rows); err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "could not export sessions")
@@ -523,8 +523,9 @@ func NormalizeOffering(in *OfferingInput) (string, bool) {
 	return normalizeOffering(in)
 }
 
-// validateSession checks basic fields and that periodIndex is valid for the
-// active bell-time regime on the session's date.
+// validateSession checks basic fields and that every period in
+// [PeriodStart, PeriodEnd] exists in the active bell-time regime on the
+// session's date, mirroring booking's validateBooking.
 func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string, bool) {
 	if in.OfferingID <= 0 {
 		return "offeringId is required", false
@@ -532,8 +533,11 @@ func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string
 	if in.ClassroomID <= 0 {
 		return "classroomId is required", false
 	}
-	if in.PeriodIndex < 1 {
-		return "periodIndex must be >= 1", false
+	if in.PeriodStart < 1 || in.PeriodEnd < 1 {
+		return "periodStart and periodEnd must be >= 1", false
+	}
+	if in.PeriodStart > in.PeriodEnd {
+		return "periodStart must be <= periodEnd", false
 	}
 	date, err := time.Parse("2006-01-02", in.Date)
 	if err != nil {
@@ -548,8 +552,11 @@ func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string
 	if !ok {
 		return "no schedule regime configured for this date", false
 	}
-	if !schedule.PeriodIndexSet(regime)[in.PeriodIndex] {
-		return "periodIndex is not valid for the active regime on this date", false
+	valid := schedule.PeriodIndexSet(regime)
+	for p := in.PeriodStart; p <= in.PeriodEnd; p++ {
+		if !valid[p] {
+			return "period range is not valid for the active regime on this date", false
+		}
 	}
 	return "", true
 }

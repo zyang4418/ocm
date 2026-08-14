@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -19,7 +18,7 @@ func (s *Store) scanSessionView(sc interface {
 	var v SessionView
 	var date time.Time
 	err := sc.Scan(
-		&v.ID, &v.OfferingID, &v.ClassroomID, &date, &v.PeriodIndex, &v.Note, &v.CreatedAt,
+		&v.ID, &v.OfferingID, &v.ClassroomID, &date, &v.PeriodStart, &v.PeriodEnd, &v.Note, &v.CreatedAt,
 		&v.CourseName, &v.CatalogCode, &v.TeachingClassName, &v.Teacher, &v.Semester, &v.ClassroomName,
 	)
 	if err == nil {
@@ -38,7 +37,7 @@ JOIN classrooms cr ON cr.id = s.classroom_id`
 // ListSessions returns sessions matching the given filters. Zero values are
 // ignored (no filter on that field).
 func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64, from, to string) ([]SessionView, error) {
-	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_index, s.note, s.created_at,
+	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_start, s.period_end, s.note, s.created_at,
        c.name, c.code, tc.name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE 1=1`
 	var args []any
 	if offeringID > 0 {
@@ -57,7 +56,7 @@ func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64,
 		q += ` AND s.date <= ?`
 		args = append(args, to)
 	}
-	q += ` ORDER BY s.date, s.period_index`
+	q += ` ORDER BY s.date, s.period_start, s.period_end`
 
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -90,12 +89,12 @@ func (s *Store) ListSessions(ctx context.Context, offeringID, classroomID int64,
 }
 
 func (s *Store) GetSession(ctx context.Context, id int64) (SessionView, error) {
-	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_index, s.note, s.created_at,
+	q := `SELECT s.id, s.offering_id, s.classroom_id, s.date, s.period_start, s.period_end, s.note, s.created_at,
        c.name, c.code, tc.name, o.teacher, o.semester, cr.name ` + sessionJoin + ` WHERE s.id = ?`
 	var v SessionView
 	var date time.Time
 	err := s.db.QueryRowContext(ctx, q, id).Scan(
-		&v.ID, &v.OfferingID, &v.ClassroomID, &date, &v.PeriodIndex, &v.Note, &v.CreatedAt,
+		&v.ID, &v.OfferingID, &v.ClassroomID, &date, &v.PeriodStart, &v.PeriodEnd, &v.Note, &v.CreatedAt,
 		&v.CourseName, &v.CatalogCode, &v.TeachingClassName, &v.Teacher, &v.Semester, &v.ClassroomName,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -164,36 +163,124 @@ func sessionIDs(list []SessionView) []int64 {
 	return ids
 }
 
+// CreateSession inserts a session occupying the contiguous period range
+// [PeriodStart, PeriodEnd]. The classroom row is locked for the duration of an
+// inner transaction so concurrent creates against the same classroom serialize,
+// mirroring booking.Store.Create: there is no DB-level overlap constraint, so
+// the conflict check must run under the lock to be race-free.
 func (s *Store) CreateSession(ctx context.Context, in SessionInput) (SessionView, error) {
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO course_sessions (offering_id, classroom_id, date, period_index, note) VALUES (?, ?, ?, ?, ?)`,
-		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return SessionView{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var lockID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM classrooms WHERE id = ? FOR UPDATE`, in.ClassroomID).Scan(&lockID); err != nil {
+		return SessionView{}, fmt.Errorf("lock classroom: %w", err)
+	}
+
+	if conflict, err := sessionConflict(ctx, tx, in.ClassroomID, in.Date, in.PeriodStart, in.PeriodEnd, 0); err != nil {
+		return SessionView{}, err
+	} else if conflict {
+		return SessionView{}, ErrClassroomConflict
+	}
+
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO course_sessions (offering_id, classroom_id, date, period_start, period_end, note) VALUES (?, ?, ?, ?, ?, ?)`,
+		in.OfferingID, in.ClassroomID, in.Date, in.PeriodStart, in.PeriodEnd, in.Note,
 	)
 	if err != nil {
-		if dbutil.IsDuplicateEntry(err) {
-			return SessionView{}, ErrClassroomConflict
-		}
 		return SessionView{}, fmt.Errorf("create session: %w", err)
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
 		return SessionView{}, fmt.Errorf("create session last insert id: %w", err)
 	}
+	if err := tx.Commit(); err != nil {
+		return SessionView{}, fmt.Errorf("commit: %w", err)
+	}
 	return s.GetSession(ctx, id)
 }
 
+// UpdateSession moves a session, re-checking overlap under the classroom lock.
+// The updated row is excluded from the conflict check so an unchanged range
+// does not conflict with itself.
 func (s *Store) UpdateSession(ctx context.Context, id int64, in SessionInput) (SessionView, error) {
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE course_sessions SET offering_id = ?, classroom_id = ?, date = ?, period_index = ?, note = ? WHERE id = ?`,
-		in.OfferingID, in.ClassroomID, in.Date, in.PeriodIndex, in.Note, id,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return SessionView{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var lockID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM classrooms WHERE id = ? FOR UPDATE`, in.ClassroomID).Scan(&lockID); err != nil {
+		return SessionView{}, fmt.Errorf("lock classroom: %w", err)
+	}
+
+	if conflict, err := sessionConflict(ctx, tx, in.ClassroomID, in.Date, in.PeriodStart, in.PeriodEnd, id); err != nil {
+		return SessionView{}, err
+	} else if conflict {
+		return SessionView{}, ErrClassroomConflict
+	}
+
+	res, err := tx.ExecContext(ctx,
+		`UPDATE course_sessions SET offering_id = ?, classroom_id = ?, date = ?, period_start = ?, period_end = ?, note = ? WHERE id = ?`,
+		in.OfferingID, in.ClassroomID, in.Date, in.PeriodStart, in.PeriodEnd, in.Note, id,
 	)
 	if err != nil {
-		if dbutil.IsDuplicateEntry(err) {
-			return SessionView{}, ErrClassroomConflict
-		}
 		return SessionView{}, fmt.Errorf("update session: %w", err)
 	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return SessionView{}, fmt.Errorf("update session rows affected: %w", err)
+	}
+	if n == 0 {
+		return SessionView{}, ErrSessionNotFound
+	}
+	if err := tx.Commit(); err != nil {
+		return SessionView{}, fmt.Errorf("commit: %w", err)
+	}
 	return s.GetSession(ctx, id)
+}
+
+// sessionConflict reports whether any course session or active (pending/approved)
+// booking overlaps the period range [ps, pe] for the given classroom and date.
+// excludeID omits a session from the check (used when updating that session).
+// It mirrors booking.Store's conflicts so the two modules share one conflict
+// model on (classroom_id, date, period range).
+func sessionConflict(ctx context.Context, q interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}, classroomID int64, date string, ps, pe int, excludeID int64) (bool, error) {
+	var one int
+
+	sessQuery := `SELECT 1 FROM course_sessions WHERE classroom_id = ? AND date = ? AND period_start <= ? AND period_end >= ?`
+	args := []any{classroomID, date, pe, ps}
+	if excludeID > 0 {
+		sessQuery += ` AND id <> ?`
+		args = append(args, excludeID)
+	}
+	sessQuery += ` LIMIT 1`
+
+	err := q.QueryRowContext(ctx, sessQuery, args...).Scan(&one)
+	if err == nil {
+		return true, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("check session conflict: %w", err)
+	}
+
+	err = q.QueryRowContext(ctx,
+		`SELECT 1 FROM classroom_bookings WHERE classroom_id = ? AND date = ? AND status IN ('pending','approved') AND period_start <= ? AND period_end >= ? LIMIT 1`,
+		classroomID, date, pe, ps,
+	).Scan(&one)
+	if err == nil {
+		return true, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("check booking conflict: %w", err)
+	}
+	return false, nil
 }
 
 func (s *Store) DeleteSession(ctx context.Context, id int64) error {
@@ -223,6 +310,9 @@ func (s *Store) Timetable(ctx context.Context, classroomID int64, from, to strin
 	if err != nil {
 		return nil, err
 	}
+	// A session covers every period in [PeriodStart, PeriodEnd]; fill each
+	// covered slot with the same session so the frontend can render the block
+	// as one row-spanning cell starting at PeriodStart.
 	byDate := make(map[string]map[int]SessionView)
 	for _, ses := range sessions {
 		m, ok := byDate[ses.Date]
@@ -230,7 +320,9 @@ func (s *Store) Timetable(ctx context.Context, classroomID int64, from, to strin
 			m = make(map[int]SessionView)
 			byDate[ses.Date] = m
 		}
-		m[ses.PeriodIndex] = ses
+		for p := ses.PeriodStart; p <= ses.PeriodEnd; p++ {
+			m[p] = ses
+		}
 	}
 
 	fromDate, err := time.Parse("2006-01-02", from)

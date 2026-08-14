@@ -112,12 +112,14 @@ func Split(data []byte, semester string, week1Monday time.Time, regimes []schedu
 
 // ---- 中间结构 ----
 
-// slot 是一个周槽位：某教室在星期 weekday 的 periods 节，覆盖 weeks 周。
+// slot 是一个周槽位：某教室在星期 weekday 的节次区间 [periodStart, periodEnd]
+// （连上多节），覆盖 weeks 周。
 type slot struct {
-	classroom string
-	weekday   int
-	periods   []int
-	weeks     []int
+	classroom   string
+	weekday     int
+	periodStart int
+	periodEnd   int
+	weeks       []int
 }
 
 // teacher 是一个去重后的教师（按工号去重）。
@@ -206,7 +208,7 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 			continue
 		}
 		g.slotSeen[slotKey] = true
-		periods, perr := parsePeriods(r.periodStr)
+		periodStart, periodEnd, perr := parsePeriods(r.periodStr)
 		weeks, werr := expandWeeks(r.weekStr)
 		if perr != nil {
 			st.Warnings = append(st.Warnings, fmt.Sprintf("第 %d 行（%s）：%v", r.rowNum, r.courseSeq, perr))
@@ -229,10 +231,11 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 			continue
 		}
 		g.slots = append(g.slots, &slot{
-			classroom: r.classroom,
-			weekday:   r.weekday,
-			periods:   periods,
-			weeks:     weeks,
+			classroom:   r.classroom,
+			weekday:     r.weekday,
+			periodStart: periodStart,
+			periodEnd:   periodEnd,
+			weeks:       weeks,
 		})
 	}
 	return seqs
@@ -440,10 +443,12 @@ type offeringRec struct {
 	note          string
 }
 
-// sessionRec 是一个课次记录（匹配 sessions importer 列契约）。
+// sessionRec 是一个课次记录（匹配 sessions importer 列契约）。连上多节的槽位
+// 保持为一个记录（period_start..period_end），不逐节展开。
 type sessionRec struct {
 	date          string
-	periodIndex   int
+	periodStart   int
+	periodEnd     int
 	classroom     string
 	course        string
 	teachingClass string
@@ -524,13 +529,14 @@ func buildOfferingsSessions(
 		}
 		offerings = append(offerings, off)
 
-		// 展开槽位为课次。
+		// 展开槽位为课次：每周一个课次，节次保持区间（连上多节不拆分）。
 		for _, s := range g.slots {
-			cells := expandSlot(s.classroom, s.weekday, s.periods, s.weeks, week1Monday)
+			cells := expandSlot(s.classroom, s.weekday, s.periodStart, s.periodEnd, s.weeks, week1Monday)
 			for _, c := range cells {
 				sessions = append(sessions, sessionRec{
 					date:          c.date,
-					periodIndex:   c.periodIndex,
+					periodStart:   c.periodStart,
+					periodEnd:     c.periodEnd,
 					classroom:     c.classroom,
 					course:        g.courseName,
 					teachingClass: tcName[g.adminKey],
@@ -543,8 +549,11 @@ func buildOfferingsSessions(
 		if sessions[i].date != sessions[j].date {
 			return sessions[i].date < sessions[j].date
 		}
-		if sessions[i].periodIndex != sessions[j].periodIndex {
-			return sessions[i].periodIndex < sessions[j].periodIndex
+		if sessions[i].periodStart != sessions[j].periodStart {
+			return sessions[i].periodStart < sessions[j].periodStart
+		}
+		if sessions[i].periodEnd != sessions[j].periodEnd {
+			return sessions[i].periodEnd < sessions[j].periodEnd
 		}
 		return sessions[i].classroom < sessions[j].classroom
 	})
@@ -577,7 +586,9 @@ func validateRegimes(sessions []sessionRec, regimes []schedule.Regime) error {
 			set = make(map[int]bool)
 			periodsByDate[s.date] = set
 		}
-		set[s.periodIndex] = true
+		for p := s.periodStart; p <= s.periodEnd; p++ {
+			set[p] = true
+		}
 	}
 	var bad []string
 	for dstr, periods := range periodsByDate {
@@ -690,10 +701,10 @@ func emitOfferings(ofs []offeringRec) ([]byte, error) {
 }
 
 func emitSessions(ss []sessionRec) ([]byte, error) {
-	headers := []string{"date", "period_index", "classroom", "course", "teaching_class", "semester", "note"}
+	headers := []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "note"}
 	rows := make([][]any, 0, len(ss))
 	for _, s := range ss {
-		rows = append(rows, []any{s.date, s.periodIndex, s.classroom, s.course, s.teachingClass, s.semester, ""})
+		rows = append(rows, []any{s.date, s.periodStart, s.periodEnd, s.classroom, s.course, s.teachingClass, s.semester, ""})
 	}
 	return xlsx.BuildBytes("sessions", headers, rows)
 }

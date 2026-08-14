@@ -26,14 +26,15 @@ OCM 支持批量导入(**xlsx**)。导入是**异步**的:上传一个 `.xlsx` �
 | 列 | 含义 | 规则 |
 |----|------|------|
 | `date` | 上课日期 | `YYYY-MM-DD` |
-| `period_index` | 节次(作息制度节号) | 正整数;须在该日期生效制度中存在 |
+| `period_start` | 起始节次(作息制度节号) | 正整数;须在该日期生效制度中存在 |
+| `period_end` | 结束节次,可选 | 正整数,须 ≥ `period_start`;留空等于 `period_start`(单节) |
 | `classroom` | 教室名 | 须与 `classrooms.name` 一致 |
 | `course` | 课程名 | 须与 `course_catalog.name` 一致 |
 | `teaching_class` | 教学班名 | 与 course+semester 组合须匹配一条开课 |
 | `semester` | 学期 | 该开课的学期 |
 | `note` | 备注,可选 | 可为空 |
 
-一节 = 一行。某班周一第 3、4 节连上是**两行**(`period_index=3` 和 `=4`),不是一行写范围。
+一次上课 = 一行。某班周一第 3、4 节连上是**一行**(`period_start=3, period_end=4`),不是两行;第 3 节与第 4 节分别上的课才是两行。
 
 > 注:列名是 `teaching_class`(**不是** `class`)。后端早期接受过 CSV,现已改为 xlsx;若沿用旧 CSV 流程,需改为输出 xlsx。
 
@@ -62,7 +63,7 @@ job 状态:`pending → processing → preview →(commit)→ succeeded/failed`;
 
 | type | 权限 | 必需列(其余可选) |
 |------|------|------|
-| `sessions` | CourseManage | `date, period_index, classroom, course, teaching_class, semester`(+ `note`) |
+| `sessions` | CourseManage | `date, period_start, classroom, course, teaching_class, semester`(+ `period_end, note`) |
 | `classrooms` | ClassroomManage | `name`(+ `building, capacity, type, floor, campus, status, description`) |
 | `admin_classes` | AdminClassManage | `name`(+ `grade, note`) |
 | `teaching_classes` | TeachingClassManage | `name, admin_grade, admin_name`(+ `note`) |
@@ -83,14 +84,14 @@ job 状态:`pending → processing → preview →(commit)→ succeeded/failed`;
 
 ## 从学校课表准备 xlsx
 
-若你的课表不是教务处聚合格式(无法用 jwc_split),需写一次性脚本把每次课提取成一行、列名符合上表。推荐 `openpyxl` 读 `.xlsx`,处理合并单元格(向合并范围填左上角值)、把钟点映射成 `period_index`(用 `GET /api/schedule/active?date=...` 查生效制度)。
+若你的课表不是教务处聚合格式(无法用 jwc_split),需写一次性脚本把每次课提取成一行、列名符合上表。推荐 `openpyxl` 读 `.xlsx`,处理合并单元格(向合并范围填左上角值)、把钟点映射成节次区间 `period_start`/`period_end`(用 `GET /api/schedule/active?date=...` 查生效制度;连上的多节写起止节号)。
 
 ## 常见坑
 
 - **只收 xlsx**:`.csv`/`.xls` 不接受(后端 `excelize`,非 `encoding/csv`)。
 - **列名逐字一致**:小写,如 `teaching_class`(不是 `class`/`班级`);表头会被小写化 + 去空格后匹配。
-- **节次不是钟点**:`period_index` 是作息制度节号(1 起),不是 `08:00`;原始表用钟点须先映射成节号。
+- **节次不是钟点**:`period_start`/`period_end` 是作息制度节号(1 起),不是 `08:00`;原始表用钟点须先映射成节号。
 - **名称须完全一致**:教室、课程、教学班、学期须与系统记录逐字一致,否则该行失败。
 - **合并单元格**:表头和跨节课常见,转换时须向合并范围填充左上角值。
-- **冲突**:导入只校验 `course_sessions` 唯一约束(同教室+日期+节次不重复),不校验与教室预约的冲突。
+- **冲突**:导入按「教室+日期+节次区间」检查重叠——与已有课次区间重叠、或与 `pending`/`approved` 教室预约区间重叠的行失败;文件内相互重叠的行同样报错。
 - **必须 commit**:`preview` 态不写库;不点「确认导入」job 会停在 preview。

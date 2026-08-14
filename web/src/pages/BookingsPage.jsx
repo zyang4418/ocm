@@ -155,7 +155,9 @@ export default function BookingsPage() {
         const ps = (regime?.periods || []).slice().sort((a, b) => a.periodIndex - b.periodIndex)
         setPeriods(ps)
         const busySet = new Set()
-        ;(Array.isArray(sess) ? sess : []).forEach((s) => busySet.add(s.periodIndex))
+        ;(Array.isArray(sess) ? sess : []).forEach((s) => {
+          for (let i = s.periodStart; i <= s.periodEnd; i++) busySet.add(i)
+        })
         ;(Array.isArray(books) ? books : []).forEach((b) => {
           if (b.status === 'pending' || b.status === 'approved') {
             for (let i = b.periodStart; i <= b.periodEnd; i++) busySet.add(i)

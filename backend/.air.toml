@@ -2,8 +2,8 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ."
+  entrypoint = ["./tmp/main"]
   delay = 300
   exclude_dir = ["tmp", "vendor", "testdata", "dist"]
   exclude_regex = ["_test.go"]
@@ -16,6 +16,10 @@ tmp_dir = "tmp"
   log = "build-errors.log"
   send_interrupt = false
   stop_on_error = true
+
+[build.windows]
+  cmd = "go build -o ./tmp/main.exe ."
+  entrypoint = ["tmp\\main.exe"]
 
 [color]
   app = ""

@@ -91,7 +91,7 @@ title: API 概述
 
 | type | 权限 | 必需列(其余可选) |
 |------|------|------|
-| `sessions` | `CourseManage` | `date, period_index, classroom, course, teaching_class, semester`(+ `note`) |
+| `sessions` | `CourseManage` | `date, period_start, classroom, course, teaching_class, semester`(+ `period_end, note`) |
 | `classrooms` | `ClassroomManage` | `name`(+ `building, capacity, type, floor, campus, status, description`) |
 | `admin_classes` | `AdminClassManage` | `name`(+ `grade, note`) |
 | `teaching_classes` | `TeachingClassManage` | `name, admin_grade, admin_name`(+ `note`) |

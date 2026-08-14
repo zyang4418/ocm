@@ -34,11 +34,12 @@ import { apiFetch, apiUpload } from '../auth/api.js'
 const IMPORT_TYPES = {
   sessions: {
     label: '课表（课次）',
-    schema: 'date, period_index, classroom, course, teaching_class, semester, note',
-    note: '教室与开课需预先建立，按名称引用；按教室+日期+节次去重，冲突行跳过。',
+    schema: 'date, period_start, period_end, classroom, course, teaching_class, semester, note',
+    note: '教室与开课需预先建立，按名称引用；按教室+日期+节次区间去重，冲突行跳过。period_end 可省略，默认为 period_start（连上多节如 3-4 为一条课次）。',
     columns: [
       { key: 'date', header: '日期' },
-      { key: 'periodIndex', header: '节次' },
+      { key: 'periodStart', header: '起始节次' },
+      { key: 'periodEnd', header: '结束节次' },
       { key: 'classroom', header: '教室' },
       { key: 'course', header: '课程' },
       { key: 'teachingClass', header: '教学班' },
