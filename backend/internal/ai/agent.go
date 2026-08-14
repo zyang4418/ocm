@@ -93,7 +93,7 @@ func systemPrompt(now time.Time) string {
 		"3. 涉及相对日期（如“周一”“下周”）时，必须先换算成具体日期（YYYY-MM-DD）再调用工具，并在回答中写明。\n" +
 		"4. 节次必须与工具返回的作息制度核对，不要凭空假设节次对应的时间。\n" +
 		"5. 如果某个工具因为用户没有权限而失败，请如实告知用户缺少什么权限，不要编造数据替代。\n" +
-		"6. 回答使用中文，简洁准确。"
+		"6. 回答使用中文，简洁准确；多项数据可用 Markdown 列表或表格呈现。"
 }
 
 // Definitions returns the OpenAI tool definitions for this turn. The tool set

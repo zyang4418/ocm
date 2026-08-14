@@ -44,7 +44,8 @@
       <block wx:for="{{messages}}" wx:key="id" wx:for-item="msg">
         <view class="msg-row {{msg.role === 'user' ? 'msg-row--user' : 'msg-row--assistant'}}">
           <view class="msg-bubble {{msg.role === 'user' ? 'msg-bubble--user' : 'msg-bubble--assistant'}}">
-            <text wx:if="{{msg.content}}" class="msg-text" user-select>{{msg.content}}</text>
+            <text wx:if="{{msg.role === 'user' && msg.content}}" class="msg-text" user-select>{{msg.content}}</text>
+            <md-view wx:elif="{{msg.content}}" content="{{msg.content}}" />
             <view wx:if="{{msg.streaming && !msg.content}}" class="msg-loading">
               <view class="dot"></view>
               <view class="dot"></view>

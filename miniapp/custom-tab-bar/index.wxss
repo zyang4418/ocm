@@ -1,0 +1,37 @@
+/* 复刻原生 tabBar:内容区 ~100rpx + 安全区,颜色与 app.json 一致 */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  background: #FFFFFF;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-bar-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 10rpx 0 8rpx;
+}
+
+.tab-bar-icon {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.tab-bar-label {
+  font-size: 20rpx;
+  line-height: 1.4;
+  color: #8F959E;
+}
+
+.tab-bar-label--active {
+  color: #2B5FF6;
+}

@@ -48,7 +48,14 @@ Page({
   },
 
   onShow() {
+    this.syncTabBar()
     this.loadRecent()
+  },
+
+  /** 自定义 tabBar:每个 tab 页须同步当前选中项(按 pagePath 键,不受过滤后数量影响)。 */
+  syncTabBar() {
+    const tb = (this as any).getTabBar && (this as any).getTabBar()
+    if (tb) tb.setData({ selected: '/pages/index/index' })
   },
 
   /** 我的近期预约:已通过且今天起;为空回退本人全部预约。 */

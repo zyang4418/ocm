@@ -2,6 +2,9 @@
 .page {
   display: flex;
   flex-direction: column;
+  /* 自定义 tabBar:根高已在 TS 侧扣除 tabBar 高度,这里按 border-box 与
+     padding-top 一起计,否则底部输入栏会被 tabBar 遮住 */
+  box-sizing: border-box;
   background: var(--color-bg);
 }
 
@@ -29,6 +32,8 @@
 /* ── 滚动区 ── */
 .scroll-content {
   flex: 1;
+  /* flex 子项默认 min-height:auto,内容高会撑破固定高容器,须显式清零 */
+  min-height: 0;
   padding: var(--space-md);
   box-sizing: border-box;
 }

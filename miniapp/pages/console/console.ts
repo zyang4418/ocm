@@ -52,6 +52,7 @@ Page({
   },
 
   onShow() {
+    this.syncTabBar()
     // Re-read the cached user on every show so permission changes made in
     // this session (e.g. via the users page) reflect without a restart.
     const user = getUser()
@@ -67,5 +68,11 @@ Page({
   onTapEntry(e: WechatMiniprogram.TouchEvent) {
     const { url } = e.currentTarget.dataset
     wx.navigateTo({ url })
+  },
+
+  /** 自定义 tabBar:每个 tab 页须同步当前选中项。 */
+  syncTabBar() {
+    const tb = (this as any).getTabBar && (this as any).getTabBar()
+    if (tb) tb.setData({ selected: '/pages/console/console' })
   }
 })

@@ -7,6 +7,10 @@ import { request } from '../../utils/request'
 // 首帧渲染即需正确高度（避免 100vh 在部分机型初始计算偏差），故在模块级同步取值。
 const nav = getNavInfo()
 
+// 自定义 tabBar 不再由原生扣除视口，页面根高需减去 tabBar 高度（内容区 ~50px +
+// 底部安全区），否则底部输入栏会被 tabBar 遮住。
+const TAB_BAR_HEIGHT = 50 + nav.safeAreaBottom
+
 interface ToolState {
   name: string
   status: string // running | ok | error
@@ -56,7 +60,7 @@ Page({
   data: {
     statusBarHeight: nav.statusBarHeight,
     safeAreaBottom: nav.safeAreaBottom,
-    pageHeight: nav.pageHeight,
+    pageHeight: nav.pageHeight - nav.statusBarHeight - TAB_BAR_HEIGHT,
     canUse: false,
     messages: [] as Message[],
     inputValue: '',
@@ -72,6 +76,16 @@ Page({
     const ok = await ensureAuth()
     if (!ok) return
     this.setData({ canUse: can('ai:chat') })
+  },
+
+  onShow() {
+    this.syncTabBar()
+  },
+
+  /** 自定义 tabBar:每个 tab 页须同步当前选中项。 */
+  syncTabBar() {
+    const tb = (this as any).getTabBar && (this as any).getTabBar()
+    if (tb) tb.setData({ selected: '/pages/ai/ai' })
   },
 
   onTapSuggest(e: WechatMiniprogram.TouchEvent) {

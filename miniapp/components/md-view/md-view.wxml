@@ -1,0 +1,51 @@
+<view class="md">
+  <block wx:for="{{blocks}}" wx:key="index" wx:for-item="b">
+
+    <!-- 段落:外层单个 text 承载整段行流,run 只嵌套做样式。
+         嵌套 text 在任何引擎都是纯行内流,行断与纯文本一致;
+         若用平级 text 元素,真机引擎在元素边界不产生断行点,
+         长文本会被整体挤到下一行。标签间不留任何空白/换行,
+         text 会把源码换行渲染成真实换行 -->
+    <view wx:if="{{b.type === 'p'}}" class="md-p"><text user-select><block wx:for="{{b.runs}}" wx:key="index" wx:for-item="r"><text class="md-run md-run--{{r.type}}" data-url="{{r.url}}" bindtap="onTapLink">{{r.text}}</text></block></text></view>
+
+    <!-- 标题 -->
+    <view wx:elif="{{b.type === 'heading'}}" class="md-h md-h{{b.level}}"><text user-select><block wx:for="{{b.runs}}" wx:key="index" wx:for-item="r"><text class="md-run md-run--{{r.type}}">{{r.text}}</text></block></text></view>
+
+    <!-- 无序列表 -->
+    <view wx:elif="{{b.type === 'ul'}}" class="md-list">
+      <view class="md-li" wx:for="{{b.items}}" wx:key="index" wx:for-item="item">
+        <text class="md-marker">•</text>
+        <view class="md-li-body"><text user-select><block wx:for="{{item}}" wx:key="index" wx:for-item="r"><text class="md-run md-run--{{r.type}}" data-url="{{r.url}}" bindtap="onTapLink">{{r.text}}</text></block></text></view>
+      </view>
+    </view>
+
+    <!-- 有序列表 -->
+    <view wx:elif="{{b.type === 'ol'}}" class="md-list">
+      <view class="md-li" wx:for="{{b.items}}" wx:key="index" wx:for-item="item" wx:for-index="li">
+        <text class="md-marker">{{li + 1}}.</text>
+        <view class="md-li-body"><text user-select><block wx:for="{{item}}" wx:key="index" wx:for-item="r"><text class="md-run md-run--{{r.type}}" data-url="{{r.url}}" bindtap="onTapLink">{{r.text}}</text></block></text></view>
+      </view>
+    </view>
+
+    <!-- 表格 -->
+    <view wx:elif="{{b.type === 'table'}}" class="md-table-wrap">
+      <view class="md-table">
+        <view class="md-tr md-tr--head">
+          <view class="md-td" wx:for="{{b.header}}" wx:key="index" wx:for-item="cell"><text user-select><block wx:for="{{cell}}" wx:key="index" wx:for-item="r"><text class="md-run md-run--{{r.type}}">{{r.text}}</text></block></text></view>
+        </view>
+        <view class="md-tr" wx:for="{{b.rows}}" wx:key="index" wx:for-item="row">
+          <view class="md-td" wx:for="{{row}}" wx:key="index" wx:for-item="cell"><text user-select><block wx:for="{{cell}}" wx:key="index" wx:for-item="r"><text class="md-run md-run--{{r.type}}">{{r.text}}</text></block></text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 代码块 -->
+    <view wx:elif="{{b.type === 'code'}}" class="md-code">
+      <text class="md-code-text" user-select>{{b.text}}</text>
+    </view>
+
+    <!-- 分隔线 -->
+    <view wx:elif="{{b.type === 'hr'}}" class="md-hr"></view>
+
+  </block>
+</view>

@@ -1,0 +1,139 @@
+/* AI 回答 Markdown 渲染(轻量子集) */
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+/* ── 行内 run ── */
+.md-run {
+  /* run 嵌套在单个外层 text 内(见 wxml);WebView 下显式 inline 兜底,
+     避免引擎把 text 当块级堆叠 */
+  display: inline;
+}
+
+.md-run--bold {
+  font-weight: 700;
+}
+
+.md-run--code {
+  font-family: monospace;
+  font-size: 26rpx;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  background: var(--color-bg);
+}
+
+.md-run--link {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* ── 标题 ── */
+.md-h {
+  font-weight: 700;
+}
+
+.md-h1 {
+  font-size: 32rpx;
+}
+
+.md-h2 {
+  font-size: 30rpx;
+}
+
+.md-h3, .md-h4, .md-h5, .md-h6 {
+  font-size: 28rpx;
+}
+
+/* ── 列表 ── */
+.md-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.md-li {
+  display: flex;
+  flex-direction: row;
+  gap: 12rpx;
+}
+
+.md-marker {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.md-li-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 表格 ── */
+.md-table-wrap {
+  overflow-x: auto;
+}
+
+.md-table {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+  border: 1rpx solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.md-tr {
+  display: flex;
+  flex-direction: row;
+}
+
+.md-tr + .md-tr {
+  border-top: 1rpx solid var(--color-border);
+}
+
+.md-td {
+  /* 列宽均分:flex-basis 0 + grow 1 使每行单元格等宽、跨行同列对齐,
+     杜绝按内容各自撑宽造成的“砖块”错位;内容过长时换行而非撑破 */
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10rpx 16rpx;
+  border-right: 1rpx solid var(--color-border);
+  font-size: 26rpx;
+}
+
+.md-td:last-child {
+  border-right: none;
+}
+
+.md-tr--head .md-td {
+  background: var(--color-bg);
+  font-weight: 700;
+}
+
+/* ── 代码块 ── */
+.md-code {
+  padding: 16rpx;
+  border-radius: var(--radius-sm);
+  background: #F5F6F8;
+}
+
+.md-code-text {
+  font-family: monospace;
+  font-size: 26rpx;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── 分隔线 ── */
+.md-hr {
+  height: 1rpx;
+  background: var(--color-border);
+}
