@@ -44,6 +44,21 @@ func (s *Store) Migrate(ctx context.Context) error {
     created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (teaching_class_id, admin_class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+		// Student profiles bind a user account to an admin class (行政班). The
+		// attendance module derives expected rosters from this chain:
+		// student_profiles → admin_classes → teaching_class_members → offerings.
+		// One user, one class; extensible columns (student_no, note) carry the
+		// roster metadata without touching the users table.
+		`CREATE TABLE IF NOT EXISTS student_profiles (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id        BIGINT       NOT NULL,
+    admin_class_id BIGINT       NOT NULL,
+    student_no     VARCHAR(32)  NOT NULL DEFAULT '',
+    note           VARCHAR(255) NOT NULL DEFAULT '',
+    created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_student_profile_user (user_id),
+    KEY idx_student_profile_class (admin_class_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	}
 	for _, q := range stmts {
 		if _, err := s.db.ExecContext(ctx, q); err != nil {

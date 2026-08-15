@@ -1,0 +1,140 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+.page-scroll {
+  flex: 1;
+  padding: var(--space-md);
+  box-sizing: border-box;
+}
+
+/* 主扫码入口 */
+.scan-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 64rpx 0;
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+}
+
+.scan-icon {
+  width: 128rpx;
+  height: 128rpx;
+}
+
+.scan-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.scan-sub {
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* 数字码兜底 */
+.code-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.code-input {
+  flex: 1;
+  height: 88rpx;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  font-size: 32rpx;
+  letter-spacing: 8rpx;
+  text-align: center;
+}
+
+.code-placeholder {
+  color: var(--color-text-tertiary);
+  letter-spacing: 2rpx;
+}
+
+.code-btn {
+  width: 176rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #FFFFFF;
+  font-size: var(--font-md);
+}
+
+.code-btn--disabled {
+  opacity: 0.6;
+}
+
+/* 错误提示 */
+.banner {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: #FDECEC;
+  border-radius: var(--radius-sm);
+}
+
+.banner-text {
+  font-size: var(--font-sm);
+  color: #D54941;
+}
+
+/* 结果反馈 */
+.result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+}
+
+.result-status {
+  margin-bottom: var(--space-xs);
+}
+
+.result-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.result-meta {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+/* 我的记录入口 */
+.records-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+  font-size: var(--font-sm);
+  color: var(--color-primary);
+}
+
+.records-arrow {
+  font-size: 28rpx;
+}
+
+.bottom-space {
+  height: 48rpx;
+}

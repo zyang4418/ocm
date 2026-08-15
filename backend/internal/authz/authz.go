@@ -35,6 +35,9 @@ const (
 	LogRead             = "log:read"
 	LogManage           = "log:manage"
 	AiChat              = "ai:chat"
+	AttendanceRead      = "attendance:read"
+	AttendanceManage    = "attendance:manage"
+	AttendanceCheckin   = "attendance:checkin"
 )
 
 // Wildcard is the special permission that grants everything. It is only held

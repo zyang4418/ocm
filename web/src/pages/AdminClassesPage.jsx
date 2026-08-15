@@ -4,6 +4,7 @@ import {
   BreadcrumbItem,
   Button,
   Column,
+  ComboBox,
   DataTable,
   Grid,
   InlineNotification,
@@ -56,6 +57,10 @@ export default function AdminClassesPage() {
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('admin_class:manage')
+  // Roster (学生档案) is gated by the attendance permissions: teachers may
+  // curate members even without admin-class manage rights.
+  const canRoster = can('attendance:read')
+  const canRosterManage = can('attendance:manage')
 
   const list = usePagedList({ path: '/api/admin-classes', token })
   const { loading } = list
@@ -76,6 +81,131 @@ export default function AdminClassesPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  // Roster modal (成员) state.
+  const [membersTarget, setMembersTarget] = useState(null)
+  const [members, setMembers] = useState([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [membersError, setMembersError] = useState('')
+  const [studentOptions, setStudentOptions] = useState([])
+  const [pickStudent, setPickStudent] = useState(null) // { id, text } of the ComboBox selection
+  const [pickNo, setPickNo] = useState('')
+  const [addError, setAddError] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [editMember, setEditMember] = useState(null) // { userId, studentNo, note }
+  const [editMemberError, setEditMemberError] = useState('')
+  const [savingMember, setSavingMember] = useState(false)
+  const [removeMember, setRemoveMember] = useState(null)
+  const [removeError, setRemoveError] = useState('')
+  const [removing, setRemoving] = useState(false)
+
+  const loadMembers = async (id) => {
+    try {
+      setMembersLoading(true)
+      setMembersError('')
+      const data = await apiFetch(`/api/admin-classes/${id}/students`, { token })
+      setMembers(data || [])
+    } catch (err) {
+      setMembersError(err.message)
+    } finally {
+      setMembersLoading(false)
+    }
+  }
+
+  const openMembers = (c) => {
+    setMembersTarget(c)
+    setMembers([])
+    setMembersError('')
+    setPickStudent(null)
+    setPickNo('')
+    setAddError('')
+    setStudentOptions([])
+    loadMembers(c.id)
+  }
+
+  // ComboBox search: query users and keep only student accounts. The backend
+  // validates the type again on add.
+  const searchStudents = async (q) => {
+    try {
+      const data = await apiFetch(`/api/users?q=${encodeURIComponent(q)}&page_size=50`, { token })
+      setStudentOptions(
+        ((data && data.items) || [])
+          .filter((u) => u.type === 'student')
+          .map((u) => ({ id: String(u.id), text: `${u.displayName}（${u.username}）` }))
+      )
+    } catch {
+      setStudentOptions([])
+    }
+  }
+
+  const handleAddMember = async () => {
+    if (!pickStudent) {
+      setAddError('请选择学生')
+      return
+    }
+    try {
+      setAdding(true)
+      setAddError('')
+      await apiFetch(`/api/admin-classes/${membersTarget.id}/students`, {
+        method: 'POST',
+        token,
+        body: { userId: Number(pickStudent.id), studentNo: pickNo.trim(), note: '' },
+      })
+      setPickStudent(null)
+      setPickNo('')
+      setStudentOptions([])
+      await loadMembers(membersTarget.id)
+    } catch (err) {
+      setAddError(err.message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const openEditMember = (m) => {
+    setEditMember({ userId: m.userId, studentNo: m.studentNo, note: m.note })
+    setEditMemberError('')
+  }
+
+  const handleSaveMember = async () => {
+    try {
+      setSavingMember(true)
+      setEditMemberError('')
+      await apiFetch(`/api/admin-classes/${membersTarget.id}/students/${editMember.userId}`, {
+        method: 'PUT',
+        token,
+        body: { studentNo: editMember.studentNo.trim(), note: editMember.note.trim() },
+      })
+      setEditMember(null)
+      await loadMembers(membersTarget.id)
+    } catch (err) {
+      setEditMemberError(err.message)
+    } finally {
+      setSavingMember(false)
+    }
+  }
+
+  const openRemoveMember = (m) => {
+    setRemoveMember(m)
+    setRemoveError('')
+  }
+
+  const handleRemoveMember = async () => {
+    try {
+      setRemoving(true)
+      setRemoveError('')
+      await apiFetch(`/api/admin-classes/${membersTarget.id}/students/${removeMember.userId}`, {
+        method: 'DELETE',
+        token,
+      })
+      setRemoveMember(null)
+      await loadMembers(membersTarget.id)
+    } catch (err) {
+      setRemoveError(err.message)
+    } finally {
+      setRemoving(false)
+    }
+  }
 
   const validate = (form) => {
     if (!form.name.trim()) return '班级名称为必填项'
@@ -152,7 +282,8 @@ export default function AdminClassesPage() {
     }
   }
 
-  const colSpan = headers.length + (canManage ? 1 : 0)
+  const canAdmin = canManage || canRoster
+  const colSpan = headers.length + (canAdmin ? 1 : 0)
 
   return (
     <Grid fullWidth className="courses-page">
@@ -213,7 +344,7 @@ export default function AdminClassesPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    {canManage && <TableHeader>操作</TableHeader>}
+                    {canAdmin && <TableHeader>操作</TableHeader>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -238,25 +369,34 @@ export default function AdminClassesPage() {
                             }
                             return <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
                           })}
-                          {canManage && (
+                          {canAdmin && (
                             <TableCell>
                               <div className="courses-page__actions">
-                                <Button
-                                  kind="ghost"
-                                  size="sm"
-                                  hasIconOnly
-                                  renderIcon={Edit}
-                                  iconDescription="编辑"
-                                  onClick={() => openEdit(c)}
-                                />
-                                <Button
-                                  kind="ghost"
-                                  size="sm"
-                                  hasIconOnly
-                                  renderIcon={TrashCan}
-                                  iconDescription="删除"
-                                  onClick={() => openDelete(c)}
-                                />
+                                {canManage && (
+                                  <>
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      hasIconOnly
+                                      renderIcon={Edit}
+                                      iconDescription="编辑"
+                                      onClick={() => openEdit(c)}
+                                    />
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      hasIconOnly
+                                      renderIcon={TrashCan}
+                                      iconDescription="删除"
+                                      onClick={() => openDelete(c)}
+                                    />
+                                  </>
+                                )}
+                                {canRoster && (
+                                  <Button kind="ghost" size="sm" onClick={() => openMembers(c)}>
+                                    成员
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           )}
@@ -366,6 +506,150 @@ export default function AdminClassesPage() {
         </p>
         {deleteError && (
           <InlineNotification kind="error" title="删除失败" subtitle={deleteError} lowContrast hideCloseButton />
+        )}
+      </Modal>
+
+      {/* Members (学生档案): attendance-gated roster of one admin class. */}
+      <Modal
+        open={Boolean(membersTarget)}
+        modalHeading={`班级成员：${membersTarget?.name ?? ''}`}
+        primaryButtonText="关闭"
+        onRequestClose={() => {
+          setMembersTarget(null)
+          setEditMember(null)
+          setRemoveMember(null)
+        }}
+        onRequestSubmit={() => setMembersTarget(null)}
+        size="lg"
+      >
+        <div className="courses-page__form">
+          <p className="courses-page__subtitle">
+            维护学生档案（账号 ↔ 行政班）。名单用于课堂签到的应到统计，学生可在此添加或移除。
+          </p>
+          {canRosterManage && (
+            <div className="courses-page__member-add">
+              <ComboBox
+                id="member-pick"
+                titleText="添加学生"
+                placeholder="输入姓名/用户名搜索学生"
+                items={studentOptions}
+                itemToString={(item) => (item ? item.text : '')}
+                selectedItem={pickStudent}
+                onChange={(e) => {
+                  if (e.selectedItem) {
+                    setPickStudent(e.selectedItem)
+                  } else {
+                    setPickStudent(null)
+                    searchStudents(e.inputValue ?? '')
+                  }
+                }}
+                shouldFilterItem={() => true}
+              />
+              <TextInput
+                id="member-no"
+                labelText="学号（可选）"
+                placeholder="如 2023001"
+                value={pickNo}
+                onChange={(e) => setPickNo(e.target.value)}
+              />
+              <Button size="sm" onClick={handleAddMember} disabled={adding || !pickStudent}>
+                {adding ? '添加中…' : '添加'}
+              </Button>
+              {addError && (
+                <InlineNotification kind="error" title="添加失败" subtitle={addError} lowContrast hideCloseButton />
+              )}
+            </div>
+          )}
+          {membersError && (
+            <InlineNotification kind="error" title="加载失败" subtitle={membersError} lowContrast hideCloseButton />
+          )}
+          {membersLoading ? (
+            <p>加载中…</p>
+          ) : members.length === 0 ? (
+            <p>暂无成员。{canRosterManage ? '请通过上方搜索添加学生。' : ''}</p>
+          ) : (
+            <TableContainer title={`共 ${members.length} 名学生`}>
+              <Table size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>姓名</TableHeader>
+                    <TableHeader>用户名</TableHeader>
+                    <TableHeader>学号</TableHeader>
+                    {canRosterManage && <TableHeader>操作</TableHeader>}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {members.map((m) => (
+                    <TableRow key={m.userId}>
+                      <TableCell>{m.displayName}</TableCell>
+                      <TableCell>{m.username}</TableCell>
+                      <TableCell>{m.studentNo || '-'}</TableCell>
+                      {canRosterManage && (
+                        <TableCell>
+                          <div className="courses-page__actions">
+                            <Button kind="ghost" size="sm" onClick={() => openEditMember(m)}>
+                              编辑
+                            </Button>
+                            <Button kind="ghost" size="sm" onClick={() => openRemoveMember(m)}>
+                              移除
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </div>
+      </Modal>
+
+      {/* Edit member metadata */}
+      <Modal
+        open={Boolean(editMember)}
+        modalHeading="编辑学生档案"
+        primaryButtonText="保存"
+        secondaryButtonText="取消"
+        onRequestClose={() => setEditMember(null)}
+        onRequestSubmit={handleSaveMember}
+        primaryButtonDisabled={savingMember}
+      >
+        <div className="courses-page__form">
+          <TextInput
+            id="member-edit-no"
+            labelText="学号"
+            value={editMember?.studentNo ?? ''}
+            onChange={(e) => setEditMember({ ...editMember, studentNo: e.target.value })}
+          />
+          <TextInput
+            id="member-edit-note"
+            labelText="备注"
+            value={editMember?.note ?? ''}
+            onChange={(e) => setEditMember({ ...editMember, note: e.target.value })}
+          />
+          {editMemberError && (
+            <InlineNotification kind="error" title="保存失败" subtitle={editMemberError} lowContrast hideCloseButton />
+          )}
+        </div>
+      </Modal>
+
+      {/* Remove member */}
+      <Modal
+        danger
+        open={Boolean(removeMember)}
+        modalHeading="移除学生"
+        primaryButtonText="移除"
+        secondaryButtonText="取消"
+        onRequestClose={() => setRemoveMember(null)}
+        onRequestSubmit={handleRemoveMember}
+        primaryButtonDisabled={removing}
+      >
+        <p className="courses-page__confirm-text">
+          确定要将「{removeMember?.displayName}」移出该行政班吗？历史签到记录不受影响。
+        </p>
+        {removeError && (
+          <InlineNotification kind="error" title="移除失败" subtitle={removeError} lowContrast hideCloseButton />
         )}
       </Modal>
     </Grid>

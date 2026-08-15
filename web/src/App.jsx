@@ -18,6 +18,9 @@ import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
 import LogsPage from './pages/LogsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import AiPage from './pages/AiPage.jsx'
+import AttendancePage from './pages/AttendancePage.jsx'
+import AttendanceDetailPage from './pages/AttendanceDetailPage.jsx'
+import AttendanceReportPage from './pages/AttendanceReportPage.jsx'
 
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
@@ -64,6 +67,9 @@ export default function App() {
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/admin-classes" element={<AdminClassesPage />} />
             <Route path="/teaching-classes" element={<TeachingClassesPage />} />
+            <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/attendance/report" element={<AttendanceReportPage />} />
+            <Route path="/attendance/:id" element={<AttendanceDetailPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

@@ -63,6 +63,12 @@ func sortedCatalog() []Permission {
 			Description: "修改日志保留策略（开关与保留天数）"},
 		{Code: AiChat, Name: "AI 助手", Category: "ai", CategoryName: "AI 助手",
 			Description: "与 AI 助手对话，查询教室、空闲教室与课表，并生成预约方案（需人工确认）"},
+		{Code: AttendanceRead, Name: "查看签到", Category: "attendance", CategoryName: "课堂签到",
+			Description: "查看签到活动、签到记录与整学期考勤报表"},
+		{Code: AttendanceManage, Name: "签到管理", Category: "attendance", CategoryName: "课堂签到",
+			Description: "发起与结束签到、修改学生签到状态、维护学生档案、导出报表"},
+		{Code: AttendanceCheckin, Name: "扫码签到", Category: "attendance", CategoryName: "课堂签到",
+			Description: "扫码或输入 6 位签到码完成签到"},
 	}
 	sort.Slice(perms, func(i, j int) bool {
 		if perms[i].Category != perms[j].Category {

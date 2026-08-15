@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"ocm-backend/internal/ai"
+	"ocm-backend/internal/attendance"
 	"ocm-backend/internal/auth"
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/booking"
@@ -162,6 +163,13 @@ func main() {
 		os.Exit(1)
 	}
 	booking.NewHandler(bookingStore, classroomStore, scheduleStore).RegisterRoutes(mux, authenticate)
+
+	attendanceStore := attendance.NewStore(database)
+	if err := attendanceStore.Migrate(ctx); err != nil {
+		logging.L.Error("attendance migration", "err", err)
+		os.Exit(1)
+	}
+	attendance.NewHandler(attendanceStore).RegisterRoutes(mux, authenticate)
 
 	// AI assistant: settings (admin-only) + streaming chat. Its tools query
 	// classrooms/schedule/course/booking, so it wires after all of them.
