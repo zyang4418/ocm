@@ -211,14 +211,14 @@ WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())`, userID)
 		var roleID int64
 		var expiresAt *time.Time
 		if err := rows.Scan(&roleID, &expiresAt); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return EffectiveResult{}, fmt.Errorf("effective scan user role: %w", err)
 		}
 		if role, ok := byID[roleID]; ok {
 			directRoles = append(directRoles, RoleGrant{Role: role, ExpiresAt: expiresAt})
 		}
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return EffectiveResult{}, err
 	}
@@ -231,12 +231,12 @@ WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())`, userID)
 	for rows.Next() {
 		var groupID int64
 		if err := rows.Scan(&groupID); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return EffectiveResult{}, fmt.Errorf("effective scan group: %w", err)
 		}
 		groupIDs = append(groupIDs, groupID)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return EffectiveResult{}, err
 	}
@@ -252,14 +252,14 @@ WHERE ugm.user_id = ?`, userID)
 		for rows.Next() {
 			var roleID int64
 			if err := rows.Scan(&roleID); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return EffectiveResult{}, fmt.Errorf("effective scan group role: %w", err)
 			}
 			if role, ok := byID[roleID]; ok {
 				groupRoles = append(groupRoles, RoleGrant{Role: role})
 			}
 		}
-		rows.Close()
+		_ = rows.Close()
 		if err := rows.Err(); err != nil {
 			return EffectiveResult{}, err
 		}
@@ -275,12 +275,12 @@ WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())`, userID)
 		var perm string
 		var expiresAt *time.Time
 		if err := rows.Scan(&perm, &expiresAt); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return EffectiveResult{}, fmt.Errorf("effective scan direct permission: %w", err)
 		}
 		directPerms = append(directPerms, PermGrant{Permission: perm, ExpiresAt: expiresAt})
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return EffectiveResult{}, err
 	}
@@ -303,12 +303,12 @@ WHERE ur.user_id = ? ORDER BY r.code`, userID)
 	for rows.Next() {
 		var v RoleGrantView
 		if err := rows.Scan(&v.RoleID, &v.Code, &v.Name, &v.ExpiresAt); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return UserGrantView{}, fmt.Errorf("user grants scan role: %w", err)
 		}
 		view.Roles = append(view.Roles, v)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return UserGrantView{}, err
 	}
@@ -322,12 +322,12 @@ WHERE user_id = ? ORDER BY permission`, userID)
 	for rows.Next() {
 		var v PermGrantView
 		if err := rows.Scan(&v.Permission, &v.ExpiresAt); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return UserGrantView{}, fmt.Errorf("user grants scan permission: %w", err)
 		}
 		view.Permissions = append(view.Permissions, v)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return UserGrantView{}, err
 	}
@@ -342,12 +342,12 @@ WHERE ugm.user_id = ? ORDER BY g.id`, userID)
 	for rows.Next() {
 		var v GroupBrief
 		if err := rows.Scan(&v.ID, &v.Name); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return UserGrantView{}, fmt.Errorf("user grants scan group: %w", err)
 		}
 		view.Groups = append(view.Groups, v)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return UserGrantView{}, err
 	}
@@ -403,14 +403,14 @@ ORDER BY ur.user_id, r.id`, args...)
 		var userID int64
 		var brief RoleBrief
 		if err := rows.Scan(&userID, &brief.ID, &brief.Code, &brief.Name); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, fmt.Errorf("batch summaries scan role: %w", err)
 		}
 		s := summaries[userID]
 		s.Roles = append(s.Roles, brief)
 		summaries[userID] = s
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -426,14 +426,14 @@ WHERE ugm.user_id IN (`+placeholders+`) ORDER BY ugm.user_id, g.id`, args...)
 		var userID int64
 		var brief GroupBrief
 		if err := rows.Scan(&userID, &brief.ID, &brief.Name); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, fmt.Errorf("batch summaries scan group: %w", err)
 		}
 		s := summaries[userID]
 		s.Groups = append(s.Groups, brief)
 		summaries[userID] = s
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -788,12 +788,12 @@ WHERE m.group_id = ? ORDER BY u.id`, id)
 	for rows.Next() {
 		var m GroupMemberView
 		if err := rows.Scan(&m.ID, &m.Username, &m.DisplayName); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return GroupDetail{}, fmt.Errorf("get group scan member: %w", err)
 		}
 		d.Members = append(d.Members, m)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return GroupDetail{}, err
 	}
@@ -808,12 +808,12 @@ WHERE gr.group_id = ? ORDER BY r.id`, id)
 	for rows.Next() {
 		var brief RoleBrief
 		if err := rows.Scan(&brief.ID, &brief.Code, &brief.Name); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return GroupDetail{}, fmt.Errorf("get group scan role: %w", err)
 		}
 		d.Roles = append(d.Roles, brief)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return GroupDetail{}, err
 	}

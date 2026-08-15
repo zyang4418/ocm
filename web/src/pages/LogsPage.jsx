@@ -241,16 +241,11 @@ export default function LogsPage() {
             )}
           </DataTable>
           <ListPagination
-            total={list.total}
             page={list.page}
             pageSize={list.pageSize}
-            onChange={({ page, pageSize }) => {
-              if (pageSize !== list.pageSize) {
-                list.setPageSize(pageSize)
-              } else {
-                list.setPage(page)
-              }
-            }}
+            totalItems={list.total}
+            onPageChange={list.setPage}
+            onPageSizeChange={list.setPageSize}
           />
 
           <section className="logs-page__settings">

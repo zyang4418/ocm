@@ -117,7 +117,7 @@ func (s *Store) PageLogs(ctx context.Context, f LogFilter, q string, p dbutil.Pa
 	if err != nil {
 		return nil, 0, fmt.Errorf("page logs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := []LogView{}
 	for rows.Next() {
 		var v LogView
@@ -144,7 +144,7 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 	if err != nil {
 		return Settings{}, fmt.Errorf("load settings: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := Settings{RetentionEnabled: DefaultRetentionEnabled, RetentionDays: DefaultRetentionDays}
 	for rows.Next() {
 		var k, v string

@@ -192,6 +192,25 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "password is required")
 		return
 	}
+	// A user:manage holder must not take over an administrator account by
+	// resetting its password — the wildcard would come with it. Mirrors the
+	// admin-role guards in putRoles and group editing.
+	eff, err := h.iam.EffectivePermissions(r.Context(), id)
+	if err != nil {
+		httpx.Error500(w, r, "could not load user permissions", err)
+		return
+	}
+	if eff.Permissions[authz.Wildcard] {
+		subject, ok := authz.SubjectFrom(r.Context())
+		if !ok {
+			httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+		if !subject.Has(authz.Wildcard) {
+			httpx.RespondError(w, http.StatusForbidden, "only administrators can change an administrator's password")
+			return
+		}
+	}
 	err = h.store.UpdatePassword(r.Context(), id, in.Password)
 	if errors.Is(err, ErrNotFound) {
 		httpx.RespondError(w, http.StatusNotFound, "user not found")
@@ -211,8 +230,25 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
-	if subject, ok := authz.SubjectFrom(r.Context()); ok && id == subject.ID {
+	subject, ok := authz.SubjectFrom(r.Context())
+	if !ok {
+		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	if id == subject.ID {
 		httpx.RespondError(w, http.StatusConflict, "cannot delete your own account")
+		return
+	}
+	// A user:manage holder must not remove an administrator account (lock-out
+	// is almost as good as takeover). Mirrors the admin guards in
+	// changePassword, putRoles and group editing.
+	eff, err := h.iam.EffectivePermissions(r.Context(), id)
+	if err != nil {
+		httpx.Error500(w, r, "could not load user permissions", err)
+		return
+	}
+	if eff.Permissions[authz.Wildcard] && !subject.Has(authz.Wildcard) {
+		httpx.RespondError(w, http.StatusForbidden, "only administrators can delete an administrator's account")
 		return
 	}
 	target, err := h.store.GetByID(r.Context(), id)
