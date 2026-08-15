@@ -17,6 +17,7 @@ import {
 } from '@carbon/react'
 import {
   Building,
+  Chat,
   Dashboard,
   Education,
   Logout,
@@ -32,16 +33,17 @@ import { useAuth } from '../auth/AuthContext.jsx'
 // content area) shared by all authenticated pages. It persists across route
 // changes via a React Router layout route so the header never remounts.
 export default function AppShell({ children }) {
-  const { user, logout } = useAuth()
+  const { user, logout, can } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const isAdmin = user?.role === 'admin'
 
   const isActive = (path) => location.pathname === path
   const inOrg =
     location.pathname.startsWith('/users') ||
     location.pathname.startsWith('/admin-classes') ||
-    location.pathname.startsWith('/teaching-classes')
+    location.pathname.startsWith('/teaching-classes') ||
+    location.pathname.startsWith('/roles') ||
+    location.pathname.startsWith('/groups')
   const inClassrooms =
     location.pathname.startsWith('/classrooms') ||
     location.pathname.startsWith('/bookings')
@@ -50,6 +52,9 @@ export default function AppShell({ children }) {
     location.pathname.startsWith('/timetable') ||
     location.pathname.startsWith('/schedule-config') ||
     location.pathname.startsWith('/imports')
+  const inSettings =
+    location.pathname.startsWith('/logs') ||
+    location.pathname.startsWith('/settings')
 
   return (
     <HeaderContainer
@@ -106,6 +111,16 @@ export default function AppShell({ children }) {
                   >
                     概览
                   </SideNavLink>
+                  {can('ai:chat') && (
+                    <SideNavLink
+                      renderIcon={Chat}
+                      href="/ai"
+                      isActive={isActive('/ai')}
+                      onClick={go('/ai')}
+                    >
+                      AI 助手
+                    </SideNavLink>
+                  )}
                   <SideNavMenu
                     key={`cls-${inClassrooms}`}
                     renderIcon={Building}
@@ -154,7 +169,7 @@ export default function AppShell({ children }) {
                     >
                       作息设置
                     </SideNavMenuItem>
-                    {isAdmin && (
+                    {can('course:manage') && (
                       <SideNavMenuItem
                         href="/imports"
                         isActive={isActive('/imports')}
@@ -170,13 +185,15 @@ export default function AppShell({ children }) {
                     title="组织与权限"
                     defaultExpanded={inOrg}
                   >
-                    <SideNavMenuItem
-                      href="/users"
-                      isActive={isActive('/users')}
-                      onClick={go('/users')}
-                    >
-                      用户管理
-                    </SideNavMenuItem>
+                    {can('user:read') && (
+                      <SideNavMenuItem
+                        href="/users"
+                        isActive={isActive('/users')}
+                        onClick={go('/users')}
+                      >
+                        用户管理
+                      </SideNavMenuItem>
+                    )}
                     <SideNavMenuItem
                       href="/admin-classes"
                       isActive={isActive('/admin-classes')}
@@ -191,12 +208,50 @@ export default function AppShell({ children }) {
                     >
                       教学班管理
                     </SideNavMenuItem>
-                    <SideNavMenuItem href="#">角色管理</SideNavMenuItem>
+                    {can('role:manage') && (
+                      <SideNavMenuItem
+                        href="/roles"
+                        isActive={isActive('/roles')}
+                        onClick={go('/roles')}
+                      >
+                        角色管理
+                      </SideNavMenuItem>
+                    )}
+                    {can('group:manage') && (
+                      <SideNavMenuItem
+                        href="/groups"
+                        isActive={isActive('/groups')}
+                        onClick={go('/groups')}
+                      >
+                        用户组管理
+                      </SideNavMenuItem>
+                    )}
                   </SideNavMenu>
-                  <SideNavMenu renderIcon={Settings} title="系统设置">
-                    <SideNavMenuItem href="#">参数配置</SideNavMenuItem>
-                    <SideNavMenuItem href="#">审计日志</SideNavMenuItem>
-                  </SideNavMenu>
+                  {can('log:read') && (
+                    <SideNavMenu
+                      key={`settings-${inSettings}`}
+                      renderIcon={Settings}
+                      title="系统设置"
+                      defaultExpanded={inSettings}
+                    >
+                      {can('*') && (
+                        <SideNavMenuItem
+                          href="/settings"
+                          isActive={isActive('/settings')}
+                          onClick={go('/settings')}
+                        >
+                          参数配置
+                        </SideNavMenuItem>
+                      )}
+                      <SideNavMenuItem
+                        href="/logs"
+                        isActive={isActive('/logs')}
+                        onClick={go('/logs')}
+                      >
+                        审计日志
+                      </SideNavMenuItem>
+                    </SideNavMenu>
+                  )}
                 </SideNavItems>
               </SideNav>
             </Header>

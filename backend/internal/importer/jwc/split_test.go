@@ -3,6 +3,7 @@ package jwc
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ func allPeriods() []schedule.Period {
 
 // TestSplitEndToEnd 用脱敏样本（testdata/sample_timetable.xlsx）跑完整拆分，断言关键不变量：
 // 6 张 xlsx 非空且表头匹配各 importer 契约、教学班名 ≤64 且回退时 note 非空、
-// 开课教师非空、sessions 无 (教室+日期+节次) 重复且日期合法。
+// 开课教师非空、sessions 同一 (教室+日期) 内节次区间不重叠且日期合法。
 // 计数断言（Classrooms 等）基于样本重算，样本生成见 testdata/gen_sample.go 与 testdata/README.md。
 func TestSplitEndToEnd(t *testing.T) {
 	path := filepath.Join("testdata", "sample_timetable.xlsx")
@@ -72,9 +73,9 @@ func TestSplitEndToEnd(t *testing.T) {
 	if st.SkippedParallel != 2 {
 		t.Errorf("SkippedParallel = %d，期望 2", st.SkippedParallel)
 	}
-	// 课次：样本量级小，~482（区间容许轻微行序变动）。
-	if st.Sessions < 450 || st.Sessions > 520 {
-		t.Errorf("Sessions = %d，期望 450~520", st.Sessions)
+	// 课次：节次区间化后一个槽位每周一条（不再逐节展开），样本重算为 241。
+	if st.Sessions < 230 || st.Sessions > 260 {
+		t.Errorf("Sessions = %d，期望 230~260", st.Sessions)
 	}
 
 	// 6 张 xlsx 均非空且可被 MapRows 回读，表头匹配各 importer 契约。
@@ -88,15 +89,14 @@ func TestSplitEndToEnd(t *testing.T) {
 		{"admin_classes", res.Files.AdminClasses, []string{"grade", "name", "note"}},
 		{"teaching_classes", res.Files.TeachingClasses, []string{"name", "note", "admin_grade", "admin_name"}},
 		{"offerings", res.Files.Offerings, []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}},
-		{"sessions", res.Files.Sessions, []string{"date", "period_index", "classroom", "course", "teaching_class", "semester", "note"}},
+		{"sessions", res.Files.Sessions, []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "note"}},
 	}
-	parsed := map[string][][]string{}
 	for _, f := range files {
 		if len(f.data) == 0 {
 			t.Errorf("%s.xlsx 为空", f.name)
 			continue
 		}
-		headers, rows, err := xlsx.MapRows(f.data)
+		headers, _, err := xlsx.MapRows(f.data)
 		if err != nil {
 			t.Errorf("%s.xlsx 回读失败：%v", f.name, err)
 			continue
@@ -104,12 +104,6 @@ func TestSplitEndToEnd(t *testing.T) {
 		for _, h := range f.want {
 			if !xlsx.Has(headers, h) {
 				t.Errorf("%s.xlsx 缺少表头 %q", f.name, h)
-			}
-		}
-		// 收集 sessions 行用于重复检查；其余仅记录行数。
-		if f.name == "sessions" {
-			for _, r := range rows {
-				parsed[f.name] = append(parsed[f.name], []string{r["classroom"], r["date"], r["period_index"]})
 			}
 		}
 	}
@@ -150,44 +144,53 @@ func TestSplitEndToEnd(t *testing.T) {
 		}
 	}
 
-	// sessions 无 (教室+日期+节次) 重复；日期格式合法；节次 1..10。
-	seen := make(map[string]bool)
+	// sessions 同一 (教室+日期) 内节次区间不得重叠；日期格式合法；节次 1..10。
+	seen := map[string][][2]int{}
 	_, sessRows, _ := xlsx.MapRows(res.Files.Sessions)
 	for i, r := range sessRows {
-		key := r["classroom"] + "|" + r["date"] + "|" + r["period_index"]
-		if seen[key] {
-			t.Errorf("sessions 第 %d 行重复占用 %s", i+2, key)
+		ps, err1 := strconv.Atoi(r["period_start"])
+		pe, err2 := strconv.Atoi(r["period_end"])
+		if err1 != nil || err2 != nil || ps < 1 || pe < ps || pe > 10 {
+			t.Errorf("sessions 第 %d 行节次区间非法：%q-%q", i+2, r["period_start"], r["period_end"])
 		}
-		seen[key] = true
+		key := r["classroom"] + "|" + r["date"]
+		for _, prev := range seen[key] {
+			if ps <= prev[1] && prev[0] <= pe {
+				t.Errorf("sessions 第 %d 行节次区间与同教室同时段课次重叠：%s", i+2, key)
+				break
+			}
+		}
+		seen[key] = append(seen[key], [2]int{ps, pe})
 		if _, err := time.Parse("2006-01-02", r["date"]); err != nil {
 			t.Errorf("sessions 第 %d 行日期非法：%q", i+2, r["date"])
 		}
 	}
 }
 
-// TestParsePeriods 单测节次展开。
+// TestParsePeriods 单测节次区间解析（连上多节保持为一个区间）。
 func TestParsePeriods(t *testing.T) {
 	cases := []struct {
-		in   string
-		want []int
+		in       string
+		wantFrom int
+		wantTo   int
 	}{
-		{"3-4", []int{3, 4}},
-		{"1-4", []int{1, 2, 3, 4}},
-		{"9-10", []int{9, 10}},
-		{"1-1", []int{1}},
-		{"2-2", []int{2}},
+		{"3-4", 3, 4},
+		{"1-4", 1, 4},
+		{"9-10", 9, 10},
+		{"1-1", 1, 1},
+		{"2-2", 2, 2},
 	}
 	for _, c := range cases {
-		got, err := parsePeriods(c.in)
+		from, to, err := parsePeriods(c.in)
 		if err != nil {
 			t.Errorf("parsePeriods(%q) err: %v", c.in, err)
 			continue
 		}
-		if !equal(got, c.want) {
-			t.Errorf("parsePeriods(%q) = %v, want %v", c.in, got, c.want)
+		if from != c.wantFrom || to != c.wantTo {
+			t.Errorf("parsePeriods(%q) = (%d,%d), want (%d,%d)", c.in, from, to, c.wantFrom, c.wantTo)
 		}
 	}
-	if _, err := parsePeriods(""); err == nil {
+	if _, _, err := parsePeriods(""); err == nil {
 		t.Error("parsePeriods(\"\") 期望错误")
 	}
 }

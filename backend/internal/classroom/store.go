@@ -82,6 +82,16 @@ CREATE TABLE IF NOT EXISTS classrooms (
 			}
 		}
 	}
+	// Leading-scan index for the availability query (ListAvailable filters on
+	// status + capacity before the per-classroom NOT EXISTS checks). Ignore the
+	// duplicate-index error (1061) on re-runs.
+	if _, err := s.db.ExecContext(ctx,
+		`ALTER TABLE classrooms ADD INDEX idx_room_status_cap (status, capacity)`); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1061 {
+			return fmt.Errorf("add classrooms index idx_room_status_cap: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -94,6 +104,136 @@ func (s *Store) List(ctx context.Context) ([]Classroom, error) {
 	defer func() { _ = rows.Close() }()
 
 	var classrooms []Classroom
+	for rows.Next() {
+		var c Classroom
+		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan classroom: %w", err)
+		}
+		classrooms = append(classrooms, c)
+	}
+	return classrooms, rows.Err()
+}
+
+// PageClassrooms returns one page of classrooms matching q (fuzzy contains on
+// name and building) plus the total matching count across all pages. A zero
+// Pagination means no limit (full range).
+func (s *Store) PageClassrooms(ctx context.Context, q string, p dbutil.Pagination) ([]Classroom, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND (name LIKE ? OR building LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat)
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT `+columns+` FROM classrooms`+where+` ORDER BY id`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page classrooms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	classrooms := []Classroom{}
+	for rows.Next() {
+		var c Classroom
+		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan classroom: %w", err)
+		}
+		classrooms = append(classrooms, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM classrooms`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return classrooms, total, nil
+}
+
+// ClassroomFilter carries the optional filters for ListFiltered (the AI
+// assistant's classroom query). Zero values are ignored.
+type ClassroomFilter struct {
+	Q           string // fuzzy contains on name
+	Building    string // fuzzy contains on building
+	Type        string // exact type
+	CapacityMin int    // capacity >=
+}
+
+// ListFiltered returns up to limit classrooms matching the filter, ordered by
+// capacity then id so the assistant sees the smallest rooms that still fit
+// first. limit is capped at 50 by the caller.
+func (s *Store) ListFiltered(ctx context.Context, f ClassroomFilter, limit int) ([]Classroom, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if f.Q != "" {
+		where += ` AND name LIKE ?`
+		args = append(args, dbutil.LikePattern(dbutil.EscapeLike(f.Q)))
+	}
+	if f.Building != "" {
+		where += ` AND building LIKE ?`
+		args = append(args, dbutil.LikePattern(dbutil.EscapeLike(f.Building)))
+	}
+	if f.Type != "" {
+		where += ` AND type = ?`
+		args = append(args, f.Type)
+	}
+	if f.CapacityMin > 0 {
+		where += ` AND capacity >= ?`
+		args = append(args, f.CapacityMin)
+	}
+	if limit < 1 {
+		limit = 50
+	}
+	args = append(args, limit)
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+columns+` FROM classrooms`+where+` ORDER BY capacity, id LIMIT ?`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list filtered classrooms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	classrooms := []Classroom{}
+	for rows.Next() {
+		var c Classroom
+		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan classroom: %w", err)
+		}
+		classrooms = append(classrooms, c)
+	}
+	return classrooms, rows.Err()
+}
+
+// ListAvailable returns classrooms with capacity >= capacityMin that are free
+// of any course session or active (pending/approved) booking overlapping the
+// period range [ps, pe] on the given date. The overlap predicate
+// (period_start <= pe AND period_end >= ps) mirrors booking.Store.conflicts
+// so the two cannot drift; the course_sessions/classroom_bookings cross-table
+// reads follow the same precedent as booking's conflict check.
+func (s *Store) ListAvailable(ctx context.Context, date string, ps, pe, capacityMin, limit int) ([]Classroom, error) {
+	if limit < 1 {
+		limit = 50
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+columns+` FROM classrooms
+		 WHERE status = ? AND capacity >= ?
+		   AND NOT EXISTS (
+		       SELECT 1 FROM course_sessions cs
+		       WHERE cs.classroom_id = classrooms.id AND cs.date = ?
+		         AND cs.period_start <= ? AND cs.period_end >= ?)
+		   AND NOT EXISTS (
+		       SELECT 1 FROM classroom_bookings cb
+		       WHERE cb.classroom_id = classrooms.id AND cb.date = ?
+		         AND cb.status IN ('pending','approved')
+		         AND cb.period_start <= ? AND cb.period_end >= ?)
+		 ORDER BY capacity, id LIMIT ?`,
+		StatusAvailable, capacityMin, date, pe, ps, date, pe, ps, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list available classrooms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	classrooms := []Classroom{}
 	for rows.Next() {
 		var c Classroom
 		if err := rows.Scan(&c.ID, &c.Name, &c.Building, &c.Capacity, &c.Type, &c.Floor, &c.Campus, &c.Status, &c.Description, &c.CreatedAt); err != nil {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -13,9 +13,12 @@ import (
 	"time"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/importer/jwc"
+	"ocm-backend/internal/logging"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/systemlog"
 )
 
 // maxUploadBytes caps the xlsx upload size. Imports are bounded text data; this
@@ -26,14 +29,16 @@ type Handler struct {
 	store         *Store
 	registry      *Registry
 	scheduleStore *schedule.Store // jwc_split needs regimes to pre-validate expanded dates
-	sem           chan struct{}   // limits concurrent import processing
+	logs          *systemlog.Store
+	sem           chan struct{} // limits concurrent import processing
 }
 
-func NewHandler(store *Store, registry *Registry, scheduleStore *schedule.Store) *Handler {
+func NewHandler(store *Store, registry *Registry, scheduleStore *schedule.Store, logStore *systemlog.Store) *Handler {
 	return &Handler{
 		store:         store,
 		registry:      registry,
 		scheduleStore: scheduleStore,
+		logs:          logStore,
 		sem:           make(chan struct{}, 2),
 	}
 }
@@ -63,14 +68,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 func (h *Handler) RecoverStale(ctx context.Context) {
 	pendingIDs, err := h.store.RecoverStale(ctx)
 	if err != nil {
-		log.Printf("importer: recover stale jobs: %v", err)
+		logging.L.Error("importer: recover stale jobs", "err", err)
 		return
 	}
 	for _, id := range pendingIDs {
 		go h.processJob(id)
 	}
 	if len(pendingIDs) > 0 {
-		log.Printf("importer: requeued %d pending job(s)", len(pendingIDs))
+		logging.L.Info("importer: requeued pending jobs", "count", len(pendingIDs))
 	}
 }
 
@@ -82,7 +87,7 @@ func (h *Handler) checkPerm(w http.ResponseWriter, r *http.Request, perm string)
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return false
 	}
-	if !authz.Can(subject.Role, perm) {
+	if !subject.Has(perm) {
 		httpx.RespondError(w, http.StatusForbidden, "insufficient permissions")
 		return false
 	}
@@ -90,15 +95,18 @@ func (h *Handler) checkPerm(w http.ResponseWriter, r *http.Request, perm string)
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.store.ListJobs(r.Context(), 50)
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	jobs, total, err := h.store.PageJobs(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list import jobs")
+		httpx.Error500(w, r, "could not list import jobs", err)
 		return
 	}
 	if jobs == nil {
 		jobs = []Job{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, jobs)
+	httpx.RespondPaged(w, jobs, total, p)
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +121,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load import job")
+		httpx.Error500(w, r, "could not load import job", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, job)
@@ -156,12 +164,13 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	payload := base64.StdEncoding.EncodeToString(data)
 	job, err := h.store.CreateJob(r.Context(), typ, header.Filename, payload, subject.ID)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create import job")
+		httpx.Error500(w, r, "could not create import job", err)
 		return
 	}
 	// Process detached from the request so the client is not held open (the
 	// edge proxy would otherwise time out on large/slow imports).
 	go h.processJob(job.ID)
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("上传导入文件 %s（%s）", header.Filename, typ))
 	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{"id": job.ID, "status": job.Status})
 }
 
@@ -220,7 +229,7 @@ func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
 	// Load regimes once for pre-validation of every expanded session date.
 	regimes, err := h.scheduleStore.ListRegimes(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "加载作息制度失败")
+		httpx.Error500(w, r, "加载作息制度失败", err)
 		return
 	}
 	res, err := jwc.Split(data, semester, week1Monday, regimes)
@@ -257,7 +266,7 @@ func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
 	}
 	created, err := h.store.CreateJobs(r.Context(), subject.ID, jobSpecs)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "创建导入任务失败："+err.Error())
+		httpx.Error500(w, r, "创建导入任务失败", err)
 		return // atomic batch: no jobs created, no goroutines started
 	}
 	jobs := make([]map[string]any, 0, len(created))
@@ -269,6 +278,7 @@ func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
 	if warnings == nil {
 		warnings = []string{}
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("上传教务处课表 %s 并拆分为 6 个导入任务", header.Filename))
 	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{
 		"jobs":     jobs,
 		"stats":    res.Stats,
@@ -283,7 +293,7 @@ func (h *Handler) processJob(id int64) {
 	h.sem <- struct{}{}
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("importer: panic processing job %d: %v", id, r)
+			logging.L.Error("importer: panic processing job", "job_id", id, "err", fmt.Sprint(r))
 			h.finishFail(context.Background(), id, "处理任务时发生内部错误")
 		}
 		<-h.sem
@@ -297,13 +307,13 @@ func (h *Handler) processJob(id int64) {
 			// pending; leave it to that worker.
 			return
 		}
-		log.Printf("importer: mark processing job %d: %v", id, err)
+		logging.L.Error("importer: mark processing job", "job_id", id, "err", err)
 		h.finishFail(ctx, id, "标记处理中失败："+err.Error())
 		return
 	}
 	job, err := h.store.GetJob(ctx, id)
 	if err != nil {
-		log.Printf("importer: load job %d: %v", id, err)
+		logging.L.Error("importer: load job", "job_id", id, "err", err)
 		h.finishFail(ctx, id, "加载任务失败："+err.Error())
 		return
 	}
@@ -317,14 +327,14 @@ func (h *Handler) processJob(id int64) {
 	result, err := imp.Analyze(ctx, job.Payload)
 	if err != nil {
 		if ferr := h.store.Finish(ctx, id, StatusFailed, result); ferr != nil {
-			log.Printf("importer: finish failed job %d: %v", id, ferr)
+			logging.L.Error("importer: finish failed job", "job_id", id, "err", ferr)
 		}
 		return
 	}
 	// Even with zero valid rows we go to preview so the operator can see the
 	// per-row failures and decide whether to cancel or fix and re-upload.
 	if err := h.store.SavePreview(ctx, id, result); err != nil {
-		log.Printf("importer: save preview job %d: %v", id, err)
+		logging.L.Error("importer: save preview job", "job_id", id, "err", err)
 		h.finishFail(ctx, id, "保存预览失败："+err.Error())
 	}
 }
@@ -336,8 +346,14 @@ func (h *Handler) runCommit(id int64) {
 	h.sem <- struct{}{}
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("importer: panic committing job %d: %v", id, r)
+			logging.L.Error("importer: panic committing job", "job_id", id, "err", fmt.Sprint(r))
 			h.finishFail(context.Background(), id, "提交任务时发生内部错误")
+			// The commit is the actual data write; record its failure even
+			// though the request that started it has long since answered.
+			h.logs.Record(context.Background(), systemlog.Entry{
+				Method: http.MethodPost, Path: "/api/imports/" + strconv.FormatInt(id, 10) + "/commit",
+				StatusCode: http.StatusInternalServerError,
+				Summary:    fmt.Sprintf("导入失败：任务 #%d", id)})
 		}
 		<-h.sem
 	}()
@@ -345,7 +361,7 @@ func (h *Handler) runCommit(id int64) {
 	ctx := context.Background()
 	job, err := h.store.GetJob(ctx, id)
 	if err != nil {
-		log.Printf("importer: load job %d for commit: %v", id, err)
+		logging.L.Error("importer: load job for commit", "job_id", id, "err", err)
 		h.finishFail(ctx, id, "加载任务失败："+err.Error())
 		return
 	}
@@ -362,8 +378,21 @@ func (h *Handler) runCommit(id int64) {
 		status = StatusFailed
 	}
 	if err := h.store.Finish(ctx, id, status, result); err != nil {
-		log.Printf("importer: finish commit job %d: %v", id, err)
+		logging.L.Error("importer: finish commit job", "job_id", id, "err", err)
 	}
+	// The commit is the actual data write; it happens after the request that
+	// started it has answered 202, so it gets its own audit row (the one
+	// deliberate two-rows-per-request exception).
+	summary := fmt.Sprintf("导入完成：%s（成功 %d 行，失败 %d 行）", job.Filename, result.SucceededRows, result.FailedRows)
+	code := http.StatusOK
+	if status == StatusFailed {
+		summary = fmt.Sprintf("导入失败：%s（成功 %d 行，失败 %d 行）", job.Filename, result.SucceededRows, result.FailedRows)
+		code = http.StatusInternalServerError
+	}
+	h.logs.Record(context.Background(), systemlog.Entry{
+		ActorID: job.UserID, Method: http.MethodPost,
+		Path:       "/api/imports/" + strconv.FormatInt(id, 10) + "/commit",
+		StatusCode: code, Summary: summary})
 }
 
 // commitJob transitions a previewed job into processing and kicks off the
@@ -381,7 +410,7 @@ func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load import job")
+		httpx.Error500(w, r, "could not load import job", err)
 		return
 	}
 	_, perm, ok := h.registry.Lookup(job.Type)
@@ -401,10 +430,11 @@ func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 			httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not start commit")
+		httpx.Error500(w, r, "could not start commit", err)
 		return
 	}
 	go h.runCommit(id)
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("提交导入任务 %s", job.Filename))
 	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{"id": job.ID, "status": StatusProcessing})
 }
 
@@ -421,7 +451,7 @@ func (h *Handler) cancelJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load import job")
+		httpx.Error500(w, r, "could not load import job", err)
 		return
 	}
 	_, perm, ok := h.registry.Lookup(job.Type)
@@ -441,16 +471,17 @@ func (h *Handler) cancelJob(w http.ResponseWriter, r *http.Request) {
 			httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not cancel import job")
+		httpx.Error500(w, r, "could not cancel import job", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("取消导入任务 %s", job.Filename))
 	httpx.RespondJSON(w, http.StatusOK, map[string]any{"id": job.ID, "status": StatusCancelled})
 }
 
 func (h *Handler) finishFail(ctx context.Context, id int64, msg string) {
 	res := Result{Errors: []RowError{{Row: 0, Error: msg}}}
 	if err := h.store.Finish(ctx, id, StatusFailed, res); err != nil {
-		log.Printf("importer: finish failed job %d: %v", id, err)
+		logging.L.Error("importer: finish failed job", "job_id", id, "err", err)
 	}
 }
 

@@ -3,12 +3,15 @@ package classroom
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
+	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/xlsx"
 )
 
@@ -58,12 +61,18 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	classrooms, err := h.store.List(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	classrooms, total, err := h.store.PageClassrooms(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list classrooms")
+		httpx.Error500(w, r, "could not list classrooms", err)
 		return
 	}
-	httpx.RespondJSON(w, http.StatusOK, classrooms)
+	if classrooms == nil {
+		classrooms = []Classroom{}
+	}
+	httpx.RespondPaged(w, classrooms, total, p)
 }
 
 // export streams all classrooms as an xlsx download. The column layout matches
@@ -71,7 +80,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 	classrooms, err := h.store.List(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list classrooms")
+		httpx.Error500(w, r, "could not list classrooms", err)
 		return
 	}
 	headers := []string{"name", "building", "capacity", "type", "floor", "campus", "status", "description"}
@@ -80,7 +89,7 @@ func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{c.Name, c.Building, c.Capacity, c.Type, c.Floor, c.Campus, c.Status, c.Description})
 	}
 	if err := xlsx.WriteExport(w, "classrooms.xlsx", "classrooms", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export classrooms")
+		httpx.Error500(w, r, "could not export classrooms", err)
 	}
 }
 
@@ -100,9 +109,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create classroom")
+		httpx.Error500(w, r, "could not create classroom", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建教室 %s", c.Name))
 	httpx.RespondJSON(w, http.StatusCreated, c)
 }
 
@@ -118,7 +128,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load classroom")
+		httpx.Error500(w, r, "could not load classroom", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, c)
@@ -149,9 +159,10 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update classroom")
+		httpx.Error500(w, r, "could not update classroom", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新教室 %s", c.Name))
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
@@ -161,15 +172,25 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid classroom id")
 		return
 	}
+	existing, err := h.store.GetByID(r.Context(), id)
+	if errors.Is(err, ErrNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "classroom not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load classroom", err)
+		return
+	}
 	err = h.store.Delete(r.Context(), id)
 	if errors.Is(err, ErrNotFound) {
 		httpx.RespondError(w, http.StatusNotFound, "classroom not found")
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete classroom")
+		httpx.Error500(w, r, "could not delete classroom", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除教室 %s", existing.Name))
 	w.WriteHeader(http.StatusNoContent)
 }
 

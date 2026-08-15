@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
+
+	"ocm-backend/internal/logging"
 )
 
 const defaultAdminPassword = "admin123"
@@ -19,7 +20,7 @@ type User struct {
 	ID          int64  `json:"id"`
 	Username    string `json:"username"`
 	DisplayName string `json:"displayName"`
-	Role        string `json:"role"`
+	Type        string `json:"type"`
 }
 
 // Store persists users in MySQL.
@@ -40,13 +41,25 @@ CREATE TABLE IF NOT EXISTS users (
     username      VARCHAR(64)  NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     display_name  VARCHAR(128) NOT NULL,
-    role          VARCHAR(32)  NOT NULL DEFAULT 'admin',
+    user_type     VARCHAR(32)  NOT NULL DEFAULT 'staff',
     openid        VARCHAR(64)  NULL DEFAULT NULL,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE INDEX idx_users_openid (openid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 	if err != nil {
 		return fmt.Errorf("create users table: %w", err)
+	}
+
+	// Add the user_type column for tables created before the RBAC upgrade
+	// (the legacy role column is migrated away by iam.Store.Migrate, which
+	// runs right after this). Ignore the duplicate-column error (1060).
+	if _, err := s.db.ExecContext(ctx,
+		`ALTER TABLE users ADD COLUMN user_type VARCHAR(32) NOT NULL DEFAULT 'staff'`,
+	); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
+			return fmt.Errorf("add user_type column: %w", err)
+		}
 	}
 
 	// Add the openid column for tables created before it existed. MySQL has no
@@ -82,19 +95,20 @@ CREATE TABLE IF NOT EXISTS users (
 	password := os.Getenv("ADMIN_PASSWORD")
 	if password == "" {
 		password = defaultAdminPassword
-		log.Printf("auth: ADMIN_PASSWORD not set, seeding admin with default password %q -- change it before production use", defaultAdminPassword)
+		logging.L.Warn("auth: ADMIN_PASSWORD not set, seeding admin with default password -- change it before production use",
+			"password", defaultAdminPassword)
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("hash admin password: %w", err)
 	}
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)`,
-		"admin", string(hash), "系统管理员", "admin",
+		`INSERT INTO users (username, password_hash, display_name, user_type) VALUES (?, ?, ?, ?)`,
+		"admin", string(hash), "系统管理员", "staff",
 	); err != nil {
 		return fmt.Errorf("seed admin user: %w", err)
 	}
-	log.Print("auth: seeded initial admin account (username: admin)")
+	logging.L.Info("auth: seeded initial admin account", "username", "admin")
 	return nil
 }
 
@@ -110,9 +124,9 @@ func (s *Store) Authenticate(ctx context.Context, username, password string) (Us
 	var u User
 	var hash string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, username, password_hash, display_name, role FROM users WHERE username = ?`,
+		`SELECT id, username, password_hash, display_name, user_type FROM users WHERE username = ?`,
 		username,
-	).Scan(&u.ID, &u.Username, &hash, &u.DisplayName, &u.Role)
+	).Scan(&u.ID, &u.Username, &hash, &u.DisplayName, &u.Type)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrInvalidCredentials
 	}
@@ -129,9 +143,9 @@ func (s *Store) Authenticate(ctx context.Context, username, password string) (Us
 func (s *Store) ByUsername(ctx context.Context, username string) (User, error) {
 	var u User
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, username, display_name, role FROM users WHERE username = ?`,
+		`SELECT id, username, display_name, user_type FROM users WHERE username = ?`,
 		username,
-	).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role)
+	).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Type)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrInvalidCredentials
 	}
@@ -145,9 +159,9 @@ func (s *Store) ByUsername(ctx context.Context, username string) (User, error) {
 func (s *Store) GetByOpenid(ctx context.Context, openid string) (User, error) {
 	var u User
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, username, display_name, role FROM users WHERE openid = ?`,
+		`SELECT id, username, display_name, user_type FROM users WHERE openid = ?`,
 		openid,
-	).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role)
+	).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Type)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrNotBound
 	}

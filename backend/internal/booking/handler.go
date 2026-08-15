@@ -12,8 +12,10 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/classroom"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/xlsx"
 )
 
@@ -82,15 +84,18 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	list, err := h.store.List(r.Context(), f)
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageBookings(r.Context(), f, httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
+		httpx.Error500(w, r, "could not list bookings", err)
 		return
 	}
 	if list == nil {
 		list = []BookingView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // export streams bookings as an xlsx download, respecting the same
@@ -105,7 +110,7 @@ func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := h.store.List(r.Context(), f)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list bookings")
+		httpx.Error500(w, r, "could not list bookings", err)
 		return
 	}
 	headers := []string{"classroom", "username", "date", "period_start", "period_end", "status", "purpose"}
@@ -114,7 +119,7 @@ func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{b.ClassroomName, b.Username, b.Date, b.PeriodStart, b.PeriodEnd, b.Status, b.Purpose})
 	}
 	if err := xlsx.WriteExport(w, "bookings.xlsx", "bookings", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export bookings")
+		httpx.Error500(w, r, "could not export bookings", err)
 	}
 }
 
@@ -130,7 +135,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load booking")
+		httpx.Error500(w, r, "could not load booking", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -157,9 +162,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create booking")
+		httpx.Error500(w, r, "could not create booking", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("预约教室 %s %s 第%d–%d节",
+		v.ClassroomName, v.Date, v.PeriodStart, v.PeriodEnd))
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
@@ -174,7 +181,7 @@ func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	isAdmin := authz.Can(subject.Role, authz.BookingApprove)
+	isAdmin := subject.Has(authz.BookingApprove)
 	v, err := h.store.Cancel(r.Context(), id, subject.ID, isAdmin)
 	switch {
 	case errors.Is(err, ErrBookingNotFound):
@@ -184,8 +191,9 @@ func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, ErrInvalidTransition):
 		httpx.RespondError(w, http.StatusConflict, "booking cannot be cancelled in its current status")
 	case err != nil:
-		httpx.RespondError(w, http.StatusInternalServerError, "could not cancel booking")
+		httpx.Error500(w, r, "could not cancel booking", err)
 	default:
+		systemlog.WithSummary(r.Context(), fmt.Sprintf("取消预约 #%d", id))
 		httpx.RespondJSON(w, http.StatusOK, v)
 	}
 }
@@ -215,8 +223,13 @@ func (h *Handler) review(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, ErrClassroomConflict):
 		httpx.RespondError(w, http.StatusConflict, "classroom is no longer free for this period")
 	case err != nil:
-		httpx.RespondError(w, http.StatusInternalServerError, "could not review booking")
+		httpx.Error500(w, r, "could not review booking", err)
 	default:
+		decision := "已通过"
+		if in.Decision == "reject" {
+			decision = "已驳回"
+		}
+		systemlog.WithSummary(r.Context(), fmt.Sprintf("审批预约 #%d：%s", id, decision))
 		httpx.RespondJSON(w, http.StatusOK, v)
 	}
 }

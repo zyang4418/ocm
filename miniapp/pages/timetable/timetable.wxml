@@ -1,0 +1,68 @@
+<view class="page">
+  <t-navbar title="教室课表" left-arrow fixed placeholder />
+
+  <!-- 教室选择 + 周导航 -->
+  <view class="toolbar">
+    <picker mode="selector" range="{{classroomOptions}}" value="{{classroomIndex}}" bindchange="onClassroomChange">
+      <view class="classroom-box">{{classroomOptions[classroomIndex] || '请选择教室'}}</view>
+    </picker>
+    <view class="week-nav">
+      <view class="week-btn" bindtap="onPrevWeek">‹</view>
+      <text class="week-label">{{weekLabel}}</text>
+      <view class="week-btn" bindtap="onNextWeek">›</view>
+    </view>
+  </view>
+
+  <view wx:if="{{error}}" class="banner">
+    <text class="banner-text">{{error}}</text>
+  </view>
+
+  <scroll-view scroll-y class="page-scroll">
+    <empty-state wx:if="{{classroomOptions.length === 0}}" text="请先创建教室"></empty-state>
+    <block wx:else>
+      <timetable-grid
+        days="{{days}}"
+        rows="{{gridRows}}"
+        cell-height="{{cellHeight}}"
+        can-manage="{{canManage}}"
+        bind:celltap="onCellTap"
+      />
+    </block>
+    <view class="bottom-space"></view>
+  </scroll-view>
+
+  <!-- 课次表单弹层 -->
+  <form-dialog
+    visible="{{modalOpen}}"
+    title="{{modalTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{modalLoading}}"
+    error="{{modalError}}"
+    bind:cancel="closeModal"
+    bind:confirm="submitSession"
+  >
+    <view class="fixed-info">
+      <text class="fixed-info-text">{{fixedInfo}}</text>
+    </view>
+    <view class="field">
+      <text class="field-label">课程 *</text>
+      <picker mode="selector" range="{{offeringOptions}}" value="{{offeringIndex}}" bindchange="onOfferingChange">
+        <view class="field-value {{offeringOptions[offeringIndex] ? '' : 'field-placeholder'}}">{{offeringOptions[offeringIndex] || '请选择课程'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">起始节次</text>
+      <input class="field-input" type="number" value="{{form.periodStart}}" bindinput="onPeriodStartInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">结束节次（留空即单节）</text>
+      <input class="field-input" type="number" value="{{form.periodEnd}}" bindinput="onPeriodEndInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">备注</text>
+      <input class="field-input" value="{{form.note}}" bindinput="onNoteInput" />
+    </view>
+    <view wx:if="{{editSessionId}}" class="delete-link" bindtap="removeSession">删除此课次</view>
+  </form-dialog>
+</view>

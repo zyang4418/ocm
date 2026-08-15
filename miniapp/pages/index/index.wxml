@@ -25,22 +25,12 @@
     <!-- 4 顶部快入口 -->
     <view class="quick-section">
       <view class="quick-grid">
-        <view class="quick-card" data-type="课表查询" bindtap="onTapAction">
-          <image class="quick-icon-img" src="/assets/icons/quick_calendar.png" mode="aspectFit" />
-          <text class="quick-label">课表查询</text>
-        </view>
-        <view class="quick-card" data-type="教室预约" bindtap="onTapAction">
-          <image class="quick-icon-img" src="/assets/icons/quick_door.png" mode="aspectFit" />
-          <text class="quick-label">教室预约</text>
-        </view>
-        <view class="quick-card" data-type="设备控制" bindtap="onTapAction">
-          <image class="quick-icon-img" src="/assets/icons/quick_device.png" mode="aspectFit" />
-          <text class="quick-label">设备控制</text>
-        </view>
-        <view class="quick-card" data-type="签到中心" bindtap="onTapAction">
-          <image class="quick-icon-img" src="/assets/icons/quick_check.png" mode="aspectFit" />
-          <text class="quick-label">签到中心</text>
-        </view>
+        <block wx:for="{{quickItems}}" wx:key="type">
+          <view class="quick-card" data-type="{{item.type}}" data-url="{{item.url}}" data-gate="{{item.gate}}" bindtap="onTapAction">
+            <image class="quick-icon-img" src="{{item.icon}}" mode="aspectFit" />
+            <text class="quick-label">{{item.type}}</text>
+          </view>
+        </block>
       </view>
     </view>
 
@@ -48,7 +38,7 @@
     <view class="grid-section">
       <view class="grid-container">
         <block wx:for="{{gridItems}}" wx:key="name">
-          <view class="grid-item" data-name="{{item.name}}" bindtap="onTapGrid">
+          <view class="grid-item" data-name="{{item.name}}" data-url="{{item.url}}" data-gate="{{item.gate}}" bindtap="onTapGrid">
             <image class="grid-icon" src="{{item.icon}}" mode="aspectFit" />
             <text class="grid-label">{{item.name}}</text>
           </view>
@@ -91,32 +81,31 @@
       </view>
     </view>
 
-    <!-- 今日课程 -->
-    <view class="schedule-section">
+    <!-- 近期预约 -->
+    <view wx:if="{{showRecent}}" class="schedule-section">
       <view class="schedule-header">
-        <text class="schedule-title">今日课程</text>
-        <view class="schedule-more">
+        <text class="schedule-title">近期预约</text>
+        <view class="schedule-more" bindtap="onTapScheduleMore">
           <text>查看完整课表</text>
           <view class="more-arrow"></view>
         </view>
       </view>
       <view class="schedule-card">
-        <block wx:for="{{todayClasses}}" wx:key="time">
+        <block wx:for="{{recent}}" wx:key="id">
           <view class="schedule-row {{index === 0 ? 'row-first' : ''}}">
             <view class="schedule-time">
-              <text class="time-start">{{item.time}}</text>
-              <text class="time-end">{{item.end}}</text>
+              <text class="time-start">{{item.date}}</text>
+              <text class="time-end">{{item.periodText}}</text>
             </view>
             <view class="schedule-info">
-              <text class="schedule-subject">{{item.subject}}</text>
+              <text class="schedule-subject">{{item.purpose}}</text>
               <view class="schedule-meta">
-                <text class="schedule-room">{{item.room}}</text>
-                <view class="meta-dot"></view>
-                <text class="schedule-teacher">{{item.teacher}}</text>
+                <text class="schedule-room">{{item.classroomName}}</text>
               </view>
             </view>
           </view>
         </block>
+        <view wx:if="{{recent.length === 0}}" class="schedule-empty">暂无预约</view>
       </view>
     </view>
 

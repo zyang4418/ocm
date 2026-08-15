@@ -1,0 +1,4 @@
+<view class="st-tag st-tag--{{theme}}">
+  <view class="st-dot"></view>
+  <text class="st-text">{{text}}</text>
+</view>

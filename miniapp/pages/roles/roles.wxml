@@ -1,0 +1,71 @@
+<view class="page">
+  <t-navbar title="角色管理" left-arrow fixed placeholder />
+
+  <view wx:if="{{error}}" class="banner">
+    <text class="banner-text">{{error}}</text>
+    <view class="banner-retry" bindtap="onRetry">重试</view>
+  </view>
+
+  <scroll-view scroll-y class="list-scroll">
+    <block wx:for="{{rows}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.name}}</text>
+            <text class="card-code">{{item.code}}</text>
+          </view>
+          <view class="card-tags">
+            <view class="perm-tag">{{item.permText}} 项权限</view>
+            <view class="sys-tag">{{item.isSystem ? '系统内置' : '自定义'}}</view>
+          </view>
+          <view wx:if="{{canManage && !item.isSystem}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+            <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+        <text wx:if="{{item.description}}" class="card-desc">{{item.description}}</text>
+        <text class="card-time">{{item.createdAtText}}</text>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!loading && rows.length === 0}}" text="暂无角色"></empty-state>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openCreate">
+    <text class="fab-text">＋ 新建角色</text>
+  </view>
+
+  <!-- 新建/编辑 -->
+  <form-dialog
+    visible="{{formOpen}}"
+    title="{{formTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{formLoading}}"
+    error="{{formError}}"
+    bind:cancel="closeForm"
+    bind:confirm="submitForm"
+  >
+    <view class="field">
+      <text class="field-label">角色代码 {{editId ? '（不可修改）' : '*'}}</text>
+      <input class="field-input {{editId ? 'field-input--readonly' : ''}}" disabled="{{!!editId}}" value="{{form.code}}" data-field="code" bindinput="onFormInput" placeholder="小写字母开头，仅含小写字母、数字与下划线" placeholder-class="field-placeholder" />
+    </view>
+    <view class="field">
+      <text class="field-label">角色名称 *</text>
+      <input class="field-input" value="{{form.name}}" data-field="name" bindinput="onFormInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">描述</text>
+      <textarea class="field-textarea" value="{{form.description}}" data-field="description" bindinput="onFormInput" />
+    </view>
+    <view class="perm-group" wx:for="{{permGroups}}" wx:key="name" wx:for-item="g" wx:for-index="gi">
+      <text class="perm-group-name">{{g.name}}</text>
+      <view class="perm-item" wx:for="{{g.items}}" wx:key="code" wx:for-item="p" wx:for-index="pi">
+        <view class="grant-role-check" data-gi="{{gi}}" data-pi="{{pi}}" bindtap="onPermTap">
+          <view class="checkbox {{p.checked ? 'checkbox-on' : ''}}">{{p.checked ? '✓' : ''}}</view>
+        </view>
+        <text class="perm-item-label">{{p.label}}</text>
+      </view>
+    </view>
+  </form-dialog>
+</view>

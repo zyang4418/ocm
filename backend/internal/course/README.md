@@ -123,10 +123,11 @@ CREATE TABLE course_sessions (
   offering_id  BIGINT NOT NULL,   -- → course_offerings.id（逻辑外键）
   classroom_id BIGINT NOT NULL,   -- → classrooms.id（逻辑外键）
   date         DATE NOT NULL,
-  period_index INT NOT NULL,
+  period_start INT NOT NULL,      -- 起始节次（连上多节为一次上课实例）
+  period_end   INT NOT NULL,      -- 结束节次（>= period_start）
   note         VARCHAR(255) NOT NULL DEFAULT '',
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (classroom_id, date, period_index)   -- 同教室同时段只能一节课
+  INDEX idx_session_room_date (classroom_id, date)   -- 冲突查询；重叠约束在应用层
 );
 ```
 
@@ -144,7 +145,7 @@ CREATE TABLE course_sessions (
   - `teaching_classes`：`UNIQUE(name)`
   - `course_catalog`：`UNIQUE(name)` + `UNIQUE(code)`（`code` 为 NULL-able，多个 NULL 互不冲突；但 `''` 会冲突，故代码留空须存 NULL 而非空串。重复代码返回 `ErrCodeTaken`，HTTP 409）
   - `course_offerings`：`UNIQUE(catalog_id, teaching_class_id, semester)`
-  - `course_sessions`：`UNIQUE(classroom_id, date, period_index)`
+- **课次重叠约束（应用层）**：`course_sessions` 存节次区间 `[period_start, period_end]`，区间重叠无法用唯一索引表达，故由应用层双向校验：`course.Store.Create/UpdateSession` 与 `booking.Store.Create/Review` 均检查「与任一课次区间重叠、或与任一 pending/approved 预约区间重叠」（创建/更新在教室行 `FOR UPDATE` 锁下进行，防并发插入）。导入器同样做区间重叠预检。
 
 ## 5. 权限模型
 
@@ -234,7 +235,7 @@ CREATE TABLE course_sessions (
 `jwc.Split` 的核心规则（详见 `internal/importer/jwc/doc.go`）：
 
 - **合班去重**：同一「课程序号」下，相同（教室 + 星期 + 节次串 + 起止周串）的多行视为同一槽位（合班上课的多教师行），教师按工号合并去重；
-- **周次展开**：`起止周` 支持 `[a-b]` / `a-b` / `n` / 逗号分段，及「单/双」奇偶周后缀；`节次` 支持 `3-4` / `1-4` / `1-1` 范围；日期 = 第一周周一 + (周-1)*7 + (星期-1)；
+- **周次展开**：`起止周` 支持 `[a-b]` / `a-b` / `n` / 逗号分段，及「单/双」奇偶周后缀；`节次` 支持 `3-4` / `1-4` / `1-1` 范围，**保持为区间** `[period_start, period_end]`——连上多节（如 3-4）是一个课次实例，不逐节展开；日期 = 第一周周一 + (周-1)*7 + (星期-1)；
 - **教学班命名**：按行政班集合去重，名称用区间压缩（`机电241~245`）；超 64 字符回退为「首班,次班等N班」+ note 存完整成员；
 - **特殊处理**：空行政班行（任选课，41 行）跳过告警；平行教学班（同课程代码+行政班集合多序号，4 对）跳过告警；无教师开课（26 个体育）填「未安排」；「停课」占位不计为教室也不展开课次。
 
@@ -263,6 +264,19 @@ DROP TABLE IF EXISTS course_offerings;
 - `course_offerings` 的 `course_seq` / `teacher_id` / `teacher_title` / `college` / `max_students` / `requirement` / `weekly_hours` 七个教务处元数据列随 `CREATE TABLE IF NOT EXISTS` 建立；已有表需手动加列或 DROP 重建（开发阶段建议后者）。
 
 > 1062（数据级重复）**故意不忽略**：若两门不同课程已存同一 `code`，加 `UNIQUE(code)` 会失败，提示先去重——这是数据问题，不应静默。
+
+### 9.2 课次节次区间化（period_start/period_end）
+
+`course_sessions` 由「单节 `period_index` + `UNIQUE(classroom_id, date, period_index)`」改为「区间 `period_start`/`period_end` + `INDEX(classroom_id, date)`」：连上多节（如 3-4）为**一个课次实例**，不再逐节展开；重叠约束上移到应用层（与 `classroom_bookings` 的预约冲突模型统一）。
+
+`Migrate` 的 `CREATE TABLE IF NOT EXISTS` 不会改写已有表，开发库需删表重建：
+
+```sql
+-- ⚠️ 破坏性操作：会清空课次表全部数据。仅在开发库执行。
+DROP TABLE IF EXISTS course_sessions;
+```
+
+重启后 `Migrate` 按新结构重建。`course_offerings` 结构不变，无需处理。
 
 ## 10. 前端
 

@@ -37,6 +37,15 @@ export interface ApiConfig {
   serviceName: string
   /** Base URL of the backend (http only). No trailing slash. */
   baseUrl: string
+  /**
+   * Base URL for streaming endpoints (http only). wx.cloud.callContainer
+   * cannot stream SSE responses, so AI chat always uses wx.request against a
+   * direct HTTP(S) URL. Empty in http mode (falls back to baseUrl). For
+   * trial/release with the callContainer transport, set this to the
+   * backend's public HTTPS origin (the backend is public anyway for the web
+   * console) and add it to the request 合法域名 whitelist.
+   */
+  streamBaseUrl: string
   /** Request timeout in ms. callContainer caps this at 15000. */
   timeout: number
 }
@@ -47,6 +56,7 @@ const prodConfig: ApiConfig = {
   cloudEnv: 'prod-xxxxxxxxxxxx', // TODO: replace with your Cloud Run env id
   serviceName: 'ocm', // TODO: replace with your Cloud Run service name
   baseUrl: '', // unused in callContainer mode
+  streamBaseUrl: '', // TODO: public HTTPS origin for AI streaming (e.g. https://api.example.com)
   timeout: 15000,
 }
 
@@ -59,6 +69,7 @@ const devConfig: ApiConfig = {
   cloudEnv: '', // unused
   serviceName: '', // unused
   baseUrl: 'http://localhost:8080', // match backend PORT (default 8080)
+  streamBaseUrl: '', // empty = use baseUrl for streaming too
   timeout: 15000,
 }
 
@@ -86,3 +97,14 @@ function resolveConfig(): ApiConfig {
 }
 
 export const apiConfig: ApiConfig = resolveConfig()
+
+/**
+ * Base URL for streaming requests (SSE). callContainer buffers responses and
+ * cannot stream, so streaming always goes through wx.request directly.
+ * Throws when no streaming URL is configured in callContainer mode.
+ */
+export function streamBaseUrl(): string {
+  if (apiConfig.transport === 'http') return apiConfig.baseUrl
+  if (apiConfig.streamBaseUrl) return apiConfig.streamBaseUrl
+  throw new Error('AI 对话需配置流式服务地址')
+}

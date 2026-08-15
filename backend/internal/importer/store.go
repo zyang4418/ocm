@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"ocm-backend/internal/dbutil"
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -191,6 +193,54 @@ func (s *Store) ListJobs(ctx context.Context, limit int) ([]Job, error) {
 		list = append(list, j)
 	}
 	return list, rows.Err()
+}
+
+// PageJobs returns one page of import jobs matching q (fuzzy contains on
+// filename and type), newest first, plus the total matching count across all
+// pages. The payload column is excluded to keep responses small. A zero
+// Pagination means no limit (full range).
+func (s *Store) PageJobs(ctx context.Context, q string, p dbutil.Pagination) ([]Job, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND (filename LIKE ? OR type LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat)
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT id, type, status, filename, total_rows, succeeded_rows, failed_rows, error_report, user_id, created_at, started_at, finished_at FROM import_jobs`+
+			where+` ORDER BY created_at DESC, id DESC`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page import jobs: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []Job{}
+	for rows.Next() {
+		var j Job
+		var started, finished sql.NullTime
+		if err := rows.Scan(
+			&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.ErrorReport, &j.UserID, &j.CreatedAt, &started, &finished,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan import job: %w", err)
+		}
+		if started.Valid {
+			j.StartedAt = &started.Time
+		}
+		if finished.Valid {
+			j.FinishedAt = &finished.Time
+		}
+		list = append(list, j)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM import_jobs`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 // MarkProcessing transitions a job to processing and stamps started_at. It is

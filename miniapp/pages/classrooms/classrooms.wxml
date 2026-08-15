@@ -1,0 +1,95 @@
+<view class="page">
+  <t-navbar title="教室管理" left-arrow fixed placeholder />
+
+  <view class="search-row">
+    <input
+      class="search-input"
+      placeholder="搜索教室"
+      placeholder-class="search-placeholder"
+      value="{{list.q}}"
+      bindinput="onSearchInput"
+    />
+  </view>
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.name}}</text>
+            <view class="card-tags">
+              <view class="type-tag">{{item.typeText}}</view>
+              <status-tag text="{{item.statusText}}" theme="{{item.statusTheme}}" />
+            </view>
+          </view>
+          <view wx:if="{{canManage}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+            <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+        <view class="card-line">
+          <text class="card-meta">{{item.building || '—'}} · {{item.campus || '—'}} · {{item.floor || '—'}}楼</text>
+          <text class="card-capacity">{{item.capacity}} 座位</text>
+        </view>
+        <text wx:if="{{item.description}}" class="card-desc">{{item.description}}</text>
+        <text class="card-time">{{item.createdAtText}}</text>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的教室' : '暂无教室'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openCreate">
+    <text class="fab-text">＋ 添加教室</text>
+  </view>
+
+  <!-- 新建/编辑表单 -->
+  <form-dialog
+    visible="{{formOpen}}"
+    title="{{formTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{formLoading}}"
+    error="{{formError}}"
+    bind:cancel="closeForm"
+    bind:confirm="submitForm"
+  >
+    <view class="field">
+      <text class="field-label">教室编号 *</text>
+      <input class="field-input" value="{{form.name}}" placeholder="如 A-301" placeholder-class="field-placeholder" bindinput="onNameInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">楼栋</text>
+      <input class="field-input" value="{{form.building}}" placeholder="如 教学楼 A" placeholder-class="field-placeholder" bindinput="onBuildingInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">座位数 *</text>
+      <input class="field-input" type="number" value="{{form.capacity}}" placeholder="0" placeholder-class="field-placeholder" bindinput="onCapacityInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">类型</text>
+      <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="field-value">{{typeOptions[typeIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">楼层</text>
+      <input class="field-input" value="{{form.floor}}" placeholder="如 3" placeholder-class="field-placeholder" bindinput="onFloorInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">校区</text>
+      <input class="field-input" value="{{form.campus}}" placeholder="如 主校区" placeholder-class="field-placeholder" bindinput="onCampusInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">状态</text>
+      <picker mode="selector" range="{{statusOptions}}" value="{{statusIndex}}" bindchange="onStatusChange">
+        <view class="field-value">{{statusOptions[statusIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">备注</text>
+      <textarea class="field-textarea" value="{{form.description}}" placeholder-class="field-placeholder" bindinput="onDescriptionInput" />
+    </view>
+  </form-dialog>
+</view>

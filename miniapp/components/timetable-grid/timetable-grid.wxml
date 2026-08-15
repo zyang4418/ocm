@@ -1,0 +1,46 @@
+<scroll-view scroll-x class="tg-scroll">
+  <view class="tg-grid">
+    <!-- 表头:时间列 + 每天一列 -->
+    <view class="tg-row tg-row--head" style="height: 72rpx">
+      <view class="tg-time tg-time--head"></view>
+      <view wx:for="{{days}}" wx:key="date" class="tg-day-head">
+        <text class="tg-day-name">{{item.dayName}}</text>
+        <text class="tg-day-date">{{item.dateShort}}</text>
+      </view>
+    </view>
+
+    <!-- 节次行 -->
+    <view wx:for="{{rows}}" wx:key="periodIndex" wx:for-item="row" class="tg-row" style="height: {{cellHeight}}rpx">
+      <view class="tg-time">
+        <text class="tg-time-idx">第 {{row.periodIndex}} 节</text>
+        <text class="tg-time-range">{{row.startTime}}</text>
+        <text class="tg-time-range">{{row.endTime}}</text>
+      </view>
+      <view wx:for="{{row.cells}}" wx:key="date" wx:for-item="cell" class="tg-cell">
+        <!-- 节次起始的课次块(高度 = span × 行高,覆盖下方延续行) -->
+        <view
+          wx:if="{{cell.session && cell.isStart}}"
+          class="tg-session"
+          style="height: {{cell.span * cellHeight - 6}}rpx"
+          data-date="{{cell.date}}"
+          data-periodindex="{{row.periodIndex}}"
+          data-session="{{cell.session}}"
+          bindtap="onCellTap"
+        >
+          <text class="tg-session-course">{{cell.session.courseName}}</text>
+          <text class="tg-session-meta">{{cell.session.teacher}} · {{cell.session.teachingClassName}}</text>
+          <text wx:if="{{cell.session.note}}" class="tg-session-note">{{cell.session.note}}</text>
+        </view>
+        <!-- 空格 -->
+        <view
+          wx:else
+          class="tg-empty {{canManage ? 'tg-empty--tappable' : ''}}"
+          data-date="{{cell.date}}"
+          data-periodindex="{{row.periodIndex}}"
+          data-session="none"
+          bindtap="onCellTap"
+        ></view>
+      </view>
+    </view>
+  </view>
+</scroll-view>

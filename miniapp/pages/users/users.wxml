@@ -1,0 +1,175 @@
+<view class="page">
+  <t-navbar title="用户管理" left-arrow fixed placeholder />
+
+  <view class="search-row">
+    <input
+      class="search-input"
+      placeholder="搜索用户"
+      placeholder-class="search-placeholder"
+      value="{{list.q}}"
+      bindinput="onSearchInput"
+    />
+  </view>
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.displayName}}</text>
+            <text class="card-username">@{{item.username}}</text>
+          </view>
+          <view wx:if="{{canManage}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openGrants">授权</view>
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openPassword">重置密码</view>
+            <view wx:if="{{!item.isSelf}}" class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.displayName}}" data-username="{{item.username}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+        <view class="card-line">
+          <view class="type-tag">{{item.typeText}}</view>
+          <text class="card-meta">角色：{{item.rolesText}}</text>
+          <text class="card-meta">组：{{item.groupsText}}</text>
+        </view>
+        <text class="card-time">{{item.createdAtText}}</text>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的用户' : '暂无用户'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openCreate">
+    <text class="fab-text">＋ 新建用户</text>
+  </view>
+
+  <!-- 新建用户 -->
+  <form-dialog
+    visible="{{createOpen}}"
+    title="新建用户"
+    confirm-text="创建"
+    cancel-text="取消"
+    loading="{{createLoading}}"
+    error="{{createError}}"
+    bind:cancel="closeCreate"
+    bind:confirm="submitCreate"
+  >
+    <view class="field">
+      <text class="field-label">用户名 *</text>
+      <input class="field-input" value="{{createForm.username}}" data-field="username" bindinput="onCreateInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">密码 *</text>
+      <input class="field-input" password value="{{createForm.password}}" data-field="password" bindinput="onCreateInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">显示名称 *</text>
+      <input class="field-input" value="{{createForm.displayName}}" data-field="displayName" bindinput="onCreateInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">类型</text>
+      <picker mode="selector" range="{{typeOptions}}" value="{{createTypeIndex}}" bindchange="onCreateTypeChange">
+        <view class="field-value">{{typeOptions[createTypeIndex]}}</view>
+      </picker>
+    </view>
+  </form-dialog>
+
+  <!-- 编辑用户 -->
+  <form-dialog
+    visible="{{editOpen}}"
+    title="编辑用户"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{editLoading}}"
+    error="{{editError}}"
+    bind:cancel="closeEdit"
+    bind:confirm="submitEdit"
+  >
+    <view class="field">
+      <text class="field-label">显示名称 *</text>
+      <input class="field-input" value="{{editForm.displayName}}" data-field="displayName" bindinput="onEditInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">类型</text>
+      <picker mode="selector" range="{{typeOptions}}" value="{{editTypeIndex}}" bindchange="onEditTypeChange">
+        <view class="field-value">{{typeOptions[editTypeIndex]}}</view>
+      </picker>
+    </view>
+  </form-dialog>
+
+  <!-- 重置密码 -->
+  <form-dialog
+    visible="{{pwdOpen}}"
+    title="重置密码"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{pwdLoading}}"
+    error="{{pwdError}}"
+    bind:cancel="closePassword"
+    bind:confirm="submitPassword"
+  >
+    <view class="field">
+      <text class="field-label">新密码 *</text>
+      <input class="field-input" password value="{{pwdForm.password}}" data-field="password" bindinput="onPwdInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">确认新密码 *</text>
+      <input class="field-input" password value="{{pwdForm.confirm}}" data-field="confirm" bindinput="onPwdInput" />
+    </view>
+  </form-dialog>
+
+  <!-- 授权 -->
+  <form-dialog
+    visible="{{grantOpen}}"
+    title="授权"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{grantSaving}}"
+    error="{{grantError}}"
+    bind:cancel="closeGrants"
+    bind:confirm="submitGrants"
+  >
+    <block wx:if="{{grantLoading}}">
+      <view class="grant-loading">加载中…</view>
+    </block>
+    <block wx:else>
+      <view class="grant-section">
+        <text class="grant-title">角色</text>
+        <view wx:for="{{grantRoles}}" wx:key="code" wx:for-item="r" class="grant-role">
+          <view class="grant-role-row">
+            <view class="grant-role-check" data-idx="{{index}}" bindtap="onGrantRoleTap">
+              <view class="checkbox {{r.checked ? 'checkbox-on' : ''}}">{{r.checked ? '✓' : ''}}</view>
+            </view>
+            <text class="grant-role-name">{{r.name}}</text>
+            <text wx:if="{{r.isSystem}}" class="grant-sys-tag">内置</text>
+            <text wx:if="{{r.expired}}" class="grant-expired-tag">已过期</text>
+          </view>
+          <picker wx:if="{{r.checked}}" mode="date" value="{{r.expiresAt}}" data-idx="{{index}}" bindchange="onGrantRoleExpiryChange">
+            <view class="grant-expiry">有效期：{{r.expiresAt || '长期有效（点击设置）'}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="grant-section">
+        <text class="grant-title">直接权限</text>
+        <view wx:for="{{permGroups}}" wx:key="name" wx:for-item="g" wx:for-index="gi" class="perm-group">
+          <text class="perm-group-name">{{g.name}}</text>
+          <view wx:for="{{g.items}}" wx:key="code" wx:for-item="p" wx:for-index="pi" class="perm-item">
+            <view class="grant-role-check" data-gi="{{gi}}" data-pi="{{pi}}" bindtap="onGrantPermTap">
+              <view class="checkbox {{p.checked ? 'checkbox-on' : ''}}">{{p.checked ? '✓' : ''}}</view>
+            </view>
+            <text class="perm-item-label">{{p.label}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="grant-section">
+        <text class="grant-title">用户组（只读）</text>
+        <view class="grant-groups">
+          <view wx:for="{{grantGroups}}" wx:key="id" class="type-tag">{{item.name}}</view>
+          <text wx:if="{{grantGroups.length === 0}}" class="grant-none">未加入任何用户组</text>
+        </view>
+      </view>
+    </block>
+  </form-dialog>
+</view>

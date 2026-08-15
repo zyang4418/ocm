@@ -2,7 +2,7 @@
 title: 后端
 ---
 
-Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路由,如 `mux.Handle("GET /api/...", ...)`) + MySQL 8。鉴权 JWT(HS256、24h),小程序身份经后端 `code2Session` 解析 openid。权限链 `auth.Middleware` → `user.LoadSubject` → `authz.RequirePermission`。HTTP 契约见 [API 概述](/api)。
+Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路由,如 `mux.Handle("GET /api/...", ...)`) + MySQL 8。鉴权 JWT(HS256、24h),小程序身份经后端 `code2Session` 解析 openid。权限链 `auth.Middleware` → `user.LoadSubject` → `authz.RequirePermission`,RBAC 数据(`roles`/`user_roles`/`user_permissions`/`user_groups` 等)在 `internal/iam`。HTTP 契约见 [API 概述](/api)。
 
 ## 入口与运行
 
@@ -11,7 +11,7 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 1. 注册 `/healthz`(**先于开库**;反映进程存活,不查 DB)。
 2. 在 goroutine 里起 HTTP 服务(端口 `PORT`,默认 8080)——端口立即绑定。
 3. 开 MySQL(`openDB` → `db.ConfigFromEnv` + `db.New`,带 60s 连接超时 + `pingWithRetry` 每 2s 重试)。
-4. 依次跑各 store 的 `Migrate(ctx)`:auth → user → classroom → schedule → course → booking → importer。
+4. 依次跑各 store 的 `Migrate(ctx)`:auth → **iam** → user → classroom → schedule → course → booking → importer。iam 紧随 auth 之后:先把老库 `users.role` 拷贝进 `user_roles`(`admin`→admin 角色、`user`→teacher 角色),再 DROP 该列;新装库无 role 列(用 `information_schema` 探测)自动跳过。
 5. 组装一次鉴权中间件 `authenticate`,各 handler 用 `RegisterRoutes(mux, authenticate)` 注册路由。
 6. 构建 importer `Registry`(job 类型 → 权限 → importer),调 `RecoverStale`(恢复崩溃的 processing / 重排队 pending)。
 7. 注册 `/readyz`(**开库后**;ping DB,3s 超时,不可达返回 503)。
@@ -31,6 +31,8 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 
 业务路由前缀 `/api`,Go 1.22+ 方法路由。按资源分组:auth、users、admin-classes、teaching-classes、classrooms、schedule(regimes/periods)、course(catalog/offerings/sessions/timetable)、bookings、imports。完整路由表(方法+路径+权限)见 [API 概述](/api)。
 
+**列表分页约定**:列表接口经 `httpx.ParsePageParams`(`page`/`page_size`,默认 100、上限 500)+ `httpx.ParseSearch`(`q`)解析后调各 store 的 `Page*` 方法,返回 `httpx.Paged` 信封 `{items,total,page,pageSize}`。`Page*` 与既有 `List*` 并存:`List*` 保持全量(零值 `dbutil.Pagination` = 不分页),供导出、importer `loadRefs`、Timetable、校验路径等内部调用方使用;搜索与分页仅存在于 `Page*`(sessions/bookings 的 WHERE 构建分别抽为 `buildSessionWhere`/`buildBookingWhere`,List 与 Page 共用,SQL 逐字节一致)。q 一律走绑定参数 + `dbutil.EscapeLike` 转义。
+
 ## 鉴权
 
 **JWT** —— `internal/auth/token.go`:HS256;密钥取 `JWT_SECRET`(空则回落开发串 `ocm-dev-secret-do-not-use-in-production` 并告警);TTL 24h;签发 issuer `ocm-backend`、subject = 用户名;`Parse` 先校验签名方法是 HMAC 再用密钥。
@@ -42,32 +44,35 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 **中间件链** —— `main.go` 组装:
 
 ```go
-authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore))
+authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore, iamStore))
 // 业务 handler 再包: authz.RequirePermission(perm)
 ```
 
 1. `auth.Middleware`:读 `Authorization: Bearer <token>`,解析出 username 存入 context;缺/错返回 401。
-2. `user.LoadSubject`:**每次请求**重查 user 记录(角色变更即时生效),存 `authz.Subject{ID, Role}`;账号已删返回 401。
-3. `authz.RequirePermission(perm)`:校验 `Can(role, perm)`,不足返回 403。
+2. `user.LoadSubject`:**每次请求**重查 user 记录并调 `iam.EffectivePermissions` 计算有效权限,存 `authz.Subject{ID, Type, Permissions, Roles, Groups}`;账号已删返回 401,权限加载失败返回 500(不放行)。
+3. `authz.RequirePermission(perm)`:校验 `Subject.Has(perm)`,不足返回 403;`authz.RequireAny(perms...)` 用于目录/列表类端点(任一权限即放行)。
 
-仅鉴权、不限权限的路由(`/api/auth/me`、`/api/auth/wx-unbind`)用 `auth.Middleware` 直接包,不走 `LoadSubject`/`RequirePermission`。
+仅鉴权、不限权限的路由(`/api/auth/wx-unbind`)用 `auth.Middleware` 直接包,不走 `LoadSubject`/`RequirePermission`。`/api/auth/me` 同样走 `auth.Middleware` + 内部调 `iam.EffectivePermissions` 富化(login/wx-login/wx-bind 亦返回同一富化形状,前端登录后即可门控 UI)。
 
-## 权限模型
+## 权限模型(RBAC)
 
-`internal/authz/authz.go`:
+`internal/iam`(存储/合并/接口)+ `internal/authz`(权限常量与中间件):
 
-- handler 检查的是 **permission 字符串**(如 `classroom:manage`),**不是角色名**——role→permission 映射可变而无需改 handler。
-- **admin 通配**:`role == "admin"` 时 `Can(...)` 对一切返回 true。
-- `user` 角色仅得:`classroom:read`、`course:read`、`classroom:book`、`repair:create`、`admin_class:read`、`teaching_class:read`(可读教室/课程/作息、可预约教室、可提报修;不可管理任何资源)。
-- 角色仅 `"admin"` / `"user"` 两值(user CRUD 强校验)。
-- `Subject` 鉴权无关(JWT 网页端与 openid 小程序同形);后续阶段会加按用户附加权限 / 映射入 DB。
+- handler 检查的是 **permission 字符串**(如 `classroom:manage`),**不是角色名**——角色权限可调整而无需改 handler。
+- **权限目录在代码中**(`authz.Catalog`,含 code/中文名/分类/描述,`GET /api/permissions` 输出);DB 只存权限字符串,新增权限无需迁移。
+- **有效权限 = 直接角色授权 ∪ 组角色授权 ∪ 直接权限授权**;授权可带 `expires_at`,过期(含等于当前时刻)即失效。合并逻辑抽为纯函数 `iam.Effective`(可单测)。
+- **通配 `*`**:仅系统 admin 角色持有(种子直插 `role_permissions`);不在权限目录中,故 API 无法授予。`Subject.Has` 对 `*` 放行一切。授予 admin 角色(用户或组)要求操作者自身持有 `*`。
+- 内置角色:`admin`(通配)、`teacher`/`student`(各含 classroom:read、course:read、classroom:book、repair:create、admin_class:read、teaching_class:read),均 `is_system` 不可改删;自定义角色经控制台管理,删除在用角色返回 409 + 使用计数。
+- `users` 表无 role 列,账号类型 `user_type`(student/teacher/staff)仅作展示/筛选,不参与鉴权。
+- JWT 只含 username、24h 无刷新;权限每请求实时计算,因此**授权/撤销/过期全部即时生效**,无需 token 作废机制。
+- 每请求约 5 条小查询(角色全表 + 直接角色 + 组成员 + 组角色 + 直接权限),v1 无缓存,规模小可接受。
 
 ## 数据库与迁移
 
 驱动 `github.com/go-sql-driver/mysql`,MySQL 8。
 
 - **无独立迁移目录/工具**:每个 store 有幂等 `Migrate(ctx)`,启动时调用。用 `CREATE TABLE IF NOT EXISTS` + **幂等 ALTER**:`ALTER TABLE ADD COLUMN/INDEX`,若报错则断言为 MySQL 1060(重复列)或 1061(重复键)并忽略,其他错误致命。1062(重复行)由 `dbutil.IsDuplicateEntry` 在插入路径处理。共享 helper 在 `internal/dbutil`。
-- 主要表:`users`、`classrooms`、`schedule_regimes`/`schedule_periods`、`course_catalog`/`course_offerings`/`course_sessions`、`admin_classes`、`teaching_classes`/`teaching_class_members`、`classroom_bookings`、`import_jobs`。
+- 主要表:`users`、`roles`/`role_permissions`、`user_roles`/`user_permissions`、`user_groups`/`user_group_members`/`group_roles`、`classrooms`、`schedule_regimes`/`schedule_periods`、`course_catalog`/`course_offerings`/`course_sessions`、`admin_classes`、`teaching_classes`/`teaching_class_members`、`classroom_bookings`、`import_jobs`。所有跨表引用均为应用层逻辑外键(无 FK 约束),删除用户时 `iam.DeleteUserGrants` 级联清理授权行。
 - 连接:`db.ConfigFromEnv` 出 DSN(`charset=utf8mb4&parseTime=true&loc=Local`);`db.New` 生产拒绝 localhost 回落(`db.go`),`pingWithRetry` 轮询至 DB 就绪;连接池默认 25 open / 25 idle / 5min lifetime(可调 `DB_*_CONNS`/`DB_CONN_MAX_LIFETIME`)。
 
 ## 异步导入
@@ -104,8 +109,8 @@ authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore))
 
 - **预约**:并发 `Create` 锁 `classrooms` 行 `FOR UPDATE`(以教室行为锁锚,序列化同槽位竞争)。
 - **教学班成员**:被开课引用后冻结;`teachingClassInUse` 用 `SELECT COUNT(*) ... FOR UPDATE` 在 REPEATABLE READ 下 gap-lock,关闭 check-then-write TOCTOU。
-- **预约冲突模型**:与任一 `period_index` 落在 `[period_start, period_end]` 的 `course_session`、或任一重叠区间的活跃预约冲突;sessions 与 bookings 共享 `(classroom_id, date, period)` 网格。
-- **预约状态机**:`pending → approved/rejected`(review,admin);`pending/approved → cancelled`(cancel,预约人或 admin);仅 `pending`+`approved` 占槽位并参与冲突检测。
+- **预约冲突模型**:与任一节次区间 `[period_start, period_end]` 重叠的 `course_session`、或任一重叠区间的活跃预约冲突;sessions 与 bookings 同为 `(classroom_id, date, 节次区间)` 模型,双向互查。
+- **预约状态机**:`pending → approved/rejected`(review,`booking:approve`);`pending/approved → cancelled`(cancel,预约人本人或持有 `booking:approve` 者);仅 `pending`+`approved` 占槽位并参与冲突检测。
 
 ## 导出 ↔ 导入回环
 

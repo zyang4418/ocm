@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "t-navbar": "tdesign-miniprogram/navbar/navbar",
+    "form-dialog": "/components/form-dialog/form-dialog",
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

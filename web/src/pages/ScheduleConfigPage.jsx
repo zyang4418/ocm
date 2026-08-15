@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,19 +17,23 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
 
 const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
 
 const emptyRegime = { name: '', effectiveMonth: 5, effectiveDay: 1 }
 
 export default function ScheduleConfigPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('course:manage')
 
-  const [regimes, setRegimes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const list = usePagedList({ path: '/api/schedule/regimes', token })
+  const { loading } = list
+  // Export errors are separate from the list fetch (the hook owns its error).
+  const [exportError, setExportError] = useState('')
+  const error = list.error || exportError
 
   const [regimeOpen, setRegimeOpen] = useState(false)
   const [regimeForm, setRegimeForm] = useState(emptyRegime)
@@ -45,23 +49,6 @@ export default function ScheduleConfigPage() {
   const [delTarget, setDelTarget] = useState(null)
   const [delError, setDelError] = useState('')
   const [deleting, setDeleting] = useState(false)
-
-  const fetchRegimes = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const data = await apiFetch('/api/schedule/regimes', { token })
-      setRegimes(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => {
-    fetchRegimes()
-  }, [fetchRegimes])
 
   const openCreateRegime = () => {
     setRegimeForm(emptyRegime)
@@ -96,7 +83,7 @@ export default function ScheduleConfigPage() {
         await apiFetch('/api/schedule/regimes', { method: 'POST', token, body })
       }
       setRegimeOpen(false)
-      await fetchRegimes()
+      list.reload()
     } catch (err) {
       setRegimeError(err.message)
     } finally {
@@ -124,7 +111,7 @@ export default function ScheduleConfigPage() {
         body: { periods: periodRows.map((p) => ({ ...p, periodIndex: Number(p.periodIndex) })) },
       })
       setPeriodsTarget(null)
-      await fetchRegimes()
+      list.reload()
     } catch (err) {
       setPeriodsError(err.message)
     } finally {
@@ -138,7 +125,7 @@ export default function ScheduleConfigPage() {
       setDelError('')
       await apiFetch(`/api/schedule/regimes/${delTarget.id}`, { method: 'DELETE', token })
       setDelTarget(null)
-      await fetchRegimes()
+      list.reload()
     } catch (err) {
       setDelError(err.message)
     } finally {
@@ -189,7 +176,7 @@ export default function ScheduleConfigPage() {
         <ExportButton
           path="/api/schedule/regimes/export"
           fallbackName="regimes.xlsx"
-          onError={setError}
+          onError={setExportError}
           className="courses-page__add"
         />
       </Column>
@@ -197,10 +184,10 @@ export default function ScheduleConfigPage() {
       <Column sm={4} md={8} lg={16}>
         {loading ? (
           <p>加载中…</p>
-        ) : regimes.length === 0 ? (
+        ) : list.items.length === 0 ? (
           <p>暂无作息配置，请先添加。</p>
         ) : (
-          regimes.map((r) => (
+          list.items.map((r) => (
             <Tile key={r.id} className="schedule-regime">
               <div className="schedule-regime__head">
                 <div>
@@ -254,6 +241,13 @@ export default function ScheduleConfigPage() {
             </Tile>
           ))
         )}
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </Column>
 
       {/* Regime create/edit modal */}

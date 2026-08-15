@@ -26,11 +26,11 @@
       </view>
     </view>
 
-    <!-- 数据概览 -->
-    <view class="stats-section">
+    <!-- 数据概览(权限门控实时统计) -->
+    <view wx:if="{{showStats}}" class="stats-section">
       <view class="stats-card">
         <block wx:for="{{stats}}" wx:key="label">
-          <view class="stats-item" data-label="{{item.label}}" bindtap="onTapAction">
+          <view class="stats-item">
             <text class="stats-value">{{item.value}}</text>
             <text class="stats-label">{{item.label}}</text>
           </view>
@@ -67,6 +67,11 @@
     <!-- 系统 -->
     <view class="menu-section">
       <view class="menu-card">
+        <view wx:if="{{settingsVisible}}" class="menu-item menu-divider" data-name="参数配置" data-url="/pages/settings/settings" bindtap="onTapMenu">
+          <image class="menu-icon" src="/assets/icons/profile_settings.png" mode="aspectFit" />
+          <text class="menu-name">参数配置</text>
+          <view class="menu-arrow"></view>
+        </view>
         <view class="menu-item" data-name="清除缓存" bindtap="onTapMenu">
           <image class="menu-icon" src="/assets/icons/profile_clear.png" mode="aspectFit" />
           <text class="menu-name">清除缓存</text>

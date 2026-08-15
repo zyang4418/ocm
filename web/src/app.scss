@@ -458,6 +458,133 @@
   @include type-style('body-01');
 }
 
+.users-page__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-02;
+}
+
+.users-page__readonly {
+  @include type-style('helper-text-01');
+  color: var(--cds-text-secondary);
+}
+
+.users-page__grants {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-06;
+}
+
+.users-page__grants-section {
+  h3 {
+    @include type-style('heading-03');
+    margin-block-end: $spacing-02;
+  }
+}
+
+.users-page__grants-hint {
+  @include type-style('helper-text-01');
+  color: var(--cds-text-secondary);
+  margin-block-end: $spacing-04;
+}
+
+.users-page__grant-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-04;
+  padding-block: $spacing-02;
+}
+
+.users-page__perm-group {
+  margin-block-end: $spacing-04;
+}
+
+.users-page__grants-empty {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+// --- Roles page --------------------------------------------------------------
+.roles-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.roles-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.roles-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.roles-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.roles-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.roles-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.roles-page__perm-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.roles-page__confirm-text {
+  @include type-style('body-01');
+}
+
+// --- Groups page -------------------------------------------------------------
+.groups-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.groups-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.groups-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.groups-page__notice {
+  margin-block-end: $spacing-05;
+}
+
+.groups-page__actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-01;
+}
+
+.groups-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.groups-page__confirm-text {
+  @include type-style('body-01');
+}
+
 .classrooms-page {
   padding-block: $spacing-07 $spacing-09;
 }
@@ -792,7 +919,11 @@
 
 .timetable__grid {
   border-collapse: collapse;
-  min-width: 100%;
+  // Fixed layout: every day column gets the same width regardless of cell
+  // content, so a long course name no longer stretches one column.
+  table-layout: fixed;
+  width: 100%;
+  min-width: 62rem; // corner 6rem + 7 day columns at ~8rem, then scroll
 
   th,
   td {
@@ -803,12 +934,14 @@
 
   thead th {
     text-align: center;
+    vertical-align: middle; // corner + day headers centered both ways
     background: var(--cds-layer-01);
   }
 }
 
 .timetable__corner {
-  min-inline-size: 6rem;
+  // First-row cell width doubles as the column width under table-layout: fixed.
+  width: 6rem;
 }
 
 .timetable__date {
@@ -823,8 +956,11 @@
   @include type-style('label-01');
 }
 
-.timetable__period {
+.timetable__grid .timetable__period {
   text-align: center;
+  // Scoped to the grid so it wins over the `vertical-align: top` shared by
+  // all grid cells; period labels should sit in the middle of their rows.
+  vertical-align: middle;
   background: var(--cds-layer-01);
 }
 
@@ -835,8 +971,12 @@
 }
 
 .timetable__cell {
-  min-inline-size: 8rem;
-  min-block-size: 3.5rem;
+  // NOTE: min-height/min-block-size on a table cell is undefined per CSS and
+  // browsers may ignore it. `height` on a cell acts as a minimum height in
+  // table layout, so every period row gets at least this height and rows
+  // stay uniform.
+  height: 4.25rem;
+  overflow: hidden; // truncated content must not widen its fixed column
   cursor: default;
 }
 
@@ -854,6 +994,15 @@
   flex-direction: column;
   gap: 2px;
 
+  // One line per field: long names are ellipsized instead of wrapping, which
+  // also keeps period rows the same height across the week.
+  strong,
+  span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
   span {
     color: var(--cds-text-secondary);
     @include type-style('label-01');
@@ -867,4 +1016,253 @@
 
 .timetable__delete {
   margin-block-start: $spacing-05;
+}
+
+/* ---- logs page ---- */
+.logs-page {
+  padding-block: $spacing-07 $spacing-09;
+}
+
+.logs-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.logs-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.logs-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-05;
+  align-items: flex-end;
+  margin-block-end: $spacing-05;
+}
+
+.logs-page__table {
+  margin-block-end: $spacing-05;
+}
+
+.logs-page__settings {
+  margin-block-start: $spacing-09;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  max-inline-size: 24rem;
+}
+
+.logs-page__settings-heading {
+  @include type-style('heading-03');
+}
+
+.logs-page__settings-hint {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+.settings-page__heading {
+  @include type-style('heading-05');
+  margin-block-start: $spacing-05;
+}
+
+.settings-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block: $spacing-03 $spacing-07;
+}
+
+.settings-page__section {
+  margin-block-start: $spacing-09;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  max-inline-size: 24rem;
+}
+
+.settings-page__section-heading {
+  @include type-style('heading-03');
+}
+
+.settings-page__section-hint {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+// --- AI 助手 (/ai) ---
+
+.ai-page__heading {
+  @include type-style('productive-heading-05');
+  margin-block-end: $spacing-03;
+}
+
+.ai-page__subtitle {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block-end: $spacing-06;
+}
+
+.ai-page__chat {
+  max-inline-size: 56rem;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.ai-page__empty {
+  padding-block: $spacing-07;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+}
+
+.ai-page__empty-title {
+  @include type-style('heading-03');
+}
+
+.ai-page__empty-hint {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+.ai-page__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+}
+
+.ai-page__chip {
+  @include type-style('body-01');
+  padding: $spacing-03 $spacing-05;
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 1rem;
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  text-align: start;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    border-color: var(--cds-border-strong);
+  }
+}
+
+.ai-page__row {
+  display: flex;
+}
+
+.ai-page__row--user {
+  justify-content: flex-end;
+}
+
+.ai-page__row--assistant {
+  justify-content: flex-start;
+}
+
+.ai-page__bubble {
+  max-inline-size: 44rem;
+  min-inline-size: 3rem;
+  padding: $spacing-04 $spacing-05;
+  border-radius: $spacing-03;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-03;
+}
+
+.ai-page__bubble--user {
+  background: var(--color-primary);
+  color: #fff;
+
+  .ai-page__text {
+    color: #fff;
+  }
+}
+
+.ai-page__bubble--assistant {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.ai-page__text {
+  @include type-style('body-01');
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.ai-page__cursor {
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 1rem;
+  background: currentColor;
+  animation: ai-blink 1s infinite;
+  align-self: flex-start;
+}
+
+@keyframes ai-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.ai-page__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+}
+
+.ai-page__tool-spinner {
+  display: inline-block;
+  margin-inline-end: $spacing-03;
+  vertical-align: middle;
+}
+
+.ai-page__proposal {
+  margin-block-start: $spacing-03;
+  padding: $spacing-04 $spacing-05;
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: $spacing-03;
+  background: var(--cds-layer-01);
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+}
+
+.ai-page__proposal-title {
+  @include type-style('heading-02');
+  margin: 0;
+}
+
+.ai-page__proposal-fields {
+  @include type-style('body-01');
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-05;
+  color: var(--cds-text-secondary);
+
+  span {
+    color: var(--cds-text-primary);
+  }
+}
+
+.ai-page__proposal-actions {
+  display: flex;
+  gap: $spacing-03;
+}
+
+.ai-page__proposal-dismissed {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.ai-page__input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: $spacing-03;
+
+  .cds--text-area__wrapper {
+    flex: 1;
+  }
 }

@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "t-navbar": "tdesign-miniprogram/navbar/navbar",
+    "t-segmented": "tdesign-miniprogram/segmented/segmented",
+    "form-dialog": "/components/form-dialog/form-dialog",
+    "empty-state": "/components/empty-state/empty-state",
+    "list-footer": "/components/list-footer/list-footer"
+  }
+}

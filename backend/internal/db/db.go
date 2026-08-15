@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+
+	"ocm-backend/internal/logging"
 )
 
 const (
@@ -103,7 +104,7 @@ func pingWithRetry(ctx context.Context, d *sql.DB) error {
 			return nil
 		} else {
 			lastErr = err
-			log.Printf("db: not reachable yet, retrying in %s: %v", pingInterval, err)
+			logging.L.Info("db: not reachable yet, retrying", "interval", pingInterval, "err", err)
 		}
 
 		select {

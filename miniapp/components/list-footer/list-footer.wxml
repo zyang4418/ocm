@@ -1,0 +1,6 @@
+<view class="lf-wrap">
+  <text wx:if="{{loading}}" class="lf-text">加载中…</text>
+  <text wx:elif="{{noMore}}" class="lf-text">没有更多了</text>
+  <text wx:elif="{{text}}" class="lf-text">{{text}}</text>
+  <text wx:else class="lf-text"></text>
+</view>

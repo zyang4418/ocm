@@ -24,14 +24,15 @@ const metrics = [
 ]
 
 const quickLinks = [
+  { title: 'AI 助手', description: '问答查询教室与课表，生成预约方案', href: '/ai', perm: 'ai:chat' },
   { title: '用户管理', description: '维护组织成员与账号状态' },
   { title: '角色管理', description: '配置角色与访问权限' },
-  { title: '参数配置', description: '调整系统级运行参数' },
+  { title: '参数配置', description: '调整系统级运行参数', href: '/settings', adminOnly: true },
   { title: '审计日志', description: '查看关键操作记录' },
 ]
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
 
   return (
     <Grid fullWidth className="dashboard">
@@ -64,17 +65,19 @@ export default function DashboardPage() {
         <Column sm={4} md={8} lg={16}>
           <h2 className="dashboard__section">快速开始</h2>
         </Column>
-        {quickLinks.map(({ title, description }) => (
-          <Column key={title} sm={4} md={4} lg={4}>
-            <ClickableTile href="#" className="dashboard__quicklink">
-              <div className="dashboard__quicklink-title">
-                {title}
-                <ArrowRight size={16} aria-hidden />
-              </div>
-              <p className="dashboard__quicklink-desc">{description}</p>
-            </ClickableTile>
-          </Column>
-        ))}
+        {quickLinks
+          .filter((l) => (!l.adminOnly || can('*')) && (!l.perm || can(l.perm)))
+          .map(({ title, description, href }) => (
+            <Column key={title} sm={4} md={4} lg={4}>
+              <ClickableTile href={href ?? '#'} className="dashboard__quicklink">
+                <div className="dashboard__quicklink-title">
+                  {title}
+                  <ArrowRight size={16} aria-hidden />
+                </div>
+                <p className="dashboard__quicklink-desc">{description}</p>
+              </ClickableTile>
+            </Column>
+          ))}
       </Grid>
   )
 }

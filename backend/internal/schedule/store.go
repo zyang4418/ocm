@@ -79,6 +79,50 @@ func (s *Store) ListRegimes(ctx context.Context) ([]Regime, error) {
 	return regimes, nil
 }
 
+// PageRegimes returns one page of regimes matching q (fuzzy contains on name)
+// plus the total matching count across all pages. Periods are attached for the
+// page's rows only. A zero Pagination means no limit (full range).
+func (s *Store) PageRegimes(ctx context.Context, q string, p dbutil.Pagination) ([]Regime, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND name LIKE ?`
+		args = append(args, dbutil.LikePattern(dbutil.EscapeLike(q)))
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT id, name, effective_month, effective_day, created_at FROM schedule_regimes`+where+
+			` ORDER BY effective_month, effective_day, id`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page regimes: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	regimes := []Regime{}
+	for rows.Next() {
+		var r Regime
+		if err := rows.Scan(&r.ID, &r.Name, &r.EffectiveMonth, &r.EffectiveDay, &r.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan regime: %w", err)
+		}
+		regimes = append(regimes, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("page regimes rows: %w", err)
+	}
+	for i := range regimes {
+		p, err := s.loadPeriods(ctx, regimes[i].ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		regimes[i].Periods = p
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM schedule_regimes`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return regimes, total, nil
+}
+
 func (s *Store) GetRegime(ctx context.Context, id int64) (Regime, error) {
 	var r Regime
 	err := s.db.QueryRowContext(ctx,

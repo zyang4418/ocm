@@ -1,0 +1,64 @@
+.fd-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0 var(--space-lg);
+  box-sizing: border-box;
+}
+
+.fd-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640rpx;
+  max-height: 80vh;
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.fd-header {
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+}
+
+.fd-title {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.fd-body {
+  max-height: 60vh;
+  padding: 0 var(--space-md);
+  box-sizing: border-box;
+}
+
+.fd-error {
+  margin: var(--space-sm) var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
+  background: #FDECEC;
+  border-radius: var(--radius-sm);
+}
+
+.fd-error-text {
+  font-size: var(--font-sm);
+  color: #D54941;
+}
+
+.fd-footer {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.fd-btn {
+  flex: 1;
+}

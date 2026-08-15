@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,6 +28,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
 
 const statusLabel = {
   pending: '待审批',
@@ -81,20 +83,27 @@ function periodLabel(b) {
 const emptyForm = { classroomId: '', date: '', periodStart: '', periodEnd: '', purpose: '' }
 
 export default function BookingsPage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, user: currentUser, can } = useAuth()
   const navigate = useNavigate()
-  const isAdmin = currentUser?.role === 'admin'
+  const canApprove = can('booking:approve')
 
   const [classrooms, setClassrooms] = useState([])
-  const [bookings, setBookings] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
   const [filterClassroom, setFilterClassroom] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const today = new Date()
   const [from, setFrom] = useState(fmt(today))
   const [to, setTo] = useState(fmt(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)))
+
+  const list = usePagedList({
+    path: '/api/bookings',
+    token,
+    extraParams: { classroom_id: filterClassroom, status: filterStatus, from, to },
+  })
+  const { loading } = list
+  // Action/export errors are separate from the list fetch (the hook owns its error).
+  const [actionError, setActionError] = useState('')
+  const error = list.error || actionError
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(emptyForm)
@@ -106,33 +115,11 @@ export default function BookingsPage() {
   const [cancelTarget, setCancelTarget] = useState(null)
   const [actingId, setActingId] = useState(null)
 
-  const fetchBookings = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const params = new URLSearchParams()
-      if (filterClassroom) params.set('classroom_id', filterClassroom)
-      if (filterStatus) params.set('status', filterStatus)
-      if (from) params.set('from', from)
-      if (to) params.set('to', to)
-      const data = await apiFetch(`/api/bookings?${params.toString()}`, { token })
-      setBookings(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [token, filterClassroom, filterStatus, from, to])
-
   useEffect(() => {
-    apiFetch('/api/classrooms', { token })
-      .then((cls) => setClassrooms(Array.isArray(cls) ? cls : []))
-      .catch((err) => setError(err.message))
+    apiFetch('/api/classrooms?page_size=500', { token })
+      .then((data) => setClassrooms(Array.isArray(data?.items) ? data.items : []))
+      .catch((err) => setActionError(err.message))
   }, [token])
-
-  useEffect(() => {
-    fetchBookings()
-  }, [fetchBookings])
 
   // When the create modal's classroom or date changes, load the active regime
   // (for period options) and the day's sessions + bookings (for a busy hint).
@@ -147,16 +134,20 @@ export default function BookingsPage() {
     let cancelled = false
     Promise.all([
       apiFetch(`/api/schedule/active?date=${d}`, { token }),
-      apiFetch(`/api/sessions?classroom_id=${cid}&from=${d}&to=${d}`, { token }),
-      apiFetch(`/api/bookings?classroom_id=${cid}&from=${d}&to=${d}`, { token }),
+      apiFetch(`/api/sessions?classroom_id=${cid}&from=${d}&to=${d}&page_size=500`, { token }),
+      apiFetch(`/api/bookings?classroom_id=${cid}&from=${d}&to=${d}&page_size=500`, { token }),
     ])
-      .then(([regime, sess, books]) => {
+      .then(([regime, sessData, booksData]) => {
         if (cancelled) return
         const ps = (regime?.periods || []).slice().sort((a, b) => a.periodIndex - b.periodIndex)
         setPeriods(ps)
+        const sess = Array.isArray(sessData?.items) ? sessData.items : []
+        const books = Array.isArray(booksData?.items) ? booksData.items : []
         const busySet = new Set()
-        ;(Array.isArray(sess) ? sess : []).forEach((s) => busySet.add(s.periodIndex))
-        ;(Array.isArray(books) ? books : []).forEach((b) => {
+        sess.forEach((s) => {
+          for (let i = s.periodStart; i <= s.periodEnd; i++) busySet.add(i)
+        })
+        books.forEach((b) => {
           if (b.status === 'pending' || b.status === 'approved') {
             for (let i = b.periodStart; i <= b.periodEnd; i++) busySet.add(i)
           }
@@ -214,7 +205,7 @@ export default function BookingsPage() {
         },
       })
       setCreateOpen(false)
-      await fetchBookings()
+      list.reload()
     } catch (err) {
       setCreateError(err.message)
     } finally {
@@ -227,12 +218,12 @@ export default function BookingsPage() {
     if (!id) return
     try {
       setActingId(id)
-      setError('')
+      setActionError('')
       await apiFetch(`/api/bookings/${id}/cancel`, { method: 'POST', token })
       setCancelTarget(null)
-      await fetchBookings()
+      list.reload()
     } catch (err) {
-      setError(err.message)
+      setActionError(err.message)
     } finally {
       setActingId(null)
     }
@@ -241,17 +232,17 @@ export default function BookingsPage() {
   const reviewBooking = async (id, decision) => {
     try {
       setActingId(id)
-      setError('')
+      setActionError('')
       await apiFetch(`/api/bookings/${id}/review`, { method: 'POST', token, body: { decision } })
-      await fetchBookings()
+      list.reload()
     } catch (err) {
-      setError(err.message)
+      setActionError(err.message)
     } finally {
       setActingId(null)
     }
   }
 
-  const rows = bookings.map((b) => ({
+  const rows = list.items.map((b) => ({
     id: String(b.id),
     classroomName: b.classroomName,
     date: b.date,
@@ -357,16 +348,15 @@ export default function BookingsPage() {
             getHeaderProps,
             getRowProps,
             getToolbarProps,
-            onInputChange,
           }) => (
-            <TableContainer title="预约列表" description={`共 ${bookings.length} 条预约`}>
+            <TableContainer title="预约列表" description={`共 ${list.total} 条预约`}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch onChange={onInputChange} placeholder="搜索预约" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索预约" />
                   <ExportButton
                     path={`/api/bookings/export?${exportParams.toString()}`}
                     fallbackName="bookings.xlsx"
-                    onError={setError}
+                    onError={setActionError}
                   />
                   <Button renderIcon={Add} size="sm" onClick={openCreate}>
                     新建预约
@@ -392,17 +382,17 @@ export default function BookingsPage() {
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {bookings.length === 0 ? '暂无预约' : '未找到匹配的预约'}
+                        {list.q ? '未找到匹配的预约' : '暂无预约'}
                       </TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const b = bookings.find((x) => String(x.id) === String(row.id))
+                      const b = list.items.find((x) => String(x.id) === String(row.id))
                       const canCancel =
                         b &&
                         (b.status === 'pending' || b.status === 'approved') &&
-                        (isAdmin || Number(currentUser?.id) === b.userId)
-                      const canReview = isAdmin && b && b.status === 'pending'
+                        (canApprove || Number(currentUser?.id) === b.userId)
+                      const canReview = canApprove && b && b.status === 'pending'
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
@@ -464,6 +454,13 @@ export default function BookingsPage() {
             </TableContainer>
           )}
         </DataTable>
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </Column>
 
       {/* Create */}

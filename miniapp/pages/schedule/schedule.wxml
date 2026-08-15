@@ -1,0 +1,111 @@
+<view class="page">
+  <t-navbar title="作息设置" left-arrow fixed placeholder />
+
+  <view class="search-row">
+    <input
+      class="search-input"
+      placeholder="搜索作息"
+      placeholder-class="search-placeholder"
+      value="{{list.q}}"
+      bindinput="onSearchInput"
+    />
+  </view>
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.name}}</text>
+            <text class="card-effective">{{item.effectiveText}}</text>
+          </view>
+          <view wx:if="{{canManage}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openRegimeEdit">编辑</view>
+            <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+
+        <view wx:if="{{item.hasPeriods}}" class="period-table">
+          <view class="period-row period-row--head">
+            <text class="period-cell period-cell--idx">节次</text>
+            <text class="period-cell">开始</text>
+            <text class="period-cell">结束</text>
+          </view>
+          <view wx:for="{{item.periodRows}}" wx:key="periodIndex" wx:for-item="p" class="period-row">
+            <text class="period-cell period-cell--idx">第 {{p.periodIndex}} 节</text>
+            <text class="period-cell">{{p.startTime}}</text>
+            <text class="period-cell">{{p.endTime}}</text>
+          </view>
+        </view>
+        <text wx:else class="card-empty">尚未配置节次</text>
+
+        <view wx:if="{{canManage}}" class="period-edit-link" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="openPeriods">编辑节次 ›</view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的作息' : '暂无作息制度'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openRegimeCreate">
+    <text class="fab-text">＋ 添加作息</text>
+  </view>
+
+  <!-- 制度弹层 -->
+  <form-dialog
+    visible="{{regimeOpen}}"
+    title="{{regimeTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{regimeLoading}}"
+    error="{{regimeError}}"
+    bind:cancel="closeRegime"
+    bind:confirm="submitRegime"
+  >
+    <view class="field">
+      <text class="field-label">名称 *</text>
+      <input class="field-input" value="{{regimeForm.name}}" placeholder="如 冬季作息" placeholder-class="field-placeholder" bindinput="onRegimeNameInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">生效月份</text>
+      <picker mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onMonthChange">
+        <view class="field-value">{{months[monthIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">生效日期</text>
+      <input class="field-input" type="number" value="{{regimeForm.effectiveDay}}" bindinput="onDayInput" />
+    </view>
+  </form-dialog>
+
+  <!-- 节次弹层 -->
+  <form-dialog
+    visible="{{periodsOpen}}"
+    title="{{periodsTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{periodsLoading}}"
+    error="{{periodsError}}"
+    bind:cancel="closePeriods"
+    bind:confirm="submitPeriods"
+  >
+    <text class="periods-hint">每天节次数 = 下方行数，可增删行调整</text>
+    <view class="period-row period-row--head">
+      <text class="period-cell period-cell--idx">节次</text>
+      <text class="period-cell">开始</text>
+      <text class="period-cell">结束</text>
+      <text class="period-cell period-cell--del"></text>
+    </view>
+    <view wx:for="{{periodRows}}" wx:key="index" class="period-row">
+      <input class="period-input period-input--idx" type="number" value="{{item.periodIndex}}" data-idx="{{index}}" bindinput="onPeriodIndexInput" />
+      <picker mode="time" value="{{item.startTime}}" data-idx="{{index}}" bindchange="onPeriodStartChange">
+        <view class="period-cell period-cell--time">{{item.startTime}}</view>
+      </picker>
+      <picker mode="time" value="{{item.endTime}}" data-idx="{{index}}" bindchange="onPeriodEndChange">
+        <view class="period-cell period-cell--time">{{item.endTime}}</view>
+      </picker>
+      <view class="period-del" data-idx="{{index}}" bindtap="onPeriodRemove">✕</view>
+    </view>
+    <view class="period-add" bindtap="onPeriodAdd">＋ 添加节次</view>
+  </form-dialog>
+</view>

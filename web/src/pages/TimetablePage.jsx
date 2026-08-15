@@ -40,9 +40,9 @@ function addDays(d, n) {
 }
 
 export default function TimetablePage() {
-  const { token, user: currentUser } = useAuth()
+  const { token, can } = useAuth()
   const navigate = useNavigate()
-  const canManage = currentUser?.role === 'admin'
+  const canManage = can('course:manage')
 
   const [classrooms, setClassrooms] = useState([])
   const [offerings, setOfferings] = useState([])
@@ -53,15 +53,20 @@ export default function TimetablePage() {
   const [error, setError] = useState('')
 
   const [modal, setModal] = useState(null) // {date, periodIndex, session?}
-  const [form, setForm] = useState({ offeringId: '', classroomId: '', date: '', periodIndex: '', note: '' })
+  const [form, setForm] = useState({ offeringId: '', classroomId: '', date: '', periodStart: '', periodEnd: '', note: '' })
   const [modalError, setModalError] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([apiFetch('/api/classrooms', { token }), apiFetch('/api/offerings', { token })])
+    // Dropdowns need (near-)full lists; pull the maximum page and unwrap the
+    // pagination envelope.
+    Promise.all([
+      apiFetch('/api/classrooms?page_size=500', { token }),
+      apiFetch('/api/offerings?page_size=500', { token }),
+    ])
       .then(([cls, offs]) => {
-        setClassrooms(Array.isArray(cls) ? cls : [])
-        setOfferings(Array.isArray(offs) ? offs : [])
+        setClassrooms(Array.isArray(cls?.items) ? cls.items : [])
+        setOfferings(Array.isArray(offs?.items) ? offs.items : [])
       })
       .catch((err) => setError(err.message))
   }, [token])
@@ -106,7 +111,8 @@ export default function TimetablePage() {
       offeringId: session ? String(session.offeringId) : '',
       classroomId: String(classroomId),
       date,
-      periodIndex: String(periodIndex),
+      periodStart: String(session ? session.periodStart : periodIndex),
+      periodEnd: String(session ? session.periodEnd : periodIndex),
       note: session ? session.note : '',
     })
     setModalError('')
@@ -117,11 +123,18 @@ export default function TimetablePage() {
       setModalError('请选择课程')
       return
     }
+    const periodStart = Number(form.periodStart)
+    const periodEnd = form.periodEnd ? Number(form.periodEnd) : periodStart
+    if (!periodStart || periodStart < 1 || periodEnd < periodStart) {
+      setModalError('节次范围不合法：起始节次须 ≥1 且不大于结束节次')
+      return
+    }
     const body = {
       offeringId: Number(form.offeringId),
       classroomId: Number(form.classroomId),
       date: form.date,
-      periodIndex: Number(form.periodIndex),
+      periodStart,
+      periodEnd,
       note: form.note.trim(),
     }
     try {
@@ -206,8 +219,8 @@ export default function TimetablePage() {
             <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronRight} iconDescription="下一周" onClick={() => setWeekStart(addDays(weekStart, 7))} />
           </div>
           <ExportButton
-            path={`/api/sessions/export?classroom_id=${classroomId}&from=${from}&to=${to}`}
-            fallbackName="sessions.xlsx"
+            path={`/api/timetable/export?classroom_id=${classroomId}&from=${from}&to=${to}`}
+            fallbackName="教室周课表.xlsx"
             label="导出课表"
             onError={setError}
             disabled={!classroomId}
@@ -247,14 +260,24 @@ export default function TimetablePage() {
                     {days.map((d) => {
                       const slot = slotFor(d, p.periodIndex)
                       const session = slot?.session
+                      // 连上多节的课次从起始节起合并为一个单元格（rowSpan），
+                      // 被覆盖的后续节次不再渲染。
+                      if (session && session.periodStart !== p.periodIndex) return null
+                      const span = session ? session.periodEnd - session.periodStart + 1 : 1
                       return (
                         <td
                           key={d.date + '-' + p.periodIndex}
+                          rowSpan={span}
                           className={session ? 'timetable__cell timetable__cell--filled' : 'timetable__cell'}
                           onClick={() => canManage && openCell(d.date, p.periodIndex, session)}
                         >
                           {session ? (
-                            <div className="timetable__session">
+                            <div
+                              className="timetable__session"
+                              title={[session.courseName, session.teachingClassName, session.teacher]
+                                .filter(Boolean)
+                                .join('\n')}
+                            >
                               <strong>{session.courseName}</strong>
                               {session.teachingClassName && <span>{session.teachingClassName}</span>}
                               {session.teacher && <span>{session.teacher}</span>}
@@ -296,7 +319,8 @@ export default function TimetablePage() {
             ))}
           </Select>
           <TextInput id="s-date" type="date" labelText="日期" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-          <TextInput id="s-period" type="number" labelText="节次" min="1" value={form.periodIndex} onChange={(e) => setForm({ ...form, periodIndex: e.target.value })} />
+          <TextInput id="s-period-start" type="number" labelText="起始节次" min="1" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} />
+          <TextInput id="s-period-end" type="number" labelText="结束节次（连上多节填末节，单节留空）" min="1" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} />
           <TextInput id="s-note" labelText="备注" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           {modalError && (
             <InlineNotification kind="error" title="保存失败" subtitle={modalError} lowContrast hideCloseButton />

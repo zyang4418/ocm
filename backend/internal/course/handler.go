@@ -4,24 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"ocm-backend/internal/authz"
+	"ocm-backend/internal/classroom"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/schedule"
+	"ocm-backend/internal/systemlog"
 	"ocm-backend/internal/xlsx"
 )
 
 type Handler struct {
-	store   *Store
-	regimes *schedule.Store
+	store      *Store
+	classrooms *classroom.Store
+	regimes    *schedule.Store
 }
 
-func NewHandler(store *Store, regimes *schedule.Store) *Handler {
-	return &Handler{store: store, regimes: regimes}
+func NewHandler(store *Store, classrooms *classroom.Store, regimes *schedule.Store) *Handler {
+	return &Handler{store: store, classrooms: classrooms, regimes: regimes}
 }
 
 // RegisterRoutes mounts the catalog, offering, session and timetable
@@ -60,20 +66,24 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 
 	// Classroom timetable (教室课表)
 	mux.Handle("GET /api/timetable", read(h.timetable))
+	mux.Handle("GET /api/timetable/export", read(h.timetableExport))
 }
 
 // ---- Catalog ----
 
 func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.ListCatalog(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageCatalog(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
+		httpx.Error500(w, r, "could not list courses", err)
 		return
 	}
 	if list == nil {
 		list = []CatalogCourse{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // exportCatalog streams the course catalog as an xlsx download. Columns match
@@ -81,7 +91,7 @@ func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.ListCatalog(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list courses")
+		httpx.Error500(w, r, "could not list courses", err)
 		return
 	}
 	headers := []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}
@@ -90,7 +100,7 @@ func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{c.Name, c.Code, c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description})
 	}
 	if err := xlsx.WriteExport(w, "courses.xlsx", "catalog", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export courses")
+		httpx.Error500(w, r, "could not export courses", err)
 	}
 }
 
@@ -114,9 +124,10 @@ func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create course")
+		httpx.Error500(w, r, "could not create course", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建课程 %s", c.Name))
 	httpx.RespondJSON(w, http.StatusCreated, c)
 }
 
@@ -132,7 +143,7 @@ func (h *Handler) getCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load course")
+		httpx.Error500(w, r, "could not load course", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, c)
@@ -167,9 +178,10 @@ func (h *Handler) updateCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update course")
+		httpx.Error500(w, r, "could not update course", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新课程 %s", c.Name))
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
@@ -186,25 +198,29 @@ func (h *Handler) deleteCatalog(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrCatalogNotFound):
 			httpx.RespondError(w, http.StatusNotFound, "course not found")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "could not delete course")
+			httpx.Error500(w, r, "could not delete course", err)
 		}
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除课程 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ---- Offerings ----
 
 func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.ListOfferings(r.Context())
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	list, total, err := h.store.PageOfferings(r.Context(), httpx.ParseSearch(q),
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
+		httpx.Error500(w, r, "could not list offerings", err)
 		return
 	}
 	if list == nil {
 		list = []OfferingView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
 }
 
 // exportOfferings streams all offerings as an xlsx download, using display names
@@ -212,7 +228,7 @@ func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 	list, err := h.store.ListOfferings(r.Context())
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list offerings")
+		httpx.Error500(w, r, "could not list offerings", err)
 		return
 	}
 	headers := []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
@@ -221,7 +237,7 @@ func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, []any{o.CatalogName, o.TeachingClassName, o.Semester, o.Teacher, o.CourseSeq, o.TeacherID, o.TeacherTitle, o.College, o.MaxStudents, o.Requirement, o.WeeklyHours, o.Note})
 	}
 	if err := xlsx.WriteExport(w, "offerings.xlsx", "offerings", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export offerings")
+		httpx.Error500(w, r, "could not export offerings", err)
 	}
 }
 
@@ -241,9 +257,10 @@ func (h *Handler) createOffering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create offering")
+		httpx.Error500(w, r, "could not create offering", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建开课 %s", v.CatalogName))
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
@@ -259,7 +276,7 @@ func (h *Handler) getOffering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load offering")
+		httpx.Error500(w, r, "could not load offering", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -290,9 +307,10 @@ func (h *Handler) updateOffering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update offering")
+		httpx.Error500(w, r, "could not update offering", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新开课 %s", v.CatalogName))
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
@@ -309,34 +327,48 @@ func (h *Handler) deleteOffering(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrOfferingNotFound):
 			httpx.RespondError(w, http.StatusNotFound, "offering not found")
 		default:
-			httpx.RespondError(w, http.StatusInternalServerError, "could not delete offering")
+			httpx.Error500(w, r, "could not delete offering", err)
 		}
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除开课 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ---- Sessions ----
 
 func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
-	list, err := h.querySessions(r)
+	q := r.URL.Query()
+	p := httpx.ParsePageParams(q)
+	f := sessionFilterFromQuery(q)
+	f.Q = httpx.ParseSearch(q)
+	list, total, err := h.store.PageSessions(r.Context(), f,
+		dbutil.Pagination{Limit: p.PageSize, Offset: p.Offset()})
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
+		httpx.Error500(w, r, "could not list sessions", err)
 		return
 	}
 	if list == nil {
 		list = []SessionView{}
 	}
-	httpx.RespondJSON(w, http.StatusOK, list)
+	httpx.RespondPaged(w, list, total, p)
+}
+
+// sessionFilterFromQuery parses the list/export filter params (offering_id,
+// classroom_id, from, to), shared by listSessions and exportSessions so the two
+// stay in sync. Search (q) and pagination are not read here — exports always
+// cover the full filtered range.
+func sessionFilterFromQuery(q url.Values) SessionFilter {
+	offeringID, _ := strconv.ParseInt(q.Get("offering_id"), 10, 64)
+	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
+	return SessionFilter{OfferingID: offeringID, ClassroomID: classroomID, From: q.Get("from"), To: q.Get("to")}
 }
 
 // querySessions parses the list/export filter params and returns the matching
 // sessions, shared by listSessions and exportSessions so the two stay in sync.
 func (h *Handler) querySessions(r *http.Request) ([]SessionView, error) {
-	q := r.URL.Query()
-	offeringID, _ := strconv.ParseInt(q.Get("offering_id"), 10, 64)
-	classroomID, _ := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
-	return h.store.ListSessions(r.Context(), offeringID, classroomID, q.Get("from"), q.Get("to"))
+	f := sessionFilterFromQuery(r.URL.Query())
+	return h.store.ListSessions(r.Context(), f.OfferingID, f.ClassroomID, f.From, f.To)
 }
 
 // exportSessions streams sessions as an xlsx download, honoring the same
@@ -346,16 +378,16 @@ func (h *Handler) querySessions(r *http.Request) ([]SessionView, error) {
 func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
 	list, err := h.querySessions(r)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not list sessions")
+		httpx.Error500(w, r, "could not list sessions", err)
 		return
 	}
-	headers := []string{"date", "period_index", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
+	headers := []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
 	rows := make([][]any, 0, len(list))
 	for _, s := range list {
-		rows = append(rows, []any{s.Date, s.PeriodIndex, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
+		rows = append(rows, []any{s.Date, s.PeriodStart, s.PeriodEnd, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
 	}
 	if err := xlsx.WriteExport(w, "sessions.xlsx", "sessions", headers, rows); err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not export sessions")
+		httpx.Error500(w, r, "could not export sessions", err)
 	}
 }
 
@@ -375,9 +407,10 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not create session")
+		httpx.Error500(w, r, "could not create session", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建课次 %s %s", v.CourseName, v.Date))
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
@@ -393,7 +426,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not load session")
+		httpx.Error500(w, r, "could not load session", err)
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, v)
@@ -424,9 +457,10 @@ func (h *Handler) updateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not update session")
+		httpx.Error500(w, r, "could not update session", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新课次 %s %s", v.CourseName, v.Date))
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
@@ -441,36 +475,77 @@ func (h *Handler) deleteSession(w http.ResponseWriter, r *http.Request) {
 			httpx.RespondError(w, http.StatusNotFound, "session not found")
 			return
 		}
-		httpx.RespondError(w, http.StatusInternalServerError, "could not delete session")
+		httpx.Error500(w, r, "could not delete session", err)
 		return
 	}
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除课次 #%d", id))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ---- Timetable ----
 
-func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
+// parseTimetableParams parses the classroom_id/from/to query params shared by
+// the timetable JSON grid and its xlsx export, keeping their validation (and
+// error messages) identical.
+func parseTimetableParams(w http.ResponseWriter, r *http.Request) (classroomID int64, from, to string, ok bool) {
 	q := r.URL.Query()
 	classroomID, err := strconv.ParseInt(q.Get("classroom_id"), 10, 64)
 	if err != nil || classroomID <= 0 {
 		httpx.RespondError(w, http.StatusBadRequest, "classroom_id is required")
-		return
+		return 0, "", "", false
 	}
-	from := q.Get("from")
-	to := q.Get("to")
+	from = q.Get("from")
+	to = q.Get("to")
 	if from == "" || to == "" {
 		httpx.RespondError(w, http.StatusBadRequest, "from and to dates are required (YYYY-MM-DD)")
+		return 0, "", "", false
+	}
+	return classroomID, from, to, true
+}
+
+func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
+	classroomID, from, to, ok := parseTimetableParams(w, r)
+	if !ok {
 		return
 	}
 	days, err := h.store.Timetable(r.Context(), classroomID, from, to, h.regimes)
 	if err != nil {
-		httpx.RespondError(w, http.StatusInternalServerError, "could not build timetable")
+		httpx.Error500(w, r, "could not build timetable", err)
 		return
 	}
 	if days == nil {
 		days = []TimetableDay{}
 	}
 	httpx.RespondJSON(w, http.StatusOK, days)
+}
+
+// timetableExport streams the weekly grid as an xlsx download replicating the
+// browser table: days as columns, periods as rows, multi-period sessions
+// merged into one cell. The filename carries the classroom name and the date
+// range shown on the page.
+func (h *Handler) timetableExport(w http.ResponseWriter, r *http.Request) {
+	classroomID, from, to, ok := parseTimetableParams(w, r)
+	if !ok {
+		return
+	}
+	cr, err := h.classrooms.GetByID(r.Context(), classroomID)
+	if errors.Is(err, classroom.ErrNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "classroom not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load classroom", err)
+		return
+	}
+	days, err := h.store.Timetable(r.Context(), classroomID, from, to, h.regimes)
+	if err != nil {
+		httpx.Error500(w, r, "could not build timetable", err)
+		return
+	}
+	display := timetableExportFilename(cr.Name, from, to)
+	if err := xlsx.WriteCustom(w, "classroom-timetable.xlsx", display, populateTimetable(days)); err != nil {
+		httpx.Error500(w, r, "could not export timetable", err)
+	}
 }
 
 // ---- validation ----
@@ -523,8 +598,9 @@ func NormalizeOffering(in *OfferingInput) (string, bool) {
 	return normalizeOffering(in)
 }
 
-// validateSession checks basic fields and that periodIndex is valid for the
-// active bell-time regime on the session's date.
+// validateSession checks basic fields and that every period in
+// [PeriodStart, PeriodEnd] exists in the active bell-time regime on the
+// session's date, mirroring booking's validateBooking.
 func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string, bool) {
 	if in.OfferingID <= 0 {
 		return "offeringId is required", false
@@ -532,8 +608,11 @@ func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string
 	if in.ClassroomID <= 0 {
 		return "classroomId is required", false
 	}
-	if in.PeriodIndex < 1 {
-		return "periodIndex must be >= 1", false
+	if in.PeriodStart < 1 || in.PeriodEnd < 1 {
+		return "periodStart and periodEnd must be >= 1", false
+	}
+	if in.PeriodStart > in.PeriodEnd {
+		return "periodStart must be <= periodEnd", false
 	}
 	date, err := time.Parse("2006-01-02", in.Date)
 	if err != nil {
@@ -548,8 +627,11 @@ func (h *Handler) validateSession(ctx context.Context, in *SessionInput) (string
 	if !ok {
 		return "no schedule regime configured for this date", false
 	}
-	if !schedule.PeriodIndexSet(regime)[in.PeriodIndex] {
-		return "periodIndex is not valid for the active regime on this date", false
+	valid := schedule.PeriodIndexSet(regime)
+	for p := in.PeriodStart; p <= in.PeriodEnd; p++ {
+		if !valid[p] {
+			return "period range is not valid for the active regime on this date", false
+		}
 	}
 	return "", true
 }

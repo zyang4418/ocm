@@ -1,0 +1,21 @@
+.es-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: 80rpx var(--space-md);
+}
+
+.es-circle {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: var(--color-border);
+  opacity: 0.6;
+}
+
+.es-text {
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+}

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"ocm-backend/internal/dbutil"
 )
 
 var (
@@ -68,30 +70,44 @@ type ListFilter struct {
 	To          string // "YYYY-MM-DD", inclusive
 }
 
-func (s *Store) List(ctx context.Context, f ListFilter) ([]BookingView, error) {
-	q := `SELECT ` + selectColumns + bookingJoin + ` WHERE 1=1`
+// buildBookingWhere returns " WHERE 1=1" plus AND clauses and args for the
+// non-zero ListFilter fields plus an optional fuzzy search term (purpose,
+// display name, username, classroom name). Shared by List and PageBookings so
+// the two cannot drift; q is always "" on the export path.
+func buildBookingWhere(f ListFilter, q string) (string, []any) {
+	where := ` WHERE 1=1`
 	var args []any
 	if f.ClassroomID > 0 {
-		q += ` AND b.classroom_id = ?`
+		where += ` AND b.classroom_id = ?`
 		args = append(args, f.ClassroomID)
 	}
 	if f.UserID > 0 {
-		q += ` AND b.user_id = ?`
+		where += ` AND b.user_id = ?`
 		args = append(args, f.UserID)
 	}
 	if f.Status != "" {
-		q += ` AND b.status = ?`
+		where += ` AND b.status = ?`
 		args = append(args, f.Status)
 	}
 	if f.From != "" {
-		q += ` AND b.date >= ?`
+		where += ` AND b.date >= ?`
 		args = append(args, f.From)
 	}
 	if f.To != "" {
-		q += ` AND b.date <= ?`
+		where += ` AND b.date <= ?`
 		args = append(args, f.To)
 	}
-	q += ` ORDER BY b.date DESC, b.period_start DESC, b.id DESC`
+	if q != "" {
+		where += ` AND (b.purpose LIKE ? OR u.display_name LIKE ? OR u.username LIKE ? OR cr.name LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat, pat, pat)
+	}
+	return where, args
+}
+
+func (s *Store) List(ctx context.Context, f ListFilter) ([]BookingView, error) {
+	where, args := buildBookingWhere(f, "")
+	q := `SELECT ` + selectColumns + bookingJoin + where + ` ORDER BY b.date DESC, b.period_start DESC, b.id DESC`
 
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -108,6 +124,38 @@ func (s *Store) List(ctx context.Context, f ListFilter) ([]BookingView, error) {
 		list = append(list, v)
 	}
 	return list, rows.Err()
+}
+
+// PageBookings returns one page of bookings matching f plus q (fuzzy contains
+// on purpose, display name, username and classroom name), plus the total
+// matching count across all pages. A zero Pagination means no limit (full
+// range).
+func (s *Store) PageBookings(ctx context.Context, f ListFilter, q string, p dbutil.Pagination) ([]BookingView, int64, error) {
+	where, args := buildBookingWhere(f, q)
+	query, queryArgs := p.AppendLimit(
+		`SELECT `+selectColumns+bookingJoin+where+` ORDER BY b.date DESC, b.period_start DESC, b.id DESC`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page bookings: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []BookingView{}
+	for rows.Next() {
+		v, err := scanBookingView(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan booking: %w", err)
+		}
+		list = append(list, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, bookingJoin+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (s *Store) GetByID(ctx context.Context, id int64) (BookingView, error) {
@@ -283,8 +331,8 @@ func conflicts(ctx context.Context, q interface {
 	var one int
 
 	err := q.QueryRowContext(ctx,
-		`SELECT 1 FROM course_sessions WHERE classroom_id = ? AND date = ? AND period_index BETWEEN ? AND ? LIMIT 1`,
-		classroomID, date, ps, pe,
+		`SELECT 1 FROM course_sessions WHERE classroom_id = ? AND date = ? AND period_start <= ? AND period_end >= ? LIMIT 1`,
+		classroomID, date, pe, ps,
 	).Scan(&one)
 	if err == nil {
 		return true, nil
@@ -309,6 +357,83 @@ func conflicts(ctx context.Context, q interface {
 		return false, fmt.Errorf("check booking conflict: %w", err)
 	}
 	return false, nil
+}
+
+// ConflictItem describes one overlapping session or active booking for a
+// proposed booking. The AI assistant's booking proposal includes the full
+// list so the user sees exactly what occupies the slot before confirming.
+type ConflictItem struct {
+	Kind          string `json:"kind"` // "session" | "booking"
+	CourseName    string `json:"courseName,omitempty"`
+	Teacher       string `json:"teacher,omitempty"`
+	ClassroomName string `json:"classroomName"`
+	DisplayName   string `json:"displayName,omitempty"` // booker, for bookings
+	Status        string `json:"status,omitempty"`      // for bookings
+	PeriodStart   int    `json:"periodStart"`
+	PeriodEnd     int    `json:"periodEnd"`
+}
+
+// ConflictsDetail lists the course sessions and active (pending/approved)
+// bookings overlapping the period range [ps, pe] for the given classroom and
+// date. Read-only: used to populate the booking preview, never for
+// enforcement (Create/Review keep using conflicts with row locking).
+func (s *Store) ConflictsDetail(ctx context.Context, classroomID int64, date string, ps, pe int) ([]ConflictItem, error) {
+	var items []ConflictItem
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT cs.period_start, cs.period_end, c.name, o.teacher, cr.name
+		 FROM course_sessions cs
+		 JOIN course_offerings o ON o.id = cs.offering_id
+		 JOIN course_catalog c ON c.id = o.catalog_id
+		 JOIN classrooms cr ON cr.id = cs.classroom_id
+		 WHERE cs.classroom_id = ? AND cs.date = ?
+		   AND cs.period_start <= ? AND cs.period_end >= ?
+		 ORDER BY cs.period_start`, classroomID, date, pe, ps)
+	if err != nil {
+		return nil, fmt.Errorf("conflict sessions: %w", err)
+	}
+	for rows.Next() {
+		var it ConflictItem
+		it.Kind = "session"
+		if err := rows.Scan(&it.PeriodStart, &it.PeriodEnd, &it.CourseName, &it.Teacher, &it.ClassroomName); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("scan conflict session: %w", err)
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, err
+	}
+	_ = rows.Close()
+
+	rows, err = s.db.QueryContext(ctx,
+		`SELECT b.period_start, b.period_end, b.status, u.display_name, cr.name
+		 FROM classroom_bookings b
+		 JOIN users u ON u.id = b.user_id
+		 JOIN classrooms cr ON cr.id = b.classroom_id
+		 WHERE b.classroom_id = ? AND b.date = ?
+		   AND b.status IN ('pending','approved')
+		   AND b.period_start <= ? AND b.period_end >= ?
+		 ORDER BY b.period_start`, classroomID, date, pe, ps)
+	if err != nil {
+		return nil, fmt.Errorf("conflict bookings: %w", err)
+	}
+	for rows.Next() {
+		var it ConflictItem
+		it.Kind = "booking"
+		if err := rows.Scan(&it.PeriodStart, &it.PeriodEnd, &it.Status, &it.DisplayName, &it.ClassroomName); err != nil {
+			_ = rows.Close()
+			return nil, fmt.Errorf("scan conflict booking: %w", err)
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, err
+	}
+	_ = rows.Close()
+	return items, nil
 }
 
 func scanBookingView(sc interface {

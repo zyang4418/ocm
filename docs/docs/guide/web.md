@@ -37,7 +37,7 @@ npm run dev          # http://localhost:5173
 - `main.jsx` — 入口,挂载 `<App/>`,引入 IBM Plex Sans 字重与全局 `app.scss`。
 - `App.jsx` — `BrowserRouter` + `RequireAuth`(未登录重定向到 `/login`)+ `AppShell` 布局;路由表见下。
 - `auth/api.js` — 三个助手:`apiFetch`(JSON,每次按调用附 `Authorization: Bearer`)、`apiUpload`(multipart,不设 Content-Type 让浏览器加 boundary)、`apiDownload`(解析 `Content-Disposition` 触发下载)。**同源相对路径**,无全局 fetch 拦截器。
-- `auth/AuthContext.jsx` — 唯一状态层,提供 `token`/`user`/`login`/`logout`/`bootstrapping`。
+- `auth/AuthContext.jsx` — 唯一状态层,提供 `token`/`user`/`login`/`logout`/`bootstrapping`/`can`。
 - `components/AppShell.jsx` — Carbon UI Shell(顶栏 + 侧边栏 + 内容区)。
 - `pages/` — 各业务页面。
 
@@ -52,8 +52,10 @@ npm run dev          # http://localhost:5173
 | `/courses` | CourseManagementPage | 课程管理 |
 | `/schedule-config` | ScheduleConfigPage | 作息制度配置 |
 | `/timetable` | TimetablePage | 课表 |
-| `/imports` | ImportsPage | 数据导入(仅 admin 可见) |
-| `/users` | UsersPage | 用户管理(仅 admin) |
+| `/imports` | ImportsPage | 数据导入(持有 `course:manage` 等导入权限者可见) |
+| `/users` | UsersPage | 用户管理(持有 `user:read` 可见、`user:manage` 可操作) |
+| `/roles` | RolesPage | 角色管理(`role:manage`) |
+| `/groups` | GroupsPage | 用户组管理(`group:manage`) |
 | `/admin-classes` | AdminClassesPage | 行政班 |
 | `/teaching-classes` | TeachingClassesPage | 教学班 |
 
@@ -64,13 +66,14 @@ npm run dev          # http://localhost:5173
 - **无 refresh token**;会话中遇 401 **不自动登出**,页面直接显示错误文案。
 - token 按**每次请求**附 `Authorization: Bearer <token>`(`api.js`),无全局拦截器。
 
-## 角色(重要)
+## 权限(重要)
 
 客户端**只做可见性控制**,不做安全边界:
 
-- `isAdmin = user.role === 'admin'`;侧边栏隐藏管理项;各页用 `canManage`(同 admin)控制写操作按钮。
-- **没有路由级 admin 守卫**:`/imports`、`/users`、`/admin-classes`、`/teaching-classes` 对任意已登录用户都会渲染路由组件。
-- **后端才是鉴权权威**——每个写操作端点都由后端校验权限。贡献者不要以为路由能保护 admin 页;新增 admin 功能必须在后端加权限校验。角色:`admin`(管理员,后端通配放行)/ `user`(普通用户)。
+- 登录/水化响应携带 `user.permissions`(有效权限数组,通配为 `["*"]`),`AuthContext` 暴露 `can(perm)`(通配感知)。侧边栏与各页写操作按钮按 `can(...)` 门控:教室→`classroom:manage`、预约审批→`booking:approve`、课程/作息/课表/导入→`course:manage`、用户→`user:read`/`user:manage`、角色→`role:manage`、用户组→`group:manage`、行政班→`admin_class:manage`、教学班→`teaching_class:manage`。
+- **没有路由级权限守卫**:任意已登录用户都能渲染路由组件,页面按权限收敛按钮,后端 403 时显示错误文案。
+- **后端才是鉴权权威**——每个写操作端点都由后端校验权限。贡献者不要以为路由能保护管理页;新增管理功能必须在后端加权限校验。
+- 权限/角色/用户组是数据而非代码:管理员可在控制台创建自定义角色、给用户或用户组授权(可带有效期),无需改前端。
 
 ## 数据导入(`ImportsPage`,路由 `/imports`)
 

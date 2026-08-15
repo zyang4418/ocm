@@ -1,0 +1,123 @@
+<view class="page">
+  <t-navbar title="参数配置" left-arrow fixed placeholder />
+
+  <scroll-view scroll-y class="list-scroll">
+    <empty-state wx:if="{{!allowed}}" text="仅系统管理员可访问此页面"></empty-state>
+
+    <view wx:if="{{pageError}}" class="banner">
+      <text class="banner-text">{{pageError}}</text>
+    </view>
+
+    <block wx:if="{{allowed}}">
+      <!-- 邮件服务 -->
+      <view class="section-card">
+        <text class="section-title">邮件服务</text>
+        <text class="section-hint">SMTP 发信配置。当前仅保存配置，尚未接入实际发送流程。</text>
+        <view class="row">
+          <text class="row-label">启用邮件服务</text>
+          <switch checked="{{mail.enabled}}" bindchange="onMailToggle" color="#2B5FF6" />
+        </view>
+        <view class="field">
+          <text class="field-label">SMTP 服务器</text>
+          <input class="field-input" value="{{mail.host}}" placeholder="smtp.example.com" placeholder-class="field-placeholder" data-field="host" bindinput="onMailInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">端口（1–65535）</text>
+          <input class="field-input" type="number" value="{{mail.port}}" data-field="port" bindinput="onMailInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">用户名</text>
+          <input class="field-input" value="{{mail.username}}" data-field="username" bindinput="onMailInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">密码</text>
+          <input class="field-input" password value="{{mail.password}}" placeholder="{{mail.passwordSet ? '已设置，留空保持不变' : '未设置'}}" placeholder-class="field-placeholder" data-field="password" bindinput="onMailInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">发件人名称</text>
+          <input class="field-input" value="{{mail.fromName}}" placeholder="OCM 通知" placeholder-class="field-placeholder" data-field="fromName" bindinput="onMailInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">发件人邮箱</text>
+          <input class="field-input" value="{{mail.fromAddress}}" placeholder="notify@example.com" placeholder-class="field-placeholder" data-field="fromAddress" bindinput="onMailInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">加密方式</text>
+          <picker mode="selector" range="{{encryptionLabels}}" value="{{mailEncryptionIndex}}" bindchange="onMailEncryptionChange">
+            <view class="field-value">{{encryptionLabels[mailEncryptionIndex]}}</view>
+          </picker>
+        </view>
+        <view wx:if="{{mailError}}" class="row-error">{{mailError}}</view>
+        <view class="save-btn {{mailSaving || !loaded ? 'save-btn--disabled' : ''}}" bindtap="saveMail">{{mailSaving ? '保存中…' : '保存邮件配置'}}</view>
+      </view>
+
+      <!-- 对象存储 -->
+      <view class="section-card">
+        <text class="section-title">对象存储</text>
+        <text class="section-hint">S3 兼容存储（腾讯云 COS、阿里云 OSS、MinIO 等）配置。当前仅保存配置，尚未接入实际上传流程。</text>
+        <view class="row">
+          <text class="row-label">启用对象存储</text>
+          <switch checked="{{storage.enabled}}" bindchange="onStorageToggle" data-field="enabled" color="#2B5FF6" />
+        </view>
+        <view class="field">
+          <text class="field-label">服务地址 (Endpoint)</text>
+          <input class="field-input" value="{{storage.endpoint}}" placeholder="cos.ap-guangzhou.myqcloud.com" placeholder-class="field-placeholder" data-field="endpoint" bindinput="onStorageInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">区域 (Region)</text>
+          <input class="field-input" value="{{storage.region}}" data-field="region" bindinput="onStorageInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">存储桶 (Bucket)</text>
+          <input class="field-input" value="{{storage.bucket}}" data-field="bucket" bindinput="onStorageInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">Access Key</text>
+          <input class="field-input" value="{{storage.accessKey}}" data-field="accessKey" bindinput="onStorageInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">Secret Key</text>
+          <input class="field-input" password value="{{storage.secretKey}}" placeholder="{{storage.secretKeySet ? '已设置，留空保持不变' : '未设置'}}" placeholder-class="field-placeholder" data-field="secretKey" bindinput="onStorageInput" />
+        </view>
+        <view class="row">
+          <text class="row-label">使用 SSL</text>
+          <switch checked="{{storage.useSsl}}" bindchange="onStorageToggle" data-field="useSsl" color="#2B5FF6" />
+        </view>
+        <view class="row">
+          <text class="row-label">路径式寻址</text>
+          <switch checked="{{storage.usePathStyle}}" bindchange="onStorageToggle" data-field="usePathStyle" color="#2B5FF6" />
+        </view>
+        <view class="field">
+          <text class="field-label">公开访问地址 (Base URL)</text>
+          <input class="field-input" value="{{storage.publicBaseUrl}}" data-field="publicBaseUrl" bindinput="onStorageInput" />
+        </view>
+        <view wx:if="{{storageError}}" class="row-error">{{storageError}}</view>
+        <view class="save-btn {{storageSaving || !loaded ? 'save-btn--disabled' : ''}}" bindtap="saveStorage">{{storageSaving ? '保存中…' : '保存存储配置'}}</view>
+      </view>
+
+      <!-- AI 助手 -->
+      <view class="section-card">
+        <text class="section-title">AI 助手</text>
+        <text class="section-hint">大模型接口配置（OpenAI 兼容）。密钥仅保存在后端；启用后由权限「AI 助手」控制谁可以使用。</text>
+        <view class="row">
+          <text class="row-label">启用 AI 助手</text>
+          <switch checked="{{ai.enabled}}" bindchange="onAiToggle" color="#2B5FF6" />
+        </view>
+        <view class="field">
+          <text class="field-label">API 地址 (Base URL)</text>
+          <input class="field-input" value="{{ai.baseUrl}}" placeholder="https://api.openai.com/v1" placeholder-class="field-placeholder" data-field="baseUrl" bindinput="onAiInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">模型 (Model)</text>
+          <input class="field-input" value="{{ai.model}}" data-field="model" bindinput="onAiInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">API Key</text>
+          <input class="field-input" password value="{{ai.apiKey}}" placeholder="{{ai.apiKeySet ? '已设置，留空保持不变' : '未设置'}}" placeholder-class="field-placeholder" data-field="apiKey" bindinput="onAiInput" />
+        </view>
+        <view wx:if="{{aiError}}" class="row-error">{{aiError}}</view>
+        <view class="save-btn {{aiSaving || !loaded ? 'save-btn--disabled' : ''}}" bindtap="saveAi">{{aiSaving ? '保存中…' : '保存 AI 配置'}}</view>
+      </view>
+    </block>
+  </scroll-view>
+</view>

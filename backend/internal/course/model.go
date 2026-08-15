@@ -57,14 +57,17 @@ type OfferingView struct {
 }
 
 // Session is one actual class meeting (上课实例): a course offering in a
-// classroom on a specific date and period. It is the source of truth for the
-// real timetable; weekly templates are only a future generation aid.
+// classroom on a specific date over a contiguous period range [PeriodStart,
+// PeriodEnd]. Back-to-back periods of one meeting are a single session, not
+// one row per period. It is the source of truth for the real timetable;
+// weekly templates are only a future generation aid.
 type Session struct {
 	ID          int64     `json:"id"`
 	OfferingID  int64     `json:"offeringId"`
 	ClassroomID int64     `json:"classroomId"`
 	Date        string    `json:"date"` // "YYYY-MM-DD"
-	PeriodIndex int       `json:"periodIndex"`
+	PeriodStart int       `json:"periodStart"`
+	PeriodEnd   int       `json:"periodEnd"`
 	Note        string    `json:"note"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
@@ -111,7 +114,8 @@ type SessionInput struct {
 	OfferingID  int64  `json:"offeringId"`
 	ClassroomID int64  `json:"classroomId"`
 	Date        string `json:"date"`
-	PeriodIndex int    `json:"periodIndex"`
+	PeriodStart int    `json:"periodStart"`
+	PeriodEnd   int    `json:"periodEnd"`
 	Note        string `json:"note"`
 }
 

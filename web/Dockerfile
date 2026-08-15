@@ -34,6 +34,10 @@ RUN printf 'server {\n\
     proxy_set_header Host $host;\n\
     proxy_set_header X-Real-IP $remote_addr;\n\
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+    # SSE (AI 助手流式回答) 需要关闭响应缓冲并保持长连接。\n\
+    proxy_http_version 1.1;\n\
+    proxy_set_header Connection "";\n\
+    proxy_buffering off;\n\
   }\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\

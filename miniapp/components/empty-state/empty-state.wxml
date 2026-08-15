@@ -1,0 +1,4 @@
+<view class="es-wrap">
+  <view class="es-circle"></view>
+  <text class="es-text">{{text}}</text>
+</view>

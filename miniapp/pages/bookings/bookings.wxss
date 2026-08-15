@@ -1,0 +1,255 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+/* ── 筛选区 ── */
+.filters {
+  background: #FFFFFF;
+  border-bottom: 1rpx solid var(--color-border);
+}
+
+.chips-scroll {
+  white-space: nowrap;
+}
+
+.chips-row {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+}
+
+.chip-active {
+  color: #FFFFFF;
+  background: var(--color-primary);
+}
+
+.filter-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md) var(--space-sm);
+}
+
+.filter-box {
+  padding: 10rpx 20rpx;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-sm);
+  color: var(--color-text);
+}
+
+.filter-sep {
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+}
+
+.search-row {
+  padding: 0 var(--space-md) var(--space-sm);
+}
+
+.search-input {
+  height: 64rpx;
+  padding: 0 var(--space-md);
+  border-radius: 999rpx;
+  background: var(--color-bg);
+  font-size: var(--font-sm);
+}
+
+.search-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* ── 列表 ── */
+.list-scroll {
+  flex: 1;
+  padding: var(--space-md);
+  box-sizing: border-box;
+}
+
+.banner {
+  margin-bottom: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: #FDECEC;
+  border-radius: var(--radius-sm);
+}
+
+.banner-text {
+  font-size: var(--font-sm);
+  color: #D54941;
+}
+
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.card-top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.card-room {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.card-line {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xs);
+}
+
+.card-date {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.card-period {
+  font-size: var(--font-sm);
+  color: var(--color-primary);
+}
+
+.card-purpose {
+  font-size: var(--font-md);
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+  word-break: break-all;
+}
+
+.card-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-meta {
+  flex: 1;
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  min-width: 0;
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.action-btn {
+  padding: 8rpx 24rpx;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+}
+
+.action-primary {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.action-danger {
+  color: #D54941;
+  background: #FDECEC;
+}
+
+.action-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.card-none {
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* ── 悬浮新建按钮 ── */
+.fab {
+  position: fixed;
+  right: var(--space-md);
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+  padding: 20rpx 36rpx;
+  border-radius: 999rpx;
+  background: var(--color-primary);
+  box-shadow: 0 8rpx 24rpx rgba(43, 95, 246, 0.3);
+  z-index: 100;
+}
+
+.fab-text {
+  font-size: var(--font-md);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* ── 表单字段(弹层内) ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.field-label {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.field-value {
+  padding: 16rpx var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+  color: var(--color-text);
+}
+
+.field-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.field-input {
+  height: 72rpx;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+}
+
+.busy-hint {
+  margin-bottom: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: #FFF8E6;
+}
+
+.busy-text {
+  font-size: var(--font-xs);
+  color: #B7791F;
+}
+
+.confirm-text {
+  font-size: var(--font-md);
+  color: var(--color-text);
+  line-height: 1.6;
+  padding-bottom: var(--space-sm);
+}

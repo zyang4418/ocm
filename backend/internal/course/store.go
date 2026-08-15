@@ -83,10 +83,11 @@ func (s *Store) Migrate(ctx context.Context) error {
     offering_id  BIGINT NOT NULL,
     classroom_id BIGINT NOT NULL,
     date         DATE NOT NULL,
-    period_index INT NOT NULL,
+    period_start INT NOT NULL,
+    period_end   INT NOT NULL,
     note         VARCHAR(255) NOT NULL DEFAULT '',
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (classroom_id, date, period_index)
+    INDEX idx_session_room_date (classroom_id, date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	}
 	for _, q := range stmts {
@@ -198,6 +199,44 @@ func (s *Store) ListCatalog(ctx context.Context) ([]CatalogCourse, error) {
 		list = append(list, c)
 	}
 	return list, rows.Err()
+}
+
+// PageCatalog returns one page of catalog courses matching q (fuzzy contains
+// on name and code) plus the total matching count across all pages. A zero
+// Pagination means no limit (full range).
+func (s *Store) PageCatalog(ctx context.Context, q string, p dbutil.Pagination) ([]CatalogCourse, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND (name LIKE ? OR code LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat)
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT id, name, code, credits, total_hours, category, exam_type, description, created_at FROM course_catalog`+
+			where+` ORDER BY id`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page catalog: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []CatalogCourse{}
+	for rows.Next() {
+		var c CatalogCourse
+		if err := rows.Scan(&c.ID, &c.Name, &c.Code, &c.Credits, &c.TotalHours, &c.Category, &c.ExamType, &c.Description, &c.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan catalog: %w", err)
+		}
+		list = append(list, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := dbutil.CountRows(ctx, s.db, `FROM course_catalog`+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (s *Store) GetCatalog(ctx context.Context, id int64) (CatalogCourse, error) {
@@ -322,6 +361,70 @@ ORDER BY o.semester DESC, tc.name, c.name`)
 		}
 	}
 	return list, nil
+}
+
+// offeringColumns + offeringJoin are the SELECT column list and JOIN chain for
+// offering views, used by the paged query. The column order matches the scan
+// order in ListOfferings/PageOfferings (17 columns).
+const offeringColumns = `o.id, o.catalog_id, o.teaching_class_id, o.teacher, o.course_seq, o.teacher_id, o.teacher_title, o.college, o.max_students, o.requirement, o.weekly_hours, o.semester, o.note, o.created_at,
+       c.name, c.code, tc.name`
+
+const offeringJoin = `
+FROM course_offerings o
+JOIN course_catalog c ON c.id = o.catalog_id
+JOIN teaching_classes tc ON tc.id = o.teaching_class_id`
+
+// PageOfferings returns one page of offerings matching q (fuzzy contains on
+// course name/code, teaching class name, teacher and semester) plus the total
+// matching count across all pages. ClassNames are attached for the page's rows
+// only. A zero Pagination means no limit (full range).
+func (s *Store) PageOfferings(ctx context.Context, q string, p dbutil.Pagination) ([]OfferingView, int64, error) {
+	where := ` WHERE 1=1`
+	var args []any
+	if q != "" {
+		where += ` AND (c.name LIKE ? OR c.code LIKE ? OR tc.name LIKE ? OR o.teacher LIKE ? OR o.semester LIKE ?)`
+		pat := dbutil.LikePattern(dbutil.EscapeLike(q))
+		args = append(args, pat, pat, pat, pat, pat)
+	}
+	query, queryArgs := p.AppendLimit(
+		`SELECT `+offeringColumns+offeringJoin+where+` ORDER BY o.semester DESC, tc.name, c.name`, args)
+	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page offerings: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []OfferingView{}
+	var tcIDs []int64
+	for rows.Next() {
+		var v OfferingView
+		if err := rows.Scan(
+			&v.ID, &v.CatalogID, &v.TeachingClassID, &v.Teacher, &v.CourseSeq, &v.TeacherID, &v.TeacherTitle, &v.College, &v.MaxStudents, &v.Requirement, &v.WeeklyHours, &v.Semester, &v.Note, &v.CreatedAt,
+			&v.CatalogName, &v.CatalogCode, &v.TeachingClassName,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan offering: %w", err)
+		}
+		list = append(list, v)
+		tcIDs = append(tcIDs, v.TeachingClassID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	names, err := s.classNamesByTeachingClass(ctx, tcIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range list {
+		list[i].ClassNames = names[list[i].TeachingClassID]
+		if list[i].ClassNames == nil {
+			list[i].ClassNames = []string{}
+		}
+	}
+	total, err := dbutil.CountRows(ctx, s.db, offeringJoin+where, args)
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (s *Store) GetOffering(ctx context.Context, id int64) (OfferingView, error) {

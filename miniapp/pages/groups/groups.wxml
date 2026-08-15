@@ -1,0 +1,83 @@
+<view class="page">
+  <t-navbar title="用户组管理" left-arrow fixed placeholder />
+
+  <view wx:if="{{error}}" class="banner">
+    <text class="banner-text">{{error}}</text>
+    <view class="banner-retry" bindtap="onRetry">重试</view>
+  </view>
+
+  <scroll-view scroll-y class="list-scroll">
+    <block wx:for="{{rows}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <view class="card-head">
+            <text class="card-name">{{item.name}}</text>
+            <text class="card-meta">{{item.memberCount}} 名成员</text>
+          </view>
+          <view wx:if="{{canManage}}" class="card-actions">
+            <view class="action-btn" data-id="{{item.id}}" bindtap="openEdit">编辑</view>
+            <view class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onTapDelete">删除</view>
+          </view>
+        </view>
+        <text wx:if="{{item.description}}" class="card-desc">{{item.description}}</text>
+        <text class="card-time">{{item.createdAtText}}</text>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!loading && rows.length === 0}}" text="暂无用户组"></empty-state>
+  </scroll-view>
+
+  <view class="fab" wx:if="{{canManage}}" bindtap="openCreate">
+    <text class="fab-text">＋ 新建用户组</text>
+  </view>
+
+  <!-- 新建/编辑 -->
+  <form-dialog
+    visible="{{formOpen}}"
+    title="{{formTitle}}"
+    confirm-text="保存"
+    cancel-text="取消"
+    loading="{{formLoading}}"
+    error="{{formError}}"
+    bind:cancel="closeForm"
+    bind:confirm="submitForm"
+  >
+    <view class="field">
+      <text class="field-label">组名 *</text>
+      <input class="field-input" value="{{form.name}}" data-field="name" bindinput="onFormInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">描述</text>
+      <textarea class="field-textarea" value="{{form.description}}" data-field="description" bindinput="onFormInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">成员</text>
+      <view class="field-value" data-kind="members" bindtap="openPicker">
+        <text class="{{form.members.length ? '' : 'field-placeholder'}}">已选 {{form.members.length}} 人</text>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">角色</text>
+      <view class="field-value" data-kind="roles" bindtap="openPicker">
+        <text class="{{form.roles.length ? '' : 'field-placeholder'}}">已选 {{form.roles.length}} 个</text>
+      </view>
+    </view>
+  </form-dialog>
+
+  <!-- 多选弹层 -->
+  <t-popup visible="{{pickerOpen}}" placement="bottom" bind:visible-change="closePicker">
+    <view class="picker-panel">
+      <view class="picker-header">
+        <text class="picker-title">{{pickerTitle}}</text>
+        <view class="picker-confirm" bindtap="confirmPicker">确定</view>
+      </view>
+      <scroll-view scroll-y class="picker-list">
+        <view wx:for="{{pickerItems}}" wx:key="id" class="picker-item" data-idx="{{index}}" bindtap="onPickerItemTap">
+          <view class="checkbox {{item.checked ? 'checkbox-on' : ''}}">{{item.checked ? '✓' : ''}}</view>
+          <text class="picker-item-text">{{item.text}}</text>
+        </view>
+        <empty-state wx:if="{{pickerItems.length === 0}}" text="暂无选项"></empty-state>
+      </scroll-view>
+    </view>
+  </t-popup>
+</view>
