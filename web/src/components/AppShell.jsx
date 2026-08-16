@@ -46,7 +46,8 @@ export default function AppShell({ children }) {
     location.pathname.startsWith('/groups')
   const inClassrooms =
     location.pathname.startsWith('/classrooms') ||
-    location.pathname.startsWith('/bookings')
+    location.pathname.startsWith('/bookings') ||
+    location.pathname.startsWith('/repairs')
   const inCourses =
     location.pathname.startsWith('/courses') ||
     location.pathname.startsWith('/timetable') ||
@@ -143,6 +144,15 @@ export default function AppShell({ children }) {
                     >
                       教室预约
                     </SideNavMenuItem>
+                    {(can('repair:create') || can('repair:assign')) && (
+                      <SideNavMenuItem
+                        href="/repairs"
+                        isActive={isActive('/repairs')}
+                        onClick={go('/repairs')}
+                      >
+                        教室报修
+                      </SideNavMenuItem>
+                    )}
                   </SideNavMenu>
                   <SideNavMenu
                     key={`course-${inCourses}`}

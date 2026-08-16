@@ -100,6 +100,13 @@ export const observationStatus: Record<string, StatusMeta> = {
   submitted: { text: '已提交', theme: 'green' },
 }
 
+export const repairStatus: Record<string, StatusMeta> = {
+  open: { text: '待处理', theme: 'orange' },
+  processing: { text: '处理中', theme: 'blue' },
+  completed: { text: '待确认', theme: 'purple' },
+  confirmed: { text: '已确认', theme: 'green' },
+}
+
 export const observationTemplateLabel: Record<string, string> = {
   leader: '干部听课',
   supervisor: '督导听课',

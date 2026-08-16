@@ -110,6 +110,23 @@ title: API 概述
 
 `GET`(`ClassroomRead`)、`POST`(`ClassroomManage`)、`GET /export`、`GET /{id}`、`PUT /{id}`、`DELETE /{id}`。
 
+## 报修(`/api/repairs`)
+
+报修工单引用教室(`classroom_id`)但不修改教室本身。状态机 `open → processing → completed → confirmed`:
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/api/repairs` | `repair:create`(仅本人)或 `repair:assign`(全部) | 列表;支持 `?classroom_id=&status=`;`q` 模糊搜索描述/教室/报修人 |
+| POST | `/api/repairs` | `repair:create` | 提交普通报修;同教室已有 open/processing 工单时 409 |
+| POST | `/api/repairs/emergency` | `repair:create` | 提交紧急报修,跳过重复拦截 |
+| GET | `/api/repairs/{id}` | 同上 | 详情(本人或 assign 可见,他人 404) |
+| PUT | `/api/repairs/{id}` | `repair:assign` | 状态 `processing`/`completed` + `remark`,写入处理人 |
+| POST | `/api/repairs/{id}/confirm` | `repair:create`(仅创建者) | `completed → confirmed` |
+
+- 提交 body:`{classroomId, description, images?}`(`images` 为预留字段,暂不接收上传)。
+- 处理 body:`{status, remark}`,`status` 限 `processing`/`completed`。
+- `confirmed` 为终态,不可再流转;确认完成仅创建者可执行且前置须为 `completed`。
+
 ## 作息制度(`/api/schedule`)
 
 | 方法 | 路径 | 权限 |
