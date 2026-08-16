@@ -139,7 +139,7 @@ func readPart(zr *zip.Reader, name string) ([]byte, error) {
 			if err != nil {
 				return nil, fmt.Errorf("docx: open %s: %w", name, err)
 			}
-			defer rc.Close()
+			defer func() { _ = rc.Close() }()
 			return io.ReadAll(rc)
 		}
 	}

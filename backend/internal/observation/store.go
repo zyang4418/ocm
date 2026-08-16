@@ -150,18 +150,6 @@ func (s *Store) classroomInfo(ctx context.Context, id int64) (classroomInfo, err
 	return ci, nil
 }
 
-func (s *Store) displayName(ctx context.Context, id int64) (string, error) {
-	var name string
-	err := s.db.QueryRowContext(ctx, `SELECT display_name FROM users WHERE id = ?`, id).Scan(&name)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("load user display name: %w", err)
-	}
-	return name, nil
-}
-
 // periodsFromRange expands a contiguous period range into an explicit list,
 // matching how the legacy section list represented a session's covered periods.
 func periodsFromRange(start, end int) []int {
