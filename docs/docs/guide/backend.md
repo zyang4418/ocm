@@ -11,7 +11,7 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 1. 注册 `/healthz`(**先于开库**;反映进程存活,不查 DB)。
 2. 在 goroutine 里起 HTTP 服务(端口 `PORT`,默认 8080)——端口立即绑定。
 3. 开 MySQL(`openDB` → `db.ConfigFromEnv` + `db.New`,带 60s 连接超时 + `pingWithRetry` 每 2s 重试)。
-4. 依次跑各 store 的 `Migrate(ctx)`:auth → **iam** → user → classroom → schedule → course → booking → importer。iam 紧随 auth 之后:先把老库 `users.role` 拷贝进 `user_roles`(`admin`→admin 角色、`user`→teacher 角色),再 DROP 该列;新装库无 role 列(用 `information_schema` 探测)自动跳过。
+4. 依次跑各 store 的 `Migrate(ctx)`:auth → **iam** → user → classroom → **repair** → schedule → course → booking → importer。iam 紧随 auth 之后:先把老库 `users.role` 拷贝进 `user_roles`(`admin`→admin 角色、`user`→teacher 角色),再 DROP 该列;新装库无 role 列(用 `information_schema` 探测)自动跳过。
 5. 组装一次鉴权中间件 `authenticate`,各 handler 用 `RegisterRoutes(mux, authenticate)` 注册路由。
 6. 构建 importer `Registry`(job 类型 → 权限 → importer),调 `RecoverStale`(恢复崩溃的 processing / 重排队 pending)。
 7. 注册 `/readyz`(**开库后**;ping DB,3s 超时,不可达返回 503)。
@@ -29,7 +29,7 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 
 ## 路由组织
 
-业务路由前缀 `/api`,Go 1.22+ 方法路由。按资源分组:auth、users、admin-classes、teaching-classes、classrooms、schedule(regimes/periods)、course(catalog/offerings/sessions/timetable)、bookings、imports。完整路由表(方法+路径+权限)见 [API 概述](/api)。
+业务路由前缀 `/api`,Go 1.22+ 方法路由。按资源分组:auth、users、admin-classes、teaching-classes、classrooms(含报修 repairs)、schedule(regimes/periods)、course(catalog/offerings/sessions/timetable)、bookings、imports。完整路由表(方法+路径+权限)见 [API 概述](/api)。
 
 **列表分页约定**:列表接口经 `httpx.ParsePageParams`(`page`/`page_size`,默认 100、上限 500)+ `httpx.ParseSearch`(`q`)解析后调各 store 的 `Page*` 方法,返回 `httpx.Paged` 信封 `{items,total,page,pageSize}`。`Page*` 与既有 `List*` 并存:`List*` 保持全量(零值 `dbutil.Pagination` = 不分页),供导出、importer `loadRefs`、Timetable、校验路径等内部调用方使用;搜索与分页仅存在于 `Page*`(sessions/bookings 的 WHERE 构建分别抽为 `buildSessionWhere`/`buildBookingWhere`,List 与 Page 共用,SQL 逐字节一致)。q 一律走绑定参数 + `dbutil.EscapeLike` 转义。
 
@@ -72,8 +72,17 @@ authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore, iamSto
 驱动 `github.com/go-sql-driver/mysql`,MySQL 8。
 
 - **无独立迁移目录/工具**:每个 store 有幂等 `Migrate(ctx)`,启动时调用。用 `CREATE TABLE IF NOT EXISTS` + **幂等 ALTER**:`ALTER TABLE ADD COLUMN/INDEX`,若报错则断言为 MySQL 1060(重复列)或 1061(重复键)并忽略,其他错误致命。1062(重复行)由 `dbutil.IsDuplicateEntry` 在插入路径处理。共享 helper 在 `internal/dbutil`。
-- 主要表:`users`、`roles`/`role_permissions`、`user_roles`/`user_permissions`、`user_groups`/`user_group_members`/`group_roles`、`classrooms`、`schedule_regimes`/`schedule_periods`、`course_catalog`/`course_offerings`/`course_sessions`、`admin_classes`、`teaching_classes`/`teaching_class_members`、`classroom_bookings`、`import_jobs`。所有跨表引用均为应用层逻辑外键(无 FK 约束),删除用户时 `iam.DeleteUserGrants` 级联清理授权行。
+- 主要表:`users`、`roles`/`role_permissions`、`user_roles`/`user_permissions`、`user_groups`/`user_group_members`/`group_roles`、`classrooms`、`schedule_regimes`/`schedule_periods`、`course_catalog`/`course_offerings`/`course_sessions`、`admin_classes`、`teaching_classes`/`teaching_class_members`、`classroom_bookings`、`classroom_repairs`、`import_jobs`。所有跨表引用均为应用层逻辑外键(无 FK 约束),删除用户时 `iam.DeleteUserGrants` 级联清理授权行。
 - 连接:`db.ConfigFromEnv` 出 DSN(`charset=utf8mb4&parseTime=true&loc=Local`);`db.New` 生产拒绝 localhost 回落(`db.go`),`pingWithRetry` 轮询至 DB 就绪;连接池默认 25 open / 25 idle / 5min lifetime(可调 `DB_*_CONNS`/`DB_CONN_MAX_LIFETIME`)。
+
+## 教室报修
+
+报修工单实现在 `internal/classroom` 包内(`repair.go` / `repair_store.go` / `repair_handler.go`),**不拆独立包**——工单通过 `classroom_id` 引用教室,与教室管理同域。它引用教室但不修改教室 `status`。
+
+- **状态机**:`open → processing → completed → confirmed`。提交即 `open`(任何人,`repair:create`);`processing`(开始处理)与 `completed`(完成)由处理人(`repair:assign`)写入并记录 `assignee_id` + 可选 `remark`;`confirmed` 仅报修人本人可置,且前置须为 `completed`,`confirmed` 为终态。
+- **防重复**:普通报修若同教室已存在 `open`/`processing` 工单则拒绝(409);紧急报修(`POST /api/repairs/emergency`)跳过该拦截,表达更高优先级。
+- **列表可见性**:`repair:assign` 看全部,`repair:create` 仅看本人;`q` 模糊搜索描述/教室/报修人,支持 `classroom_id`、`status` 过滤。
+- `images` 字段为预留 JSON 列表,暂不接收上传(对象存储上传尚未实现)。
 
 ## 异步导入
 

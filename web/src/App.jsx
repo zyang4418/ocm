@@ -22,6 +22,7 @@ import AttendancePage from './pages/AttendancePage.jsx'
 import AttendanceDetailPage from './pages/AttendanceDetailPage.jsx'
 import AttendanceReportPage from './pages/AttendanceReportPage.jsx'
 import ObservationsPage from './pages/ObservationsPage.jsx'
+import RepairsPage from './pages/RepairsPage.jsx'
 
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/attendance/report" element={<AttendanceReportPage />} />
             <Route path="/attendance/:id" element={<AttendanceDetailPage />} />
             <Route path="/observations" element={<ObservationsPage />} />
+            <Route path="/repairs" element={<RepairsPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

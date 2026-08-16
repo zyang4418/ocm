@@ -22,7 +22,8 @@
     "pages/logs/logs",
     "pages/settings/settings",
     "pages/observations/observations",
-    "pages/observations-form/observations-form"
+    "pages/observations-form/observations-form",
+    "pages/repairs/repairs"
   ],
   "window": {
     "navigationBarTitleText": "OCM",

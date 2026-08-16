@@ -1,0 +1,109 @@
+<view class="page">
+  <t-navbar title="教室报修" left-arrow fixed placeholder />
+
+  <!-- 状态筛选 -->
+  <view class="filters">
+    <scroll-view scroll-x class="chips-scroll" enable-flex>
+      <view class="chips-row">
+        <view
+          wx:for="{{statusChips}}"
+          wx:key="value"
+          class="chip {{activeStatus === item.value ? 'chip-active' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="onTapStatus"
+        >{{item.label}}</view>
+      </view>
+    </scroll-view>
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索报修"
+        placeholder-class="search-placeholder"
+        value="{{list.q}}"
+        bindinput="onSearchInput"
+      />
+    </view>
+  </view>
+
+  <!-- 列表 -->
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <view wx:if="{{actionError}}" class="banner">
+      <text class="banner-text">{{actionError}}</text>
+    </view>
+
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <text class="card-room">{{item.classroomLabel}}</text>
+          <status-tag text="{{item.statusText}}" theme="{{item.statusTheme}}" />
+        </view>
+        <text class="card-desc">{{item.description}}</text>
+        <view wx:if="{{item.remark}}" class="card-remark">
+          <text class="card-remark-text">处理备注：{{item.remark}}</text>
+        </view>
+        <view class="card-line">
+          <text class="card-meta">{{item.creatorName}} 提交 · {{item.createdAtText}}</text>
+        </view>
+        <view wx:if="{{item.assigneeName}}" class="card-line">
+          <text class="card-meta">处理人：{{item.assigneeName}}</text>
+        </view>
+        <view class="card-bottom">
+          <view class="card-actions">
+            <view wx:if="{{item.canStart}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-action="start" bindtap="openProcess">开始处理</view>
+            <view wx:if="{{item.canFinish}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" data-action="finish" bindtap="openProcess">完成</view>
+            <view wx:if="{{item.canConfirm}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" bindtap="onConfirm">确认完成</view>
+            <text wx:if="{{!item.canStart && !item.canFinish && !item.canConfirm}}" class="card-none">—</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的报修' : '暂无报修记录'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <!-- 提交报修 -->
+  <view class="fab" wx:if="{{canSubmit}}" bindtap="openSubmit">
+    <text class="fab-text">＋ 提交报修</text>
+  </view>
+
+  <!-- 提交报修表单 -->
+  <form-dialog
+    visible="{{submitOpen}}"
+    title="提交报修"
+    confirm-text="提交"
+    cancel-text="取消"
+    loading="{{submitLoading}}"
+    error="{{submitError}}"
+    bind:cancel="closeSubmit"
+    bind:confirm="submitRepair"
+  >
+    <view class="field">
+      <text class="field-label">教室 *</text>
+      <picker mode="selector" range="{{classroomOptions}}" value="{{classroomIndex}}" bindchange="onClassroomChange">
+        <view class="field-value {{classroomIndex === 0 ? 'field-placeholder' : ''}}">{{classroomOptions[classroomIndex] || '请选择教室'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="field-label">故障描述 *</text>
+      <textarea class="field-textarea" value="{{description}}" placeholder="请描述故障现象，如投影仪无法开机、空调不制冷等" placeholder-class="field-placeholder" bindinput="onDescriptionInput" />
+    </view>
+  </form-dialog>
+
+  <!-- 处理报修 -->
+  <form-dialog
+    visible="{{processOpen}}"
+    title="{{processTitle}}"
+    confirm-text="确定"
+    cancel-text="取消"
+    loading="{{processLoading}}"
+    error="{{processError}}"
+    bind:cancel="closeProcess"
+    bind:confirm="submitProcess"
+  >
+    <view class="field">
+      <text class="field-label">处理备注（选填）</text>
+      <textarea class="field-textarea" value="{{processRemark}}" placeholder="填写处理说明，将展示给报修人" placeholder-class="field-placeholder" bindinput="onProcessRemarkInput" />
+    </view>
+  </form-dialog>
+</view>

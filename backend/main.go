@@ -144,6 +144,18 @@ func main() {
 		os.Exit(1)
 	}
 	classroom.NewHandler(classroomStore).RegisterRoutes(mux, authenticate)
+
+	// 教室报修. Repair tickets live in the classroom package (not a separate
+	// module): they reference a classroom and are managed alongside it. The
+	// ticket CRUD/assign/confirm is generic; images is reserved for a future
+	// object-storage integration.
+	repairStore := classroom.NewRepairStore(database)
+	if err := repairStore.Migrate(ctx); err != nil {
+		logging.L.Error("repair migration", "err", err)
+		os.Exit(1)
+	}
+	classroom.NewRepairHandler(repairStore).RegisterRoutes(mux, authenticate)
+
 	scheduleStore := schedule.NewStore(database)
 	if err := scheduleStore.Migrate(ctx); err != nil {
 		logging.L.Error("schedule migration", "err", err)
