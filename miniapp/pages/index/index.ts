@@ -22,14 +22,14 @@ Page({
       { type: '课表查询', icon: '/assets/icons/quick_calendar.png', url: '/pages/timetable/timetable', gate: 'course:read' },
       { type: '教室预约', icon: '/assets/icons/quick_door.png', url: '/pages/bookings/bookings', gate: 'booking' },
       { type: '设备控制', icon: '/assets/icons/quick_device.png', url: '', gate: '' },
-      { type: '签到中心', icon: '/assets/icons/quick_check.png', url: '', gate: '' }
+      { type: '签到中心', icon: '/assets/icons/quick_check.png', url: '/pages/checkin/checkin', gate: 'attendance:checkin' }
     ],
     // 功能网格:url 非空且权限通过则跳转(更多=控制台)
     gridItems: [
       { name: '课程管理', icon: '/assets/icons/grid_course.png', url: '/pages/courses/courses', gate: 'course:read' },
       { name: '学生管理', icon: '/assets/icons/grid_student.png', url: '/pages/admin-classes/admin-classes', gate: 'admin_class:read' },
       { name: '排课系统', icon: '/assets/icons/grid_schedule.png', url: '/pages/timetable/timetable', gate: 'course:read' },
-      { name: '考勤统计', icon: '/assets/icons/grid_attendance.png', url: '', gate: '' },
+      { name: '考勤统计', icon: '/assets/icons/grid_attendance.png', url: '/pages/checkin-records/checkin-records', gate: 'attendance:checkin' },
       { name: '教室管理', icon: '/assets/icons/grid_monitor.png', url: '/pages/classrooms/classrooms', gate: 'classroom:read' },
       { name: '数据导入', icon: '/assets/icons/grid_folder.png', url: '/pages/imports/imports', gate: 'import' },
       { name: '审计日志', icon: '/assets/icons/grid_report.png', url: '/pages/logs/logs', gate: 'log:read' },

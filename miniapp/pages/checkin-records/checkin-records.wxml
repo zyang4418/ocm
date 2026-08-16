@@ -1,0 +1,34 @@
+<view class="page">
+  <t-navbar title="我的签到" left-arrow fixed placeholder />
+
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <empty-state wx:if="{{!allowed}}" text="无签到权限，请联系管理员"></empty-state>
+    <block wx:else>
+      <view wx:if="{{!list.loading && list.items.length === 0}}" class="hint">
+        <empty-state text="暂无签到记录"></empty-state>
+        <text class="hint-text">仅展示你已签到的活动，不含未签到的课程。</text>
+      </view>
+
+      <block wx:for="{{list.items}}" wx:key="checkinId">
+        <view class="card">
+          <view class="card-top">
+            <text class="card-title">{{item.title}}</text>
+            <status-tag text="{{item.statusText}}" theme="{{item.theme}}" />
+          </view>
+          <view class="card-line">
+            <text class="card-meta">{{item.courseName ? item.courseName + ' · ' + item.teachingClassName : '独立签到'}}</text>
+          </view>
+          <view wx:if="{{item.sessionText}}" class="card-line">
+            <text class="card-meta">{{item.sessionText}}</text>
+          </view>
+          <view class="card-line">
+            <text class="card-meta">签到时间：{{item.checkedAtText || '-'}}</text>
+          </view>
+        </view>
+      </block>
+
+      <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+    </block>
+    <view class="bottom-space"></view>
+  </scroll-view>
+</view>

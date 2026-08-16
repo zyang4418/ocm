@@ -652,6 +652,106 @@
   gap: $spacing-05;
 }
 
+.courses-page__member-add {
+  display: flex;
+  align-items: flex-end;
+  gap: $spacing-04;
+  flex-wrap: wrap;
+
+  .cds--list-box__wrapper,
+  .cds--text-input-wrapper {
+    flex: 1;
+    min-width: 240px;
+  }
+}
+
+// Attendance pages (课堂签到/考勤报表)
+.attendance-detail {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  margin-bottom: $spacing-06;
+}
+
+.attendance-detail__panel {
+  display: flex;
+  gap: $spacing-07;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.attendance-detail__qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-04;
+  border: 1px solid #e0e0e0;
+  padding: $spacing-06;
+  background: #ffffff;
+}
+
+.attendance-detail__code {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: 0.5rem;
+  color: #161616;
+}
+
+.attendance-detail__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-04;
+}
+
+.attendance-detail__countdown {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.attendance-detail__hint {
+  max-width: 24rem;
+  color: #525252;
+}
+
+.attendance-detail__stats {
+  display: flex;
+  gap: $spacing-05;
+  flex-wrap: wrap;
+}
+
+.attendance-detail__stat {
+  flex: 1;
+  min-width: 8rem;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+  padding: $spacing-04;
+}
+
+.attendance-detail__stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #0f62fe;
+}
+
+.attendance-detail__stat-label {
+  color: #525252;
+}
+
+.attendance-report__empty {
+  color: #6f6f6f;
+}
+
+.attendance-report__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-02;
+  margin-right: $spacing-04;
+}
+
 .courses-page__confirm-text {
   @include type-style('body-01');
 }

@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "t-navbar": "tdesign-miniprogram/navbar/navbar",
+    "status-tag": "/components/status-tag/status-tag",
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

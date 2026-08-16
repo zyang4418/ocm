@@ -51,7 +51,8 @@ export default function AppShell({ children }) {
     location.pathname.startsWith('/courses') ||
     location.pathname.startsWith('/timetable') ||
     location.pathname.startsWith('/schedule-config') ||
-    location.pathname.startsWith('/imports')
+    location.pathname.startsWith('/imports') ||
+    location.pathname.startsWith('/attendance')
   const inSettings =
     location.pathname.startsWith('/logs') ||
     location.pathname.startsWith('/settings')
@@ -176,6 +177,24 @@ export default function AppShell({ children }) {
                         onClick={go('/imports')}
                       >
                         数据导入
+                      </SideNavMenuItem>
+                    )}
+                    {can('attendance:read') && (
+                      <SideNavMenuItem
+                        href="/attendance"
+                        isActive={isActive('/attendance')}
+                        onClick={go('/attendance')}
+                      >
+                        课堂签到
+                      </SideNavMenuItem>
+                    )}
+                    {can('attendance:read') && (
+                      <SideNavMenuItem
+                        href="/attendance/report"
+                        isActive={isActive('/attendance/report')}
+                        onClick={go('/attendance/report')}
+                      >
+                        考勤报表
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>

@@ -36,6 +36,9 @@ func (h *Handler) registerOrgRoutes(mux *http.ServeMux, authenticate func(http.H
 	mux.Handle("GET /api/teaching-classes/{id}", withPerm(authz.TeachingClassRead, h.getTeachingClass))
 	mux.Handle("PUT /api/teaching-classes/{id}", withPerm(authz.TeachingClassManage, h.updateTeachingClass))
 	mux.Handle("DELETE /api/teaching-classes/{id}", withPerm(authz.TeachingClassManage, h.deleteTeachingClass))
+	// Student roster (学生档案), mounted under admin classes; gated by the
+	// attendance permissions because rosters exist to serve check-in.
+	h.registerStudentRoutes(mux, authenticate)
 }
 
 // ---- Admin classes ----

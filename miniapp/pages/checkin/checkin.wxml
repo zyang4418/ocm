@@ -1,0 +1,52 @@
+<view class="page">
+  <t-navbar title="签到中心" left-arrow fixed placeholder />
+
+  <scroll-view scroll-y class="page-scroll">
+    <empty-state wx:if="{{!allowed}}" text="无签到权限，请联系管理员"></empty-state>
+    <block wx:else>
+      <!-- 主扫码入口 -->
+      <view class="scan-hero" bindtap="onTapScan">
+        <image class="scan-icon" src="/assets/icons/nav_scan.png" mode="aspectFit"></image>
+        <text class="scan-title">扫码签到</text>
+        <text class="scan-sub">扫描老师屏幕上的二维码</text>
+      </view>
+
+      <!-- 数字码兜底 -->
+      <view class="code-row">
+        <input
+          class="code-input"
+          type="number"
+          maxlength="6"
+          placeholder="输入 6 位签到码"
+          placeholder-class="code-placeholder"
+          value="{{code}}"
+          bindinput="onCodeInput"
+        />
+        <button class="code-btn {{submitting ? 'code-btn--disabled' : ''}}" disabled="{{submitting}}" bindtap="onTapSubmit">
+          {{submitting ? '签到中…' : '签到'}}
+        </button>
+      </view>
+
+      <view wx:if="{{error}}" class="banner">
+        <text class="banner-text">{{error}}</text>
+      </view>
+
+      <!-- 结果反馈 -->
+      <view wx:if="{{result}}" class="result-card">
+        <view class="result-status">
+          <status-tag text="{{result.statusText}}" theme="{{result.theme}}" />
+        </view>
+        <text class="result-title">{{result.title}}</text>
+        <text class="result-meta">{{result.isNew ? '签到成功' : '你已签到过（重复签到不改变状态）'}}</text>
+        <text wx:if="{{!result.inRoster}}" class="result-meta">提示：你不在本课应到名单中</text>
+      </view>
+
+      <!-- 我的记录入口 -->
+      <view class="records-link" bindtap="goRecords">
+        <text>我的签到记录</text>
+        <text class="records-arrow">›</text>
+      </view>
+    </block>
+    <view class="bottom-space"></view>
+  </scroll-view>
+</view>

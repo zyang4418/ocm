@@ -16,6 +16,8 @@
     "pages/groups/groups",
     "pages/admin-classes/admin-classes",
     "pages/teaching-classes/teaching-classes",
+    "pages/checkin/checkin",
+    "pages/checkin-records/checkin-records",
     "pages/imports/imports",
     "pages/logs/logs",
     "pages/settings/settings"

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"ocm-backend/internal/ai"
+	"ocm-backend/internal/attendance"
 	"ocm-backend/internal/auth"
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/booking"
@@ -23,6 +24,7 @@ import (
 	"ocm-backend/internal/logging"
 	"ocm-backend/internal/mail"
 	"ocm-backend/internal/middleware"
+	"ocm-backend/internal/observation"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/storage"
 	"ocm-backend/internal/systemlog"
@@ -162,6 +164,25 @@ func main() {
 		os.Exit(1)
 	}
 	booking.NewHandler(bookingStore, classroomStore, scheduleStore).RegisterRoutes(mux, authenticate)
+
+	attendanceStore := attendance.NewStore(database)
+	if err := attendanceStore.Migrate(ctx); err != nil {
+		logging.L.Error("attendance migration", "err", err)
+		os.Exit(1)
+	}
+	attendance.NewHandler(attendanceStore).RegisterRoutes(mux, authenticate)
+
+	// 听课评课. The record CRUD/submit lives here in the open-source layer; the
+	// school-specific document backend (form templates + .docx fillers) is
+	// injected as a Renderer by a customization layer. Shipping nil keeps the
+	// module fully functional for CRUD/submit and disables the templates/export
+	// endpoints until a deployment plugs its own backend in.
+	observationStore := observation.NewStore(database)
+	if err := observationStore.Migrate(ctx); err != nil {
+		logging.L.Error("observation migration", "err", err)
+		os.Exit(1)
+	}
+	observation.NewHandler(observationStore, nil).RegisterRoutes(mux, authenticate)
 
 	// AI assistant: settings (admin-only) + streaming chat. Its tools query
 	// classrooms/schedule/course/booking, so it wires after all of them.
