@@ -20,7 +20,9 @@
     "pages/checkin-records/checkin-records",
     "pages/imports/imports",
     "pages/logs/logs",
-    "pages/settings/settings"
+    "pages/settings/settings",
+    "pages/observations/observations",
+    "pages/observations-form/observations-form"
   ],
   "window": {
     "navigationBarTitleText": "OCM",

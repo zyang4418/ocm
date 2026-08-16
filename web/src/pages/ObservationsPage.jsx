@@ -1,0 +1,779 @@
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  Button,
+  Checkbox,
+  Column,
+  DataTable,
+  Grid,
+  InlineNotification,
+  Modal,
+  NumberInput,
+  RadioButton,
+  RadioButtonGroup,
+  Select,
+  SelectItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableToolbar,
+  TableToolbarContent,
+  TableToolbarSearch,
+  Tag,
+  TextArea,
+  TextInput,
+} from '@carbon/react'
+import { Add, Download, Edit, TrashCan, CheckmarkOutline } from '@carbon/icons-react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext.jsx'
+import { apiFetch, apiDownload } from '../auth/api.js'
+import ListPagination from '../components/ListPagination.jsx'
+import usePagedList from '../hooks/usePagedList.js'
+
+const statusLabel = { draft: '草稿', submitted: '已提交' }
+const statusKind = { draft: 'gray', submitted: 'green' }
+
+// indicatorScoreGroups mirrors the backend: an explicit score_groups list wins,
+// otherwise a single group keyed by the indicator key.
+function indicatorScoreGroups(ind) {
+  if (ind.scoreGroups && ind.scoreGroups.length) {
+    return ind.scoreGroups.map((g) => ({
+      key: g.key,
+      lines: (g.lineIndexes || []).map((i) => ind.lines?.[i]).filter(Boolean),
+    }))
+  }
+  return [{ key: ind.key, lines: ind.lines || [] }]
+}
+
+function sectionsLabel(sections) {
+  if (!sections || !sections.length) return '—'
+  return `第 ${sections.slice().sort((a, b) => a - b).join('、')} 节`
+}
+
+function fmtScore(v) {
+  if (v === null || v === undefined || v === '') return '—'
+  return String(v)
+}
+
+const emptyMeta = { templateType: '', courseId: '', observeDate: '', sections: [], isAnonymous: false }
+const emptyFormData = {
+  indicatorScores: {},
+  totalScore: '',
+  contentOutline: '',
+  comments: {},
+  extraValues: {},
+  extraDetails: {},
+  studentFeedback: {},
+}
+
+const headers = [
+  { key: 'courseName', header: '课程' },
+  { key: 'teacher', header: '教师' },
+  { key: 'teachingClassName', header: '教学班' },
+  { key: 'observeDate', header: '听课日期' },
+  { key: 'sections', header: '节次' },
+  { key: 'templateType', header: '模板' },
+  { key: 'totalScore', header: '总分' },
+  { key: 'status', header: '状态' },
+]
+
+export default function ObservationsPage() {
+  const { token, user: currentUser, can } = useAuth()
+  const navigate = useNavigate()
+  const canWrite = can('observation:write')
+  const canManage = can('observation:manage')
+
+  // Static reference data: form schema, course offerings, active regime periods.
+  const [schema, setSchema] = useState(null)
+  const [offerings, setOfferings] = useState([])
+  const [periods, setPeriods] = useState([])
+  const [schemaError, setSchemaError] = useState('')
+
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterTemplate, setFilterTemplate] = useState('')
+
+  const list = usePagedList({
+    path: '/api/observations',
+    token,
+    extraParams: { status: filterStatus, template_type: filterTemplate },
+  })
+  const { loading } = list
+  const [actionError, setActionError] = useState('')
+  const error = list.error || actionError || schemaError
+
+  // Form modal state.
+  const [formOpen, setFormOpen] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [meta, setMeta] = useState(emptyMeta)
+  const [formData, setFormData] = useState(emptyFormData)
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [actingId, setActingId] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch('/api/observations/templates', { token }),
+      apiFetch('/api/offerings?page_size=500', { token }),
+    ])
+      .then(([sch, off]) => {
+        setSchema(sch)
+        setOfferings(Array.isArray(off?.items) ? off.items : [])
+      })
+      .catch((err) => setSchemaError(err.message))
+  }, [token])
+
+  useEffect(() => {
+    if (!meta.observeDate) {
+      setPeriods([])
+      return
+    }
+    let cancelled = false
+    apiFetch(`/api/schedule/active?date=${meta.observeDate}`, { token })
+      .then((regime) => {
+        if (cancelled) return
+        setPeriods((regime?.periods || []).slice().sort((a, b) => a.periodIndex - b.periodIndex))
+      })
+      .catch(() => {
+        if (!cancelled) setPeriods([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [meta.observeDate, token])
+
+  const selectedTemplate = useMemo(() => {
+    if (!schema || !meta.templateType) return null
+    return schema.templates?.find((t) => t.value === meta.templateType) || null
+  }, [schema, meta.templateType])
+
+  const openCreate = () => {
+    setEditId(null)
+    setMeta(emptyMeta)
+    setFormData(emptyFormData)
+    setFormError('')
+    setFormOpen(true)
+  }
+
+  const openEdit = async (row) => {
+    try {
+      setFormError('')
+      setActionError('')
+      const v = await apiFetch(`/api/observations/${row.id}`, { token })
+      const fd = v.formData && typeof v.formData === 'object' ? v.formData : {}
+      setEditId(row.id)
+      setMeta({
+        templateType: v.templateType || '',
+        courseId: v.courseId ? String(v.courseId) : '',
+        observeDate: v.observeDate || '',
+        sections: Array.isArray(v.sections) ? v.sections : [],
+        isAnonymous: Boolean(v.isAnonymous),
+      })
+      setFormData({
+        indicatorScores: fd.indicatorScores || {},
+        totalScore: v.totalScore != null ? String(v.totalScore) : '',
+        contentOutline: fd.contentOutline || v.content || '',
+        comments: fd.comments || {},
+        extraValues: fd.extraValues || {},
+        extraDetails: fd.extraDetails || {},
+        studentFeedback: fd.studentFeedback || {},
+      })
+      setFormOpen(true)
+    } catch (err) {
+      setActionError(err.message)
+    }
+  }
+
+  const buildPayload = () => ({
+    templateType: meta.templateType,
+    courseId: Number(meta.courseId),
+    observeDate: meta.observeDate,
+    sections: meta.sections.map(Number).sort((a, b) => a - b),
+    isAnonymous: meta.isAnonymous,
+    formData: {
+      indicatorScores: formData.indicatorScores,
+      totalScore: formData.totalScore === '' || formData.totalScore === null ? null : Number(formData.totalScore),
+      contentOutline: formData.contentOutline,
+      comments: formData.comments,
+      extraValues: formData.extraValues,
+      extraDetails: formData.extraDetails,
+      studentFeedback: formData.studentFeedback,
+    },
+  })
+
+  const handleSave = async () => {
+    if (!meta.templateType) return setFormError('请选择模板类型')
+    if (!meta.courseId) return setFormError('请选择课程')
+    if (!meta.observeDate) return setFormError('请选择听课日期')
+    try {
+      setSaving(true)
+      setFormError('')
+      const payload = buildPayload()
+      if (editId) {
+        await apiFetch(`/api/observations/${editId}`, { method: 'PUT', token, body: payload })
+      } else {
+        await apiFetch('/api/observations', { method: 'POST', token, body: payload })
+      }
+      setFormOpen(false)
+      list.reload()
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const submitObservation = async (row) => {
+    try {
+      setActingId(row.id)
+      setActionError('')
+      await apiFetch(`/api/observations/${row.id}/submit`, { method: 'POST', token })
+      list.reload()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const exportObservation = async (row) => {
+    try {
+      setActingId(row.id)
+      setActionError('')
+      await apiDownload(`/api/observations/${row.id}/export`, {
+        token,
+        method: 'POST',
+        fallbackName: `observation-${row.id}.docx`,
+      })
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const deleteObservation = async () => {
+    const id = deleteTarget?.id
+    if (!id) return
+    try {
+      setActingId(id)
+      setActionError('')
+      await apiFetch(`/api/observations/${id}`, { method: 'DELETE', token })
+      setDeleteTarget(null)
+      list.reload()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const setIndicatorScore = (key, val) =>
+    setFormData((f) => ({ ...f, indicatorScores: { ...f.indicatorScores, [key]: val } }))
+  const setComment = (key, val) =>
+    setFormData((f) => ({ ...f, comments: { ...f.comments, [key]: val } }))
+  const setExtraValue = (key, val) =>
+    setFormData((f) => ({ ...f, extraValues: { ...f.extraValues, [key]: val } }))
+  const setExtraDetail = (key, val) =>
+    setFormData((f) => ({ ...f, extraDetails: { ...f.extraDetails, [key]: val } }))
+  const setStudentAnswer = (qKey, student, val) =>
+    setFormData((f) => ({
+      ...f,
+      studentFeedback: { ...f.studentFeedback, [qKey]: { ...(f.studentFeedback[qKey] || {}), [student]: val } },
+    }))
+
+  const toggleSection = (idx, checked) =>
+    setMeta((m) => ({
+      ...m,
+      sections: checked ? [...m.sections, idx].sort((a, b) => a - b) : m.sections.filter((s) => s !== idx),
+    }))
+
+  const ratingOptions = schema?.rating_options || []
+
+  const rows = list.items.map((o) => ({
+    id: String(o.id),
+    courseName: o.courseName,
+    teacher: o.teacher,
+    teachingClassName: o.teachingClassName,
+    observeDate: o.observeDate,
+    sections: sectionsLabel(o.sections),
+    templateType: templateLabelOf(o.templateType),
+    totalScore: fmtScore(o.totalScore),
+    status: o.status,
+  }))
+
+  const colSpan = headers.length + 1
+
+  return (
+    <Grid fullWidth className="courses-page observations-page">
+      <Column sm={4} md={8} lg={16}>
+        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+          <BreadcrumbItem
+            href="/"
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/')
+            }}
+          >
+            首页
+          </BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>听课评课</BreadcrumbItem>
+        </Breadcrumb>
+        <h1 className="courses-page__heading">听课评课</h1>
+        <p className="courses-page__subtitle">记录课堂观察与评价，按模板打分、填写评语，提交后导出为 Word 听课记录表。</p>
+      </Column>
+
+      <Column sm={4} md={8} lg={16}>
+        {error && (
+          <InlineNotification
+            kind="error"
+            title="操作失败"
+            subtitle={error}
+            lowContrast
+            hideCloseButton
+            className="courses-page__notice"
+          />
+        )}
+
+        <div className="bookings-page__filters">
+          <Select
+            id="f-status"
+            labelText="状态"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="bookings-page__filter"
+          >
+            <SelectItem value="" text="全部状态" />
+            <SelectItem value="draft" text="草稿" />
+            <SelectItem value="submitted" text="已提交" />
+          </Select>
+          <Select
+            id="f-template"
+            labelText="模板"
+            value={filterTemplate}
+            onChange={(e) => setFilterTemplate(e.target.value)}
+            className="bookings-page__filter"
+          >
+            <SelectItem value="" text="全部模板" />
+            {(schema?.templates || []).map((t) => (
+              <SelectItem key={t.value} value={t.value} text={t.label} />
+            ))}
+          </Select>
+        </div>
+      </Column>
+
+      <Column sm={4} md={8} lg={16}>
+        <DataTable rows={rows} headers={headers}>
+          {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
+            <TableContainer title="评课记录" description={`共 ${list.total} 条记录`}>
+              <TableToolbar {...getToolbarProps()}>
+                <TableToolbarContent>
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索评课" />
+                  {canWrite && (
+                    <Button renderIcon={Add} size="sm" onClick={openCreate}>
+                      新建评课
+                    </Button>
+                  )}
+                </TableToolbarContent>
+              </TableToolbar>
+              <Table {...getTableProps()}>
+                <TableHead>
+                  <TableRow>
+                    {tableHeaders.map((header) => (
+                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                    <TableHeader>操作</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                    </TableRow>
+                  ) : rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={colSpan}>{list.q ? '未找到匹配的评课' : '暂无评课记录'}</TableCell>
+                    </TableRow>
+                  ) : (
+                    tableRows.map((row) => {
+                      const o = list.items.find((x) => String(x.id) === String(row.id))
+                      const isDraft = o?.status === 'draft'
+                      const canEdit = isDraft && (canManage || Number(currentUser?.id) === o?.observerId)
+                      const canSubmit = isDraft && (canManage || Number(currentUser?.id) === o?.observerId)
+                      const canDelete = isDraft && (canManage || Number(currentUser?.id) === o?.observerId)
+                      const canExport = o?.status === 'submitted' && (canManage || Number(currentUser?.id) === o?.observerId)
+                      return (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          {row.cells.map((cell) => {
+                            if (cell.info.header === 'status') {
+                              return (
+                                <TableCell key={cell.id}>
+                                  <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
+                                    {statusLabel[cell.value] ?? cell.value}
+                                  </Tag>
+                                </TableCell>
+                              )
+                            }
+                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                          })}
+                          <TableCell>
+                            <div className="courses-page__actions">
+                              {canEdit && (
+                                <Button kind="ghost" size="sm" renderIcon={Edit} onClick={() => openEdit(o)} disabled={actingId === o.id}>
+                                  编辑
+                                </Button>
+                              )}
+                              {canSubmit && (
+                                <Button kind="ghost" size="sm" renderIcon={CheckmarkOutline} onClick={() => submitObservation(o)} disabled={actingId === o.id}>
+                                  提交
+                                </Button>
+                              )}
+                              {canExport && (
+                                <Button kind="ghost" size="sm" renderIcon={Download} onClick={() => exportObservation(o)} disabled={actingId === o.id}>
+                                  导出
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => setDeleteTarget(o)} disabled={actingId === o.id}>
+                                  删除
+                                </Button>
+                              )}
+                              {!canEdit && !canSubmit && !canExport && !canDelete && (
+                                <span style={{ color: 'var(--cds-text-secondary)' }}>—</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DataTable>
+        <ListPagination
+          page={list.page}
+          pageSize={list.pageSize}
+          totalItems={list.total}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
+      </Column>
+
+      {/* Create / edit form */}
+      <Modal
+        open={formOpen}
+        size="lg"
+        modalHeading={editId ? '编辑评课' : '新建评课'}
+        primaryButtonText="保存"
+        secondaryButtonText="取消"
+        onRequestClose={() => setFormOpen(false)}
+        onRequestSubmit={handleSave}
+        primaryButtonDisabled={saving}
+        className="observations-page__form-modal"
+      >
+        <div className="courses-page__form observations-page__form">
+          {/* 基础信息 */}
+          <div className="observations-page__section">
+            <h3 className="observations-page__section-title">基础信息</h3>
+            <Select
+              id="o-template"
+              labelText="模板类型"
+              value={meta.templateType}
+              onChange={(e) => {
+                setMeta({ ...meta, templateType: e.target.value })
+                setFormData(emptyFormData)
+              }}
+            >
+              <SelectItem value="" text="请选择模板" />
+              {(schema?.templates || []).map((t) => (
+                <SelectItem key={t.value} value={t.value} text={t.label} />
+              ))}
+            </Select>
+            <Select
+              id="o-course"
+              labelText="课程"
+              value={meta.courseId}
+              onChange={(e) => setMeta({ ...meta, courseId: e.target.value })}
+            >
+              <SelectItem value="" text="请选择课程" />
+              {offerings.map((o) => (
+                <SelectItem
+                  key={o.id}
+                  value={String(o.id)}
+                  text={`${o.catalogName}（${o.teachingClassName} · ${o.teacher}）`}
+                />
+              ))}
+            </Select>
+            <TextInput
+              id="o-date"
+              type="date"
+              labelText="听课日期"
+              value={meta.observeDate}
+              onChange={(e) => setMeta({ ...meta, observeDate: e.target.value })}
+            />
+            {periods.length > 0 && (
+              <fieldset className="observations-page__sections">
+                <legend className="observations-page__legend">节次</legend>
+                {periods.map((p) => (
+                  <Checkbox
+                    key={p.periodIndex}
+                    id={`o-sec-${p.periodIndex}`}
+                    labelText={`第 ${p.periodIndex} 节（${p.startTime}-${p.endTime}）`}
+                    checked={meta.sections.includes(p.periodIndex)}
+                    onChange={(_, { checked }) => toggleSection(p.periodIndex, checked)}
+                  />
+                ))}
+              </fieldset>
+            )}
+            <Checkbox
+              id="o-anon"
+              labelText="匿名评课（导出时隐藏听课人）"
+              checked={meta.isAnonymous}
+              onChange={(_, { checked }) => setMeta({ ...meta, isAnonymous: checked })}
+            />
+          </div>
+
+          {selectedTemplate && (
+            <>
+              {/* 评分指标 */}
+              {selectedTemplate.indicators?.length > 0 && (
+                <div className="observations-page__section">
+                  <h3 className="observations-page__section-title">评分指标</h3>
+                  {selectedTemplate.indicators.map((ind) =>
+                    indicatorScoreGroups(ind).map((g) => (
+                      <div key={g.key} className="observations-page__indicator">
+                        <div className="observations-page__indicator-head">
+                          <span className="observations-page__indicator-title">{ind.title}</span>
+                        </div>
+                        {g.lines.map((line, i) => (
+                          <p key={i} className="observations-page__indicator-line">
+                            {line}
+                          </p>
+                        ))}
+                        <RadioButtonGroup
+                          name={`ind-${g.key}`}
+                          legendText="评分"
+                          orientation="horizontal"
+                          valueSelected={formData.indicatorScores[g.key] || ''}
+                          onChange={(v) => setIndicatorScore(g.key, v)}
+                        >
+                          {ratingOptions.map((r) => (
+                            <RadioButton key={r.value} labelText={r.label} value={r.value} />
+                          ))}
+                        </RadioButtonGroup>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* header extras（radio，如年龄层次/班级规模） */}
+              {selectedTemplate.header_extras?.length > 0 && (
+                <div className="observations-page__section">
+                  <h3 className="observations-page__section-title">{selectedTemplate.header_extra_section_title || '表头信息'}</h3>
+                  {selectedTemplate.header_extras.map((ex) => (
+                    <RadioButtonGroup
+                      key={ex.key}
+                      name={`he-${ex.key}`}
+                      legendText={ex.label}
+                      orientation="horizontal"
+                      valueSelected={formData.extraValues[ex.key] || ''}
+                      onChange={(v) => setExtraValue(ex.key, v)}
+                    >
+                      {(ex.options || []).map((opt) => (
+                        <RadioButton key={opt} labelText={opt} value={opt} />
+                      ))}
+                    </RadioButtonGroup>
+                  ))}
+                </div>
+              )}
+
+              {/* 总分 + 授课内容 */}
+              <div className="observations-page__section">
+                <h3 className="observations-page__section-title">评价结论</h3>
+                <NumberInput
+                  id="o-score"
+                  label={selectedTemplate.score_label || '总评成绩'}
+                  min={0}
+                  max={100}
+                  value={formData.totalScore}
+                  onChange={(e, { value }) => setFormData((f) => ({ ...f, totalScore: value }))}
+                  allowEmpty
+                />
+                <TextArea
+                  id="o-content"
+                  labelText={selectedTemplate.content_label || '授课内容'}
+                  placeholder={`${selectedTemplate.content_label || '授课内容'}（${selectedTemplate.content_limit?.max_length || ''} 字以内）`}
+                  value={formData.contentOutline}
+                  onChange={(e) => setFormData((f) => ({ ...f, contentOutline: e.target.value }))}
+                  maxLength={selectedTemplate.content_limit?.max_length || undefined}
+                  rows={4}
+                />
+              </div>
+
+              {/* 评语 */}
+              {selectedTemplate.comment_fields?.length > 0 && (
+                <div className="observations-page__section">
+                  <h3 className="observations-page__section-title">评语</h3>
+                  {selectedTemplate.comment_fields.map((cf) => (
+                    <TextArea
+                      key={cf.key}
+                      id={`c-${cf.key}`}
+                      labelText={cf.label}
+                      placeholder={cf.placeholder}
+                      value={formData.comments[cf.key] || ''}
+                      onChange={(e) => setComment(cf.key, e.target.value)}
+                      maxLength={cf.max_length || undefined}
+                      rows={3}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* extras（radio_with_detail） */}
+              {selectedTemplate.extras?.length > 0 && (
+                <div className="observations-page__section">
+                  <h3 className="observations-page__section-title">{selectedTemplate.extra_section_title || '课堂诊断'}</h3>
+                  {selectedTemplate.extras.map((ex) => {
+                    const detailVisible =
+                      ex.detail_required_when === undefined ||
+                      formData.extraValues[ex.key] === ex.detail_required_when ||
+                      formData.extraValues[ex.key] === ''
+                    return (
+                      <div key={ex.key} className="observations-page__extra">
+                        <RadioButtonGroup
+                          name={`ex-${ex.key}`}
+                          legendText={ex.label}
+                          orientation="horizontal"
+                          valueSelected={formData.extraValues[ex.key] || ''}
+                          onChange={(v) => setExtraValue(ex.key, v)}
+                        >
+                          {(ex.options || []).map((opt) => (
+                            <RadioButton key={opt} labelText={opt} value={opt} />
+                          ))}
+                        </RadioButtonGroup>
+                        {ex.detail_key && detailVisible && (
+                          <TextArea
+                            id={`exd-${ex.detail_key}`}
+                            labelText={`${ex.label}说明`}
+                            placeholder={ex.detail_placeholder}
+                            value={formData.extraDetails[ex.detail_key] || ''}
+                            onChange={(e) => setExtraDetail(ex.detail_key, e.target.value)}
+                            maxLength={ex.detail_limit?.max_length || undefined}
+                            rows={3}
+                          />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* post_content_comment_fields（教室条件/听课笔记） */}
+              {selectedTemplate.post_content_comment_fields?.length > 0 && (
+                <div className="observations-page__section">
+                  <h3 className="observations-page__section-title">
+                    {selectedTemplate.post_content_comment_title || '其它评价'}
+                  </h3>
+                  {selectedTemplate.post_content_comment_fields.map((cf) => (
+                    <TextArea
+                      key={cf.key}
+                      id={`pc-${cf.key}`}
+                      labelText={cf.label}
+                      placeholder={cf.placeholder}
+                      value={formData.comments[cf.key] || ''}
+                      onChange={(e) => setComment(cf.key, e.target.value)}
+                      maxLength={cf.max_length || undefined}
+                      rows={3}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 学生反馈矩阵 */}
+              {selectedTemplate.student_feedback && (
+                <div className="observations-page__section">
+                  <h3 className="observations-page__section-title">学生评价</h3>
+                  <div className="observations-page__matrix">
+                    <table className="observations-page__matrix-table">
+                      <thead>
+                        <tr>
+                          <th>评价项</th>
+                          {(selectedTemplate.student_feedback.columns || []).map((col) => (
+                            <th key={col}>{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedTemplate.student_feedback.questions || []).map((q) => (
+                          <tr key={q.key}>
+                            <td className="observations-page__matrix-question">{q.title}</td>
+                            {(selectedTemplate.student_feedback.columns || []).map((col) => (
+                              <td key={col}>
+                                <Select
+                                  id={`sf-${q.key}-${col}`}
+                                  labelText=""
+                                  hideLabel
+                                  value={formData.studentFeedback[q.key]?.[col] || ''}
+                                  onChange={(e) => setStudentAnswer(q.key, col, e.target.value)}
+                                >
+                                  <SelectItem value="" text="—" />
+                                  {(q.options || []).map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value} text={opt.label} />
+                                  ))}
+                                </Select>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {formError && (
+            <InlineNotification kind="error" title="保存失败" subtitle={formError} lowContrast hideCloseButton />
+          )}
+        </div>
+      </Modal>
+
+      {/* Delete confirm */}
+      <Modal
+        danger
+        open={Boolean(deleteTarget)}
+        modalHeading="删除评课"
+        primaryButtonText="确认删除"
+        secondaryButtonText="返回"
+        onRequestClose={() => setDeleteTarget(null)}
+        onRequestSubmit={deleteObservation}
+        primaryButtonDisabled={actingId === deleteTarget?.id}
+      >
+        <p className="courses-page__confirm-text">
+          确定要删除「{deleteTarget?.courseName} · {deleteTarget?.observeDate}」的评课记录吗？此操作不可恢复。
+        </p>
+      </Modal>
+    </Grid>
+  )
+}
+
+function templateLabelOf(value) {
+  return (
+    {
+      leader: '干部听课',
+      supervisor: '督导听课',
+      ideology: '思政课听课',
+    }[value] || value
+  )
+}

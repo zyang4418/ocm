@@ -95,6 +95,17 @@ export const classroomStatus: Record<string, StatusMeta> = {
   disabled: { text: '停用', theme: 'red' },
 }
 
+export const observationStatus: Record<string, StatusMeta> = {
+  draft: { text: '草稿', theme: 'gray' },
+  submitted: { text: '已提交', theme: 'green' },
+}
+
+export const observationTemplateLabel: Record<string, string> = {
+  leader: '干部听课',
+  supervisor: '督导听课',
+  ideology: '思政课听课',
+}
+
 export const userType: Record<string, string> = {
   student: '学生',
   teacher: '教师',
