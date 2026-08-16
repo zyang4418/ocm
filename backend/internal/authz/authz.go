@@ -38,6 +38,12 @@ const (
 	AttendanceRead      = "attendance:read"
 	AttendanceManage    = "attendance:manage"
 	AttendanceCheckin   = "attendance:checkin"
+	// ObservationRead/Write/Manage govern 听课评课. Read sees one's own records;
+	// Write creates/edits/submits/deletes one's own drafts; Manage (教务/督导)
+	// sees every record and exports any submitted one.
+	ObservationRead   = "observation:read"
+	ObservationWrite  = "observation:write"
+	ObservationManage = "observation:manage"
 )
 
 // Wildcard is the special permission that grants everything. It is only held

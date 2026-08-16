@@ -69,6 +69,12 @@ func sortedCatalog() []Permission {
 			Description: "发起与结束签到、修改学生签到状态、维护学生档案、导出报表"},
 		{Code: AttendanceCheckin, Name: "扫码签到", Category: "attendance", CategoryName: "课堂签到",
 			Description: "扫码或输入 6 位签到码完成签到"},
+		{Code: ObservationRead, Name: "查看评课", Category: "observation", CategoryName: "听课评课",
+			Description: "查看自己提交的听课评课记录"},
+		{Code: ObservationWrite, Name: "填写评课", Category: "observation", CategoryName: "听课评课",
+			Description: "创建、编辑、提交、删除自己的听课评课记录"},
+		{Code: ObservationManage, Name: "评课管理", Category: "observation", CategoryName: "听课评课",
+			Description: "查看全部听课评课记录并导出任意已提交的评课表"},
 	}
 	sort.Slice(perms, func(i, j int) bool {
 		if perms[i].Category != perms[j].Category {
