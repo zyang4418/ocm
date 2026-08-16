@@ -462,7 +462,8 @@ const obsColumns = `ob.id, ob.template_type, ob.occurrence_id, ob.course_id, ob.
 	ob.observe_date, ob.sections, ob.status, ob.scores, ob.total_score, ob.content, ob.form_data,
 	ob.course_snapshot, ob.is_anonymous, ob.remark, ob.exported_at, ob.created_at, ob.updated_at`
 
-const obsJoin = `FROM observations ob
+const obsJoin = `
+FROM observations ob
 	JOIN course_offerings ofr ON ofr.id = ob.course_id
 	JOIN course_catalog c ON c.id = ofr.catalog_id
 	JOIN teaching_classes tc ON tc.id = ofr.teaching_class_id

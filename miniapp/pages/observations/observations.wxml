@@ -1,0 +1,77 @@
+<view class="page">
+  <t-navbar title="听课评课" left-arrow fixed placeholder />
+
+  <!-- 筛选区 -->
+  <view class="filters">
+    <scroll-view scroll-x class="chips-scroll" enable-flex>
+      <view class="chips-row">
+        <view
+          wx:for="{{statusChips}}"
+          wx:key="value"
+          class="chip {{activeStatus === item.value ? 'chip-active' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="onTapStatus"
+        >{{item.label}}</view>
+      </view>
+    </scroll-view>
+    <view class="filter-row">
+      <picker mode="selector" range="{{templateOptions}}" value="{{filterTemplateIndex}}" bindchange="onFilterTemplateChange">
+        <view class="filter-box">{{templateOptions[filterTemplateIndex] || '全部模板'}}</view>
+      </picker>
+    </view>
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索评课"
+        placeholder-class="search-placeholder"
+        value="{{list.q}}"
+        bindinput="onSearchInput"
+      />
+    </view>
+  </view>
+
+  <!-- 列表 -->
+  <scroll-view scroll-y class="list-scroll" bindscrolltolower="onReachBottom">
+    <view wx:if="{{actionError}}" class="banner">
+      <text class="banner-text">{{actionError}}</text>
+    </view>
+
+    <block wx:for="{{list.items}}" wx:key="id">
+      <view class="card">
+        <view class="card-top">
+          <text class="card-room">{{item.courseName}}</text>
+          <status-tag text="{{item.statusText}}" theme="{{item.statusTheme}}" />
+        </view>
+        <view class="card-line">
+          <text class="card-date">{{item.observeDate}}</text>
+          <text class="card-period">{{item.sectionsText}}</text>
+        </view>
+        <view class="card-sub">
+          <text class="card-sub-text">{{item.teacher}} · {{item.teachingClassName}}</text>
+        </view>
+        <view class="card-line">
+          <text class="card-tag">{{item.templateLabel}}</text>
+          <text class="card-score">总分 {{item.totalScoreText}}</text>
+        </view>
+        <view class="card-bottom">
+          <text class="card-meta">{{item.createdAtText}}</text>
+          <view class="card-actions">
+            <view wx:if="{{item.canEdit}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" bindtap="onEdit">编辑</view>
+            <view wx:if="{{item.canSubmit}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" bindtap="onSubmit">提交</view>
+            <view wx:if="{{item.canExport}}" class="action-btn action-primary {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" bindtap="onExport">导出</view>
+            <view wx:if="{{item.canDelete}}" class="action-btn action-danger {{actingId === item.id ? 'action-disabled' : ''}}" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+            <text wx:if="{{!item.canEdit && !item.canSubmit && !item.canExport && !item.canDelete}}" class="card-none">—</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <empty-state wx:if="{{!list.loading && list.items.length === 0}}" text="{{list.q ? '未找到匹配的评课' : '暂无评课记录'}}"></empty-state>
+    <list-footer loading="{{list.loading}}" noMore="{{list.items.length > 0 && !list.hasMore}}"></list-footer>
+  </scroll-view>
+
+  <!-- 新建评课 -->
+  <view class="fab" wx:if="{{canWrite}}" bindtap="onCreate">
+    <text class="fab-text">＋ 新建评课</text>
+  </view>
+</view>

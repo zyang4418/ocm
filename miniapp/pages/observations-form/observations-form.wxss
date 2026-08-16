@@ -1,0 +1,264 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+.form-scroll {
+  flex: 1;
+  padding: var(--space-md);
+  box-sizing: border-box;
+}
+
+.banner {
+  margin-bottom: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: #FDECEC;
+  border-radius: var(--radius-sm);
+}
+
+.banner-text {
+  font-size: var(--font-sm);
+  color: #D54941;
+}
+
+.loading {
+  padding: var(--space-lg) 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: var(--font-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* ── 区块 ── */
+.section {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.section-title {
+  display: block;
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1rpx solid var(--color-border);
+}
+
+/* ── 字段 ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.field-label {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.field-value {
+  padding: 16rpx var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+  color: var(--color-text);
+}
+
+.field-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.field-input {
+  height: 72rpx;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+}
+
+.field-textarea {
+  min-height: 140rpx;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-md);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── 节次多选 chips ── */
+.section-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.chip {
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+}
+
+.chip-active {
+  color: #FFFFFF;
+  background: var(--color-primary);
+}
+
+/* ── 匿名开关 ── */
+.switch-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── 评分指标 ── */
+.indicator {
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: 1rpx dashed var(--color-border);
+}
+
+.indicator:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.indicator-title {
+  display: block;
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.indicator-line {
+  display: block;
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+}
+
+/* ── 评分/单选 chips ── */
+.rate-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.rate-chip {
+  min-width: 88rpx;
+  padding: 12rpx 24rpx;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  text-align: center;
+}
+
+.rate-chip-active {
+  color: #FFFFFF;
+  background: var(--color-primary);
+}
+
+/* ── 课堂诊断 ── */
+.extra {
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: 1rpx dashed var(--color-border);
+}
+
+.extra:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* ── 学生评价矩阵 ── */
+.matrix-scroll {
+  white-space: nowrap;
+}
+
+.matrix {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.matrix-head,
+.matrix-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.matrix-q-head,
+.matrix-head-cell {
+  flex-shrink: 0;
+  padding: var(--space-sm) var(--space-xs);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border-bottom: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.matrix-q-head {
+  width: 320rpx;
+}
+
+.matrix-head-cell {
+  width: 140rpx;
+  text-align: center;
+}
+
+.matrix-q {
+  flex-shrink: 0;
+  width: 320rpx;
+  padding: var(--space-sm) var(--space-xs);
+  font-size: var(--font-xs);
+  color: var(--color-text);
+  border-bottom: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.matrix-cell {
+  flex-shrink: 0;
+  width: 140rpx;
+  padding: var(--space-xs);
+  border-bottom: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.matrix-picker {
+  padding: 8rpx 4rpx;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-xs);
+  color: var(--color-text);
+  text-align: center;
+}
+
+/* ── 底部保存 ── */
+.footer {
+  padding: var(--space-sm) var(--space-md);
+  padding-bottom: calc(var(--space-sm) + env(safe-area-inset-bottom));
+  background: #FFFFFF;
+  border-top: 1rpx solid var(--color-border);
+}

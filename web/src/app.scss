@@ -1366,3 +1366,108 @@
     flex: 1;
   }
 }
+
+/* ---- observations page (听课评课) ---- */
+.observations-page__form-modal {
+  .cds--modal-container {
+    max-width: 56rem;
+  }
+}
+
+.observations-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  padding: $spacing-05;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-radius: 4px;
+  background: var(--cds-layer-01, #ffffff);
+}
+
+.observations-page__section-title {
+  @include type-style('heading-03');
+  margin: 0;
+  padding-block-end: $spacing-03;
+  border-block-end: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.observations-page__indicator {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-03;
+  padding-block-end: $spacing-04;
+  border-block-end: 1px dashed var(--cds-border-subtle, #e0e0e0);
+
+  &:last-child {
+    border-block-end: none;
+    padding-block-end: 0;
+  }
+}
+
+.observations-page__indicator-title {
+  @include type-style('productive-heading-01');
+}
+
+.observations-page__indicator-line {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.observations-page__extra {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+}
+
+.observations-page__sections {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-03 $spacing-05;
+}
+
+.observations-page__legend {
+  @include type-style('label-01');
+  margin-block-end: $spacing-03;
+}
+
+.observations-page__matrix {
+  overflow-x: auto;
+}
+
+.observations-page__matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    border: 1px solid var(--cds-border-subtle, #e0e0e0);
+    padding: $spacing-03;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  th {
+    @include type-style('productive-heading-01');
+    background: var(--cds-layer-02, #f4f4f4);
+  }
+
+  td {
+    min-width: 6.5rem;
+  }
+}
+
+.observations-page__matrix-question {
+  text-align: left !important;
+  color: var(--cds-text-primary);
+  min-width: 16rem;
+}
+
+.observations-page__matrix-table .cds--select {
+  display: inline-block;
+  min-width: 5rem;
+}

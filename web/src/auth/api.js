@@ -52,18 +52,20 @@ export async function apiUpload(path, { file, token, fields = {} } = {}) {
   return data
 }
 
-// apiDownload fetches a binary file (xlsx export) as a blob and triggers a
-// browser download. The filename is read from the Content-Disposition header
+// apiDownload fetches a binary file (xlsx/docx export) as a blob and triggers
+// a browser download. The filename is read from the Content-Disposition header
 // (decoded for UTF-8 / quoted forms); fallbackName is used when the header is
 // absent or unparseable. Export endpoints return the file directly (not JSON),
-// so this does not parse the body as JSON.
-export async function apiDownload(path, { token, fallbackName = 'export.xlsx' } = {}) {
+// so this does not parse the body as JSON. method/body default to GET (xlsx),
+// but a POST body is supported for endpoints like the observation docx export.
+export async function apiDownload(path, { token, fallbackName = 'export.xlsx', method = 'GET', body } = {}) {
   const headers = {}
   if (token) headers.Authorization = `Bearer ${token}`
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
 
   let res
   try {
-    res = await fetch(path, { method: 'GET', headers })
+    res = await fetch(path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined })
   } catch {
     throw new Error('无法连接到服务器，请稍后重试')
   }

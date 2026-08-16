@@ -26,6 +26,7 @@ const ALL_ENTRIES: (HubEntry & { group: string })[] = [
   { group: 'classroom', name: '课程管理', icon: '/assets/icons/grid_course.png', url: '/pages/courses/courses', gate: () => can('course:read'), ready: true },
   { group: 'classroom', name: '作息设置', icon: '/assets/icons/ai_schedule.png', url: '/pages/schedule/schedule', gate: () => can('course:read'), ready: true },
   { group: 'classroom', name: '教室课表', icon: '/assets/icons/quick_calendar.png', url: '/pages/timetable/timetable', gate: () => can('course:read'), ready: true },
+  { group: 'classroom', name: '听课评课', icon: '/assets/icons/grid_report.png', url: '/pages/observations/observations', gate: () => canAny(['observation:read', 'observation:write', 'observation:manage']), ready: true },
   // 组织与权限
   { group: 'org', name: '用户管理', icon: '/assets/icons/grid_student.png', url: '/pages/users/users', gate: () => can('user:read'), ready: true },
   { group: 'org', name: '角色管理', icon: '/assets/icons/profile_account.png', url: '/pages/roles/roles', gate: () => can('role:read'), ready: true },

@@ -52,7 +52,8 @@ export default function AppShell({ children }) {
     location.pathname.startsWith('/timetable') ||
     location.pathname.startsWith('/schedule-config') ||
     location.pathname.startsWith('/imports') ||
-    location.pathname.startsWith('/attendance')
+    location.pathname.startsWith('/attendance') ||
+    location.pathname.startsWith('/observations')
   const inSettings =
     location.pathname.startsWith('/logs') ||
     location.pathname.startsWith('/settings')
@@ -195,6 +196,15 @@ export default function AppShell({ children }) {
                         onClick={go('/attendance/report')}
                       >
                         考勤报表
+                      </SideNavMenuItem>
+                    )}
+                    {can('observation:read') && (
+                      <SideNavMenuItem
+                        href="/observations"
+                        isActive={isActive('/observations')}
+                        onClick={go('/observations')}
+                      >
+                        听课评课
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>

@@ -1,0 +1,178 @@
+<view class="page">
+  <t-navbar title="{{mode === 'edit' ? '编辑评课' : '新建评课'}}" left-arrow fixed placeholder />
+
+  <scroll-view scroll-y class="form-scroll">
+    <view wx:if="{{error}}" class="banner">
+      <text class="banner-text">{{error}}</text>
+    </view>
+    <view wx:if="{{loading}}" class="loading">
+      <text class="loading-text">加载中…</text>
+    </view>
+
+    <block wx:else>
+      <!-- 基础信息 -->
+      <view class="section">
+        <text class="section-title">基础信息</text>
+        <view class="field">
+          <text class="field-label">模板类型</text>
+          <picker mode="selector" range="{{templateOptions}}" value="{{templateIndex}}" bindchange="onTemplateChange">
+            <view class="field-value {{!templateValues[templateIndex] ? 'field-placeholder' : ''}}">{{templateOptions[templateIndex] || '请选择模板'}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <text class="field-label">课程</text>
+          <picker mode="selector" range="{{offeringOptions}}" value="{{offeringIndex}}" bindchange="onOfferingChange">
+            <view class="field-value {{!offeringValues[offeringIndex] ? 'field-placeholder' : ''}}">{{offeringOptions[offeringIndex] || '请选择课程'}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <text class="field-label">听课日期</text>
+          <picker mode="date" value="{{observeDate}}" bindchange="onDateChange">
+            <view class="field-value {{observeDate ? '' : 'field-placeholder'}}">{{observeDate || '请选择日期'}}</view>
+          </picker>
+        </view>
+        <view class="field" wx:if="{{periodLabels.length > 0}}">
+          <text class="field-label">节次（可多选）</text>
+          <view class="section-chips">
+            <view
+              wx:for="{{periodLabels}}"
+              wx:key="index"
+              wx:for-index="pidx"
+              class="chip {{sections.indexOf(periodValues[pidx]) >= 0 ? 'chip-active' : ''}}"
+              data-idx="{{pidx}}"
+              bindtap="onToggleSection"
+            >{{item}}</view>
+          </view>
+        </view>
+        <view class="field">
+          <view class="switch-row">
+            <text class="field-label">匿名评课</text>
+            <switch checked="{{isAnonymous}}" color="#2B5FF6" bindchange="onAnonymousChange" />
+          </view>
+        </view>
+      </view>
+
+      <!-- 评分指标 -->
+      <view class="section" wx:if="{{indicatorGroups.length > 0}}">
+        <text class="section-title">评分指标</text>
+        <view wx:for="{{indicatorGroups}}" wx:key="key" wx:for-index="idx" class="indicator">
+          <text class="indicator-title">{{item.title}}</text>
+          <text wx:for="{{item.lines}}" wx:key="*this" wx:for-item="line" class="indicator-line">{{line}}</text>
+          <view class="rate-row">
+            <view
+              wx:for="{{ratingOptions}}"
+              wx:key="value"
+              wx:for-item="r"
+              class="rate-chip {{item.value === r.value ? 'rate-chip-active' : ''}}"
+              data-idx="{{idx}}"
+              data-value="{{r.value}}"
+              bindtap="onRateTap"
+            >{{r.label}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 表头信息（radio） -->
+      <view class="section" wx:if="{{headerExtras.length > 0}}">
+        <text class="section-title">表头信息</text>
+        <view wx:for="{{headerExtras}}" wx:key="key" wx:for-index="idx" class="extra">
+          <text class="field-label">{{item.label}}</text>
+          <view class="rate-row">
+            <view
+              wx:for="{{item.options}}"
+              wx:key="*this"
+              wx:for-item="opt"
+              class="rate-chip {{item.value === opt ? 'rate-chip-active' : ''}}"
+              data-idx="{{idx}}"
+              data-value="{{opt}}"
+              bindtap="onHeaderExtraTap"
+            >{{opt}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 总分 + 授课内容 -->
+      <view class="section">
+        <text class="section-title">评价结论</text>
+        <view class="field">
+          <text class="field-label">{{scoreLabel}}（0-100）</text>
+          <input class="field-input" type="number" placeholder="请输入分数" value="{{totalScore}}" bindinput="onTotalScoreInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">{{contentLabel}}{{contentLimit ? '（' + contentLimit + ' 字以内）' : ''}}</text>
+          <textarea class="field-textarea" placeholder="请输入{{contentLabel}}" value="{{contentOutline}}" maxlength="{{contentLimit || -1}}" bindinput="onContentInput" />
+        </view>
+      </view>
+
+      <!-- 评语 -->
+      <view class="section" wx:if="{{commentFields.length > 0}}">
+        <text class="section-title">评语</text>
+        <view wx:for="{{commentFields}}" wx:key="key" wx:for-index="idx" class="field">
+          <text class="field-label">{{item.label}}</text>
+          <textarea class="field-textarea" placeholder="{{item.placeholder}}" value="{{item.value}}" data-idx="{{idx}}" bindinput="onCommentInput" />
+        </view>
+      </view>
+
+      <!-- 课堂诊断（radio_with_detail） -->
+      <view class="section" wx:if="{{extras.length > 0}}">
+        <text class="section-title">课堂诊断</text>
+        <view wx:for="{{extras}}" wx:key="key" wx:for-index="idx" class="extra">
+          <text class="field-label">{{item.label}}</text>
+          <view class="rate-row">
+            <view
+              wx:for="{{item.options}}"
+              wx:key="*this"
+              wx:for-item="opt"
+              class="rate-chip {{item.value === opt ? 'rate-chip-active' : ''}}"
+              data-idx="{{idx}}"
+              data-value="{{opt}}"
+              bindtap="onExtraTap"
+            >{{opt}}</view>
+          </view>
+          <textarea
+            wx:if="{{item.detailKey && (item.detailRequiredWhen === undefined || item.value === item.detailRequiredWhen)}}"
+            class="field-textarea"
+            placeholder="{{item.detailPlaceholder}}"
+            value="{{item.detailValue}}"
+            data-idx="{{idx}}"
+            bindinput="onExtraDetailInput"
+          />
+        </view>
+      </view>
+
+      <!-- 其它评价（教室条件 / 听课笔记） -->
+      <view class="section" wx:if="{{postCommentFields.length > 0}}">
+        <text class="section-title">{{postCommentTitle}}</text>
+        <view wx:for="{{postCommentFields}}" wx:key="key" wx:for-index="idx" class="field">
+          <text class="field-label">{{item.label}}</text>
+          <textarea class="field-textarea" placeholder="{{item.placeholder}}" value="{{item.value}}" data-idx="{{idx}}" bindinput="onPostCommentInput" />
+        </view>
+      </view>
+
+      <!-- 学生评价矩阵 -->
+      <view class="section" wx:if="{{studentQuestions.length > 0}}">
+        <text class="section-title">学生评价</text>
+        <scroll-view scroll-x class="matrix-scroll" enable-flex>
+          <view class="matrix">
+            <view class="matrix-head">
+              <view class="matrix-q-head">评价项</view>
+              <view wx:for="{{studentColumns}}" wx:key="*this" class="matrix-head-cell">{{item}}</view>
+            </view>
+            <view wx:for="{{studentQuestions}}" wx:key="key" wx:for-index="qidx" wx:for-item="q" class="matrix-row">
+              <view class="matrix-q">{{q.title}}</view>
+              <view wx:for="{{studentColumns}}" wx:key="*this" wx:for-index="cidx" wx:for-item="col" class="matrix-cell">
+                <picker mode="selector" range="{{q.optionLabels}}" value="{{q.answers[cidx]}}" data-qidx="{{qidx}}" data-cidx="{{cidx}}" bindchange="onStudentAnswer">
+                  <view class="matrix-picker {{q.answers[cidx] === 0 ? 'field-placeholder' : ''}}">{{q.optionLabels[q.answers[cidx]] || '—'}}</view>
+                </picker>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <view class="footer">
+    <t-button theme="primary" block loading="{{saving}}" disabled="{{loading}}" bind:tap="onSave">保存</t-button>
+  </view>
+</view>
