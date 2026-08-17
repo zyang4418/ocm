@@ -15,6 +15,7 @@ import {
   WarningAlt,
 } from '@carbon/icons-react'
 import { useAuth } from '../auth/AuthContext.jsx'
+import { openAiChat } from '../ai/chatInstance.js'
 
 const metrics = [
   { icon: UserMultiple, label: '活跃用户', value: '128', trend: '较上周 +12%', kind: 'green' },
@@ -24,7 +25,7 @@ const metrics = [
 ]
 
 const quickLinks = [
-  { title: 'AI 助手', description: '问答查询教室与课表，生成预约方案', href: '/ai', perm: 'ai:chat' },
+  { title: 'AI 助手', description: '问答查询教室与课表，生成预约方案', openChat: true, perm: 'ai:chat' },
   { title: '用户管理', description: '维护组织成员与账号状态' },
   { title: '角色管理', description: '配置角色与访问权限' },
   { title: '参数配置', description: '调整系统级运行参数', href: '/settings', adminOnly: true },
@@ -67,9 +68,13 @@ export default function DashboardPage() {
         </Column>
         {quickLinks
           .filter((l) => (!l.adminOnly || can('*')) && (!l.perm || can(l.perm)))
-          .map(({ title, description, href }) => (
+          .map(({ title, description, href, openChat }) => (
             <Column key={title} sm={4} md={4} lg={4}>
-              <ClickableTile href={href ?? '#'} className="dashboard__quicklink">
+              <ClickableTile
+                href={href ?? '#'}
+                className="dashboard__quicklink"
+                onClick={openChat ? (e) => { e.preventDefault(); openAiChat() } : undefined}
+              >
                 <div className="dashboard__quicklink-title">
                   {title}
                   <ArrowRight size={16} aria-hidden />

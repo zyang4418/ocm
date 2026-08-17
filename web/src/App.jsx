@@ -17,13 +17,11 @@ import AdminClassesPage from './pages/AdminClassesPage.jsx'
 import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
 import LogsPage from './pages/LogsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
-import AiPage from './pages/AiPage.jsx'
 import AttendancePage from './pages/AttendancePage.jsx'
 import AttendanceDetailPage from './pages/AttendanceDetailPage.jsx'
 import AttendanceReportPage from './pages/AttendanceReportPage.jsx'
 import ObservationsPage from './pages/ObservationsPage.jsx'
 import RepairsPage from './pages/RepairsPage.jsx'
-
 function RequireAuth({ children }) {
   const { user, bootstrapping } = useAuth()
   const location = useLocation()
@@ -57,7 +55,6 @@ export default function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/ai" element={<AiPage />} />
             <Route path="/classrooms" element={<ClassroomsPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
             <Route path="/courses" element={<CourseManagementPage />} />

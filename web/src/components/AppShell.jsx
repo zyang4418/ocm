@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import {
   Header,
   HeaderContainer,
@@ -17,7 +18,6 @@ import {
 } from '@carbon/react'
 import {
   Building,
-  Chat,
   Dashboard,
   Education,
   Logout,
@@ -28,6 +28,11 @@ import {
 } from '@carbon/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
+
+// The AI assistant chat widget is a large dependency chain (lit + Carbon web
+// components), so it is only fetched when a user with ai:chat permission is
+// logged in.
+const AiChat = lazy(() => import('../ai/AiChat.jsx'))
 
 // AppShell renders the Carbon UI Shell frame (header + side navigation +
 // content area) shared by all authenticated pages. It persists across route
@@ -114,16 +119,6 @@ export default function AppShell({ children }) {
                   >
                     概览
                   </SideNavLink>
-                  {can('ai:chat') && (
-                    <SideNavLink
-                      renderIcon={Chat}
-                      href="/ai"
-                      isActive={isActive('/ai')}
-                      onClick={go('/ai')}
-                    >
-                      AI 助手
-                    </SideNavLink>
-                  )}
                   <SideNavMenu
                     key={`cls-${inClassrooms}`}
                     renderIcon={Building}
@@ -297,6 +292,11 @@ export default function AppShell({ children }) {
             <Theme theme="g10" className="app-shell__content">
               <Content id="main-content">{children}</Content>
             </Theme>
+            {can('ai:chat') && (
+              <Suspense fallback={null}>
+                <AiChat />
+              </Suspense>
+            )}
           </>
         )
       }}

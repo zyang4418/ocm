@@ -1191,134 +1191,21 @@
   color: var(--cds-text-secondary);
 }
 
-// --- AI 助手 (/ai) ---
+// --- AI 助手 (Carbon AI Chat 浮窗,自定义 user_defined 项) ---
 
-.ai-page__heading {
-  @include type-style('productive-heading-05');
-  margin-block-end: $spacing-03;
-}
-
-.ai-page__subtitle {
-  @include type-style('body-01');
-  color: var(--cds-text-secondary);
-  margin-block-end: $spacing-06;
-}
-
-.ai-page__chat {
-  max-inline-size: 56rem;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-05;
-}
-
-.ai-page__empty {
-  padding-block: $spacing-07;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-04;
-}
-
-.ai-page__empty-title {
-  @include type-style('heading-03');
-}
-
-.ai-page__empty-hint {
-  @include type-style('body-01');
-  color: var(--cds-text-secondary);
-}
-
-.ai-page__chips {
+.ai-chat-item__tools {
   display: flex;
   flex-wrap: wrap;
   gap: $spacing-03;
 }
 
-.ai-page__chip {
-  @include type-style('body-01');
-  padding: $spacing-03 $spacing-05;
-  border: 1px solid var(--cds-border-subtle);
-  border-radius: 1rem;
-  background: var(--cds-layer);
-  color: var(--cds-text-primary);
-  cursor: pointer;
-  text-align: start;
-
-  &:hover {
-    background: var(--cds-layer-hover);
-    border-color: var(--cds-border-strong);
-  }
-}
-
-.ai-page__row {
-  display: flex;
-}
-
-.ai-page__row--user {
-  justify-content: flex-end;
-}
-
-.ai-page__row--assistant {
-  justify-content: flex-start;
-}
-
-.ai-page__bubble {
-  max-inline-size: 44rem;
-  min-inline-size: 3rem;
-  padding: $spacing-04 $spacing-05;
-  border-radius: $spacing-03;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-03;
-}
-
-.ai-page__bubble--user {
-  background: var(--color-primary);
-  color: #fff;
-
-  .ai-page__text {
-    color: #fff;
-  }
-}
-
-.ai-page__bubble--assistant {
-  background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle);
-}
-
-.ai-page__text {
-  @include type-style('body-01');
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
-}
-
-.ai-page__cursor {
-  display: inline-block;
-  inline-size: 0.5rem;
-  block-size: 1rem;
-  background: currentColor;
-  animation: ai-blink 1s infinite;
-  align-self: flex-start;
-}
-
-@keyframes ai-blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-.ai-page__tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $spacing-03;
-}
-
-.ai-page__tool-spinner {
+.ai-chat-item__tool-spinner {
   display: inline-block;
   margin-inline-end: $spacing-03;
   vertical-align: middle;
 }
 
-.ai-page__proposal {
+.ai-chat-item__proposal {
   margin-block-start: $spacing-03;
   padding: $spacing-04 $spacing-05;
   border: 1px solid var(--cds-border-subtle);
@@ -1329,12 +1216,12 @@
   gap: $spacing-04;
 }
 
-.ai-page__proposal-title {
+.ai-chat-item__proposal-title {
   @include type-style('heading-02');
   margin: 0;
 }
 
-.ai-page__proposal-fields {
+.ai-chat-item__proposal-fields {
   @include type-style('body-01');
   display: flex;
   flex-wrap: wrap;
@@ -1346,25 +1233,15 @@
   }
 }
 
-.ai-page__proposal-actions {
+.ai-chat-item__proposal-actions {
   display: flex;
   gap: $spacing-03;
 }
 
-.ai-page__proposal-dismissed {
+.ai-chat-item__proposal-dismissed {
   @include type-style('body-01');
   color: var(--cds-text-secondary);
   margin: 0;
-}
-
-.ai-page__input-row {
-  display: flex;
-  align-items: flex-end;
-  gap: $spacing-03;
-
-  .cds--text-area__wrapper {
-    flex: 1;
-  }
 }
 
 /* ---- observations page (听课评课) ---- */
