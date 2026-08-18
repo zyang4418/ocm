@@ -1,0 +1,101 @@
+{
+  "app": {
+    "title": "OCM Console"
+  },
+  "loading": "Loading",
+  "action": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Add",
+    "new": "New",
+    "search": "Search",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "close": "Close",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "viewAll": "View all",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "import": "Import",
+    "loading": "Loading…",
+    "uploading": "Uploading…",
+    "submitting": "Submitting…"
+  },
+  "aria": {
+    "navToggleOpen": "Open navigation menu",
+    "navToggleClose": "Close navigation menu",
+    "sideNav": "Side navigation",
+    "breadcrumb": "Breadcrumb",
+    "skipToContent": "Skip to content",
+    "notification": "Notifications",
+    "currentUser": "Current user: {{name}}",
+    "logout": "Log out",
+    "languageSwitcher": "Change language"
+  },
+  "nav": {
+    "overview": "Overview",
+    "classroomManagement": "Classrooms",
+    "classroomList": "Classroom list",
+    "classroomBooking": "Bookings",
+    "classroomRepair": "Repairs",
+    "teachingManagement": "Teaching",
+    "courseManagement": "Courses",
+    "timetable": "Timetable",
+    "scheduleConfig": "Schedule config",
+    "dataImport": "Data import",
+    "attendance": "Attendance",
+    "attendanceReport": "Attendance report",
+    "observations": "Observations",
+    "orgManagement": "Organization",
+    "userManagement": "Users",
+    "adminClasses": "Admin classes",
+    "teachingClasses": "Teaching classes",
+    "roleManagement": "Roles",
+    "groupManagement": "Groups",
+    "systemSettings": "Settings",
+    "parameters": "Parameters",
+    "auditLogs": "Audit logs"
+  },
+  "status": {
+    "available": "Available",
+    "maintenance": "Under maintenance",
+    "disabled": "Disabled",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "cancelled": "Cancelled",
+    "open": "Open",
+    "processing": "In progress",
+    "completed": "Completed",
+    "confirmed": "Confirmed",
+    "present": "Present",
+    "late": "Late",
+    "absent": "Absent",
+    "leave": "Leave",
+    "draft": "Draft",
+    "submitted": "Submitted"
+  },
+  "empty": {
+    "noData": "No data",
+    "noResults": "No matching results",
+    "noClassrooms": "No classrooms",
+    "noBookings": "No bookings",
+    "noRepairs": "No repair tickets",
+    "noLogs": "No logs"
+  },
+  "error": {
+    "network": "Unable to connect to server, please try again later",
+    "requestFailed": "Request failed ({{status}})",
+    "uploadFailed": "Upload failed ({{status}})",
+    "exportFailed": "Export failed ({{status}})",
+    "loadFailed": "Failed to load data"
+  },
+  "language": {
+    "zh-CN": "简体中文",
+    "en": "English"
+  }
+}

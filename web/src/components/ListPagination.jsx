@@ -1,4 +1,5 @@
 import { Pagination } from '@carbon/react'
+import { paginationProps } from '../i18n/carbonLocale.js'
 
 // ListPagination renders the pager for a server-paginated list. The displayed
 // page is clamped to the last existing page (a delete can leave page pointing
@@ -26,8 +27,7 @@ export default function ListPagination({
         if (s !== pageSize) onPageSizeChange(s)
         else onPageChange(p)
       }}
-      itemRangeText={(min, max, total) => `${min}–${max} / 共 ${total} 条`}
-      itemsPerPageText="每页条数"
+      {...paginationProps()}
     />
   )
 }

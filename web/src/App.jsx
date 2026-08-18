@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes, Outlet, useLocation } from 'react-router-dom'
 import { Loading } from '@carbon/react'
+import { useTranslation } from 'react-i18next'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
+import LanguageProvider from './i18n/LanguageProvider.jsx'
 import AppShell from './components/AppShell.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -23,13 +25,14 @@ import AttendanceReportPage from './pages/AttendanceReportPage.jsx'
 import ObservationsPage from './pages/ObservationsPage.jsx'
 import RepairsPage from './pages/RepairsPage.jsx'
 function RequireAuth({ children }) {
+  const { t } = useTranslation()
   const { user, bootstrapping } = useAuth()
   const location = useLocation()
 
   if (bootstrapping) {
     return (
       <div className="app-loading">
-        <Loading withOverlay={false} description="正在加载" />
+        <Loading withOverlay={false} description={t('loading')} />
       </div>
     )
   }
@@ -41,8 +44,9 @@ function RequireAuth({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -78,5 +82,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </LanguageProvider>
   )
 }

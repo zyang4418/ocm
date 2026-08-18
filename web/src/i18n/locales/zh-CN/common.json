@@ -1,0 +1,101 @@
+{
+  "app": {
+    "title": "OCM 管理平台"
+  },
+  "loading": "正在加载",
+  "action": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "添加",
+    "new": "新建",
+    "search": "搜索",
+    "submit": "提交",
+    "confirm": "确认",
+    "back": "返回",
+    "close": "关闭",
+    "refresh": "刷新",
+    "retry": "重试",
+    "viewAll": "查看全部",
+    "export": "导出",
+    "exporting": "导出中…",
+    "import": "导入",
+    "loading": "加载中…",
+    "uploading": "上传中…",
+    "submitting": "提交中…"
+  },
+  "aria": {
+    "navToggleOpen": "展开导航菜单",
+    "navToggleClose": "收起导航菜单",
+    "sideNav": "侧边导航",
+    "breadcrumb": "面包屑导航",
+    "skipToContent": "跳转到主要内容",
+    "notification": "通知",
+    "currentUser": "当前用户：{{name}}",
+    "logout": "退出登录",
+    "languageSwitcher": "切换语言"
+  },
+  "nav": {
+    "overview": "概览",
+    "classroomManagement": "教室管理",
+    "classroomList": "教室列表",
+    "classroomBooking": "教室预约",
+    "classroomRepair": "教室报修",
+    "teachingManagement": "教学管理",
+    "courseManagement": "课程管理",
+    "timetable": "教室课表",
+    "scheduleConfig": "作息设置",
+    "dataImport": "数据导入",
+    "attendance": "课堂签到",
+    "attendanceReport": "考勤报表",
+    "observations": "听课评课",
+    "orgManagement": "组织与权限",
+    "userManagement": "用户管理",
+    "adminClasses": "行政班管理",
+    "teachingClasses": "教学班管理",
+    "roleManagement": "角色管理",
+    "groupManagement": "用户组管理",
+    "systemSettings": "系统设置",
+    "parameters": "参数配置",
+    "auditLogs": "审计日志"
+  },
+  "status": {
+    "available": "可用",
+    "maintenance": "维修中",
+    "disabled": "停用",
+    "pending": "待审批",
+    "approved": "已通过",
+    "rejected": "已拒绝",
+    "cancelled": "已取消",
+    "open": "待处理",
+    "processing": "维修中",
+    "completed": "已维修",
+    "confirmed": "已确认",
+    "present": "出勤",
+    "late": "迟到",
+    "absent": "缺勤",
+    "leave": "请假",
+    "draft": "草稿",
+    "submitted": "已提交"
+  },
+  "empty": {
+    "noData": "暂无数据",
+    "noResults": "未找到匹配的数据",
+    "noClassrooms": "暂无教室",
+    "noBookings": "暂无预约",
+    "noRepairs": "暂无报修工单",
+    "noLogs": "暂无日志"
+  },
+  "error": {
+    "network": "无法连接到服务器，请稍后重试",
+    "requestFailed": "请求失败（{{status}}）",
+    "uploadFailed": "上传失败（{{status}}）",
+    "exportFailed": "导出失败（{{status}}）",
+    "loadFailed": "数据加载失败"
+  },
+  "language": {
+    "zh-CN": "简体中文",
+    "en": "English"
+  }
+}
