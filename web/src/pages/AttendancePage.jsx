@@ -25,28 +25,27 @@ import {
 } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
 import { CheckinStatusTag, formatDateTime } from './attendanceUi.jsx'
 
-// 课堂签到: list of attendance events with a create flow (pick offering →
-// optional session → duration/late threshold). Creating navigates straight to
-// the detail page, where the QR code is projected.
-const headers = [
-  { key: 'title', header: '标题' },
-  { key: 'offering', header: '课程 / 教学班' },
-  { key: 'sessionText', header: '课次' },
-  { key: 'status', header: '状态' },
-  { key: 'counts', header: '应到 / 出勤 / 迟到 / 缺勤 / 请假' },
-  { key: 'startsAt', header: '开始时间' },
-]
-
 export default function AttendancePage() {
+  const { t } = useTranslation('attendance')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('attendance:manage')
+
+  const headers = [
+    { key: 'title', header: t('list.field.title') },
+    { key: 'offering', header: t('list.field.offering') },
+    { key: 'sessionText', header: t('list.field.sessionText') },
+    { key: 'status', header: t('list.field.status') },
+    { key: 'counts', header: t('list.field.counts') },
+    { key: 'startsAt', header: t('list.field.startsAt') },
+  ]
 
   const [statusFilter, setStatusFilter] = useState('')
   const [from, setFrom] = useState('')
@@ -75,7 +74,7 @@ export default function AttendancePage() {
       setOfferings(
         ((data && data.items) || []).map((o) => ({
           id: String(o.id),
-          text: `${o.catalogName} · ${o.teachingClassName} · ${o.semester}`,
+          text: t('list.offeringOption', { catalogName: o.catalogName, teachingClassName: o.teachingClassName, semester: o.semester }),
         }))
       )
     } catch {
@@ -106,7 +105,7 @@ export default function AttendancePage() {
       setSessions(
         ((data && data.items) || []).map((s) => ({
           id: String(s.id),
-          text: `${s.date} 第${s.periodStart}-${s.periodEnd}节 · ${s.classroomName}`,
+          text: t('list.sessionOption', { date: s.date, start: s.periodStart, end: s.periodEnd, classroom: s.classroomName }),
         }))
       )
     } catch {
@@ -118,15 +117,15 @@ export default function AttendancePage() {
     const late = parseInt(form.lateMinutes || '0', 10)
     const duration = parseInt(form.durationMinute || '0', 10)
     if (Number.isNaN(late) || late < 0) {
-      setCreateError('迟到阈值为非负整数（分钟）')
+      setCreateError(t('list.validation.lateNonNeg'))
       return
     }
     if (Number.isNaN(duration) || duration < 0) {
-      setCreateError('签到时长为非负整数（分钟），0 表示手动结束')
+      setCreateError(t('list.validation.durationNonNeg'))
       return
     }
     if (!pickOffering && !form.title.trim()) {
-      setCreateError('未选择开课时需填写签到标题')
+      setCreateError(t('list.validation.titleRequired'))
       return
     }
     try {
@@ -168,7 +167,7 @@ export default function AttendancePage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -176,21 +175,19 @@ export default function AttendancePage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>课堂签到</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.attendance')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">课堂签到</h1>
-        <p className="courses-page__subtitle">
-          发起签到后在大屏展示二维码，学生用小程序扫码或输入 6 位签到码完成签到。
-        </p>
+        <h1 className="courses-page__heading">{t('list.title')}</h1>
+        <p className="courses-page__subtitle">{t('list.subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {list.error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('list.error.load')}
             subtitle={list.error}
             lowContrast
             hideCloseButton
@@ -200,7 +197,7 @@ export default function AttendancePage() {
         {closeError && (
           <InlineNotification
             kind="error"
-            title="结束签到失败"
+            title={t('list.error.close')}
             subtitle={closeError}
             lowContrast
             hideCloseButton
@@ -210,26 +207,26 @@ export default function AttendancePage() {
 
         <DataTable rows={list.items} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="签到列表" description={`共 ${list.total} 次签到`}>
+            <TableContainer title={t('list.table.title')} description={t('list.table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索标题/课程" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('list.searchPlaceholder')} />
                   <Select
                     id="att-status"
-                    labelText="状态"
+                    labelText={t('list.filter.status')}
                     hideLabel
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
-                    <SelectItem value="" text="全部状态" />
-                    <SelectItem value="active" text="进行中" />
-                    <SelectItem value="closed" text="已结束" />
+                    <SelectItem value="" text={t('list.filter.allStatuses')} />
+                    <SelectItem value="active" text={t('list.filter.active')} />
+                    <SelectItem value="closed" text={t('list.filter.closed')} />
                   </Select>
-                  <TextInput id="att-from" labelText="开始日期起" hideLabel type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-                  <TextInput id="att-to" labelText="开始日期止" hideLabel type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                  <TextInput id="att-from" labelText={t('list.filter.from')} hideLabel type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                  <TextInput id="att-to" labelText={t('list.filter.to')} hideLabel type="date" value={to} onChange={(e) => setTo(e.target.value)} />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={openCreate}>
-                      发起签到
+                      {t('list.addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -242,18 +239,18 @@ export default function AttendancePage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('list.field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + 1}>加载中…</TableCell>
+                      <TableCell colSpan={headers.length + 1}>{t('list.empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={headers.length + 1}>
-                        {list.q || statusFilter || from || to ? '未找到匹配的签到' : '暂无签到，点击右上角发起'}
+                        {list.q || statusFilter || from || to ? t('list.empty.search') : t('list.empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -263,7 +260,7 @@ export default function AttendancePage() {
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           <TableCell>{c.title}</TableCell>
                           <TableCell>
-                            {c.courseName ? `${c.courseName} / ${c.teachingClassName}` : '未关联开课'}
+                            {c.courseName ? `${c.courseName} / ${c.teachingClassName}` : t('list.noOffering')}
                           </TableCell>
                           <TableCell>{c.sessionText || '-'}</TableCell>
                           <TableCell>
@@ -274,11 +271,11 @@ export default function AttendancePage() {
                           <TableCell>
                             <div className="courses-page__actions">
                               <Button kind="ghost" size="sm" onClick={() => navigate(`/attendance/${c.id}`)}>
-                                详情
+                                {t('list.action.detail')}
                               </Button>
                               {canManage && c.status === 'active' && (
                                 <Button kind="ghost" size="sm" onClick={() => handleClose(c)}>
-                                  结束
+                                  {t('list.action.close')}
                                 </Button>
                               )}
                             </div>
@@ -304,9 +301,9 @@ export default function AttendancePage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="发起签到"
-        primaryButtonText="发起并展示二维码"
-        secondaryButtonText="取消"
+        modalHeading={t('list.modal.create')}
+        primaryButtonText={t('list.modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -315,52 +312,52 @@ export default function AttendancePage() {
         <div className="courses-page__form">
           <ComboBox
             id="att-offering"
-            titleText="开课（可选）"
-            placeholder="选择开课后可联动课次与整学期报表"
+            titleText={t('list.form.offering')}
+            placeholder={t('list.form.offeringPlaceholder')}
             items={offerings}
             itemToString={(item) => (item ? item.text : '')}
             selectedItem={pickOffering}
             onChange={handlePickOffering}
             shouldFilterItem={() => true}
-            helperText="不选择开课则为独立签到（如班会），仅统计扫码实到"
+            helperText={t('list.form.offeringHelper')}
           />
           {pickOffering && (
             <ComboBox
               id="att-session"
-              titleText="上课实例（可选）"
-              placeholder="选择本次上课的课次"
+              titleText={t('list.form.session')}
+              placeholder={t('list.form.sessionPlaceholder')}
               items={sessions}
               itemToString={(item) => (item ? item.text : '')}
               selectedItem={pickSession}
               onChange={(e) => setPickSession(e.selectedItem ?? null)}
               shouldFilterItem={() => true}
-              helperText="选择课次后，本次签到计入该开课的整学期考勤"
+              helperText={t('list.form.sessionHelper')}
             />
           )}
           <TextInput
             id="att-title"
-            labelText="标题"
-            placeholder="未选择开课时必填；选择开课/课次可留空自动生成"
+            labelText={t('list.form.title')}
+            placeholder={t('list.form.titlePlaceholder')}
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
           <TextInput
             id="att-late"
-            labelText="迟到阈值（分钟，0 表示不判迟到）"
+            labelText={t('list.form.lateMinutes')}
             type="number"
             value={form.lateMinutes}
             onChange={(e) => setForm({ ...form, lateMinutes: e.target.value })}
           />
           <TextInput
             id="att-duration"
-            labelText="签到时长（分钟，留空则直到手动结束）"
+            labelText={t('list.form.duration')}
             type="number"
-            placeholder="如 15"
+            placeholder={t('list.form.durationPlaceholder')}
             value={form.durationMinute}
             onChange={(e) => setForm({ ...form, durationMinute: e.target.value })}
           />
           {createError && (
-            <InlineNotification kind="error" title="发起失败" subtitle={createError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('list.error.create')} subtitle={createError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>

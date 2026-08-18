@@ -23,29 +23,29 @@ import {
 } from '@carbon/react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
-import { CheckinStatusTag, STATUS_LABEL, StatusTag, formatDateTime } from './attendanceUi.jsx'
-
-// 签到详情: QR code + countdown + live counts (5s poll) + record list with
-// per-student corrections. This is the page the teacher projects.
-const headers = [
-  { key: 'displayName', header: '姓名' },
-  { key: 'studentNo', header: '学号' },
-  { key: 'adminClass', header: '行政班' },
-  { key: 'status', header: '状态' },
-  { key: 'checkedAt', header: '签到时间' },
-  { key: 'inRoster', header: '名单' },
-]
+import { CheckinStatusTag, STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi.jsx'
 
 export default function AttendanceDetailPage() {
+  const { t } = useTranslation('attendance')
   const { id } = useParams()
   const navigate = useNavigate()
   const { token, can } = useAuth()
   const canManage = can('attendance:manage')
+
+  const headers = [
+    { key: 'displayName', header: t('detail.field.name') },
+    { key: 'studentNo', header: t('detail.field.studentNo') },
+    { key: 'adminClass', header: t('detail.field.adminClass') },
+    { key: 'status', header: t('detail.field.status') },
+    { key: 'checkedAt', header: t('detail.field.checkedAt') },
+    { key: 'inRoster', header: t('detail.field.inRoster') },
+  ]
 
   const [checkin, setCheckin] = useState(null)
   const [detailError, setDetailError] = useState('')
@@ -131,18 +131,25 @@ export default function AttendanceDetailPage() {
 
   const counts = checkin?.counts
   const statItems = [
-    { label: '应到', value: counts?.expected ?? '-' },
-    { label: '出勤', value: counts?.present ?? '-' },
-    { label: '迟到', value: counts?.late ?? '-' },
-    { label: '缺勤', value: counts?.absent ?? '-' },
-    { label: '请假', value: counts?.leave ?? '-' },
+    { label: t('stat.expected'), value: counts?.expected ?? '-' },
+    { label: t('status.present', { ns: 'common' }), value: counts?.present ?? '-' },
+    { label: t('status.late', { ns: 'common' }), value: counts?.late ?? '-' },
+    { label: t('status.absent', { ns: 'common' }), value: counts?.absent ?? '-' },
+    { label: t('status.leave', { ns: 'common' }), value: counts?.leave ?? '-' },
   ]
   const expired = checkin?.status === 'active' && remainingSeconds() === 0 && checkin.expiresAt
+
+  const remainingText = () => {
+    const s = remainingSeconds() ?? 0
+    const mm = String(Math.floor(s / 60)).padStart(2, '0')
+    const ss = String(s % 60).padStart(2, '0')
+    return `${mm}:${ss}`
+  }
 
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -150,7 +157,7 @@ export default function AttendanceDetailPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
           <BreadcrumbItem
             href="/attendance"
@@ -159,16 +166,20 @@ export default function AttendanceDetailPage() {
               navigate('/attendance')
             }}
           >
-            课堂签到
+            {t('breadcrumb.attendance')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>{checkin?.title ?? '签到详情'}</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{checkin?.title ?? t('detail.titleFallback')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">{checkin?.title ?? '签到详情'}</h1>
+        <h1 className="courses-page__heading">{checkin?.title ?? t('detail.titleFallback')}</h1>
         <p className="courses-page__subtitle">
           {checkin && (
             <>
-              签到码 {checkin.code} · {checkin.courseName ? `${checkin.courseName} / ${checkin.teachingClassName}` : '独立签到'}
-              {checkin.sessionText ? ` · ${checkin.sessionText}` : ''} · 开始于 {formatDateTime(checkin.startsAt)}
+              {t('detail.codePrefix')} {checkin.code} ·{' '}
+              {checkin.courseName
+                ? t('detail.courseAndClass', { course: checkin.courseName, teachingClass: checkin.teachingClassName })
+                : t('detail.standalone')}
+              {checkin.sessionText ? ` · ${checkin.sessionText}` : ''} ·{' '}
+              {t('detail.startedAt', { time: formatDateTime(checkin.startsAt) })}
             </>
           )}
         </p>
@@ -178,7 +189,7 @@ export default function AttendanceDetailPage() {
         {detailError && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('detail.error.load')}
             subtitle={detailError}
             lowContrast
             hideCloseButton
@@ -188,7 +199,7 @@ export default function AttendanceDetailPage() {
         {actionError && (
           <InlineNotification
             kind="error"
-            title="操作失败"
+            title={t('detail.error.action')}
             subtitle={actionError}
             lowContrast
             hideCloseButton
@@ -209,21 +220,19 @@ export default function AttendanceDetailPage() {
                 {checkin.status === 'active' && (
                   <p className="attendance-detail__countdown">
                     {expired
-                      ? '已过签到时长，扫码将被拒绝'
+                      ? t('detail.elapsed')
                       : checkin.expiresAt
-                        ? `剩余 ${String(Math.floor(remainingSeconds() / 60)).padStart(2, '0')}:${String(remainingSeconds() % 60).padStart(2, '0')}`
-                        : '手动结束模式'}
+                        ? t('detail.remaining', { time: remainingText() })
+                        : t('detail.manualMode')}
                   </p>
                 )}
-                {checkin.lateMinutes > 0 && <p>迟到阈值：{checkin.lateMinutes} 分钟</p>}
+                {checkin.lateMinutes > 0 && <p>{t('detail.lateThreshold', { minutes: checkin.lateMinutes })}</p>}
                 {canManage && checkin.status === 'active' && (
                   <Button kind="danger--ghost" size="sm" onClick={handleClose}>
-                    结束签到
+                    {t('detail.closeBtn')}
                   </Button>
                 )}
-                <p className="attendance-detail__hint">
-                  学生打开小程序「签到中心」扫码，或输入上方 6 位签到码。
-                </p>
+                <p className="attendance-detail__hint">{t('detail.hint')}</p>
               </div>
             </div>
 
@@ -239,8 +248,8 @@ export default function AttendanceDetailPage() {
             {checkin.counts.expected === 0 && checkin.offeringId > 0 && (
               <InlineNotification
                 kind="warning"
-                title="应到人数为 0"
-                subtitle="该开课的教学班尚未配置学生档案（行政班成员），无法统计缺勤。"
+                title={t('detail.warning.zeroExpectedTitle')}
+                subtitle={t('detail.warning.noRosterSubtitle')}
                 lowContrast
                 hideCloseButton
                 className="courses-page__notice"
@@ -252,7 +261,7 @@ export default function AttendanceDetailPage() {
         {list.error && (
           <InlineNotification
             kind="error"
-            title="记录加载失败"
+            title={t('detail.error.recordLoad')}
             subtitle={list.error}
             lowContrast
             hideCloseButton
@@ -262,22 +271,22 @@ export default function AttendanceDetailPage() {
 
         <DataTable rows={list.items} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="签到记录" description={`共 ${list.total} 人`}>
+            <TableContainer title={t('detail.table.title')} description={t('detail.table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索姓名/学号" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('detail.searchPlaceholder')} />
                   <Select
                     id="rec-status"
-                    labelText="状态"
+                    labelText={t('detail.field.status')}
                     hideLabel
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
-                    <SelectItem value="" text="全部状态" />
-                    <SelectItem value="present" text="出勤" />
-                    <SelectItem value="late" text="迟到" />
-                    <SelectItem value="absent" text="缺勤" />
-                    <SelectItem value="leave" text="请假" />
+                    <SelectItem value="" text={t('list.filter.allStatuses')} />
+                    <SelectItem value="present" text={t('status.present', { ns: 'common' })} />
+                    <SelectItem value="late" text={t('status.late', { ns: 'common' })} />
+                    <SelectItem value="absent" text={t('status.absent', { ns: 'common' })} />
+                    <SelectItem value="leave" text={t('status.leave', { ns: 'common' })} />
                   </Select>
                   <ExportButton path={`/api/checkins/${id}/export`} fallbackName={`checkin-${id}.xlsx`} onError={setActionError} />
                 </TableToolbarContent>
@@ -290,18 +299,18 @@ export default function AttendanceDetailPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    {canManage && <TableHeader>操作</TableHeader>}
+                    {canManage && <TableHeader>{t('detail.field.actions')}</TableHeader>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>加载中…</TableCell>
+                      <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>{t('detail.empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>
-                        {statusFilter ? '该状态下暂无记录' : '暂无记录'}
+                        {statusFilter ? t('detail.empty.filtered') : t('detail.empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -316,11 +325,11 @@ export default function AttendanceDetailPage() {
                             <StatusTag status={r.status} />
                           </TableCell>
                           <TableCell>{r.checkedAt ? formatDateTime(r.checkedAt) : '-'}</TableCell>
-                          <TableCell>{r.inRoster ? '名单内' : '名单外'}</TableCell>
+                          <TableCell>{r.inRoster ? t('detail.inRosterYes') : t('detail.inRosterNo')}</TableCell>
                           {canManage && (
                             <TableCell>
                               <Button kind="ghost" size="sm" onClick={() => openEdit(r)}>
-                                修改
+                                {t('detail.action.modify')}
                               </Button>
                             </TableCell>
                           )}
@@ -345,9 +354,9 @@ export default function AttendanceDetailPage() {
       {/* Modify record */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`修改签到：${editTarget?.displayName ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('detail.modal.edit', { name: editTarget?.displayName ?? '' })}
+        primaryButtonText={t('detail.modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleSave}
         primaryButtonDisabled={saving}
@@ -355,19 +364,17 @@ export default function AttendanceDetailPage() {
         <div className="courses-page__form">
           <Select
             id="edit-status"
-            labelText="签到状态"
+            labelText={t('detail.modal.statusLabel')}
             value={editStatus}
             onChange={(e) => setEditStatus(e.target.value)}
           >
-            {Object.entries(STATUS_LABEL).map(([value, label]) => (
-              <SelectItem key={value} value={value} text={label} />
+            {STATUS_KEYS.map((value) => (
+              <SelectItem key={value} value={value} text={t('status.' + value, { ns: 'common' })} />
             ))}
           </Select>
-          <p className="courses-page__subtitle">
-            学生之后重复扫码不会覆盖本次修正（扫码只对首次生效）。
-          </p>
+          <p className="courses-page__subtitle">{t('detail.modal.hint')}</p>
           {editError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={editError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('detail.error.save')} subtitle={editError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>

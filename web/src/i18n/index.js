@@ -28,8 +28,10 @@ import scheduleConfigZh from './locales/zh-CN/scheduleConfig.json'
 import scheduleConfigEn from './locales/en/scheduleConfig.json'
 import timetableZh from './locales/zh-CN/timetable.json'
 import timetableEn from './locales/en/timetable.json'
+import attendanceZh from './locales/zh-CN/attendance.json'
+import attendanceEn from './locales/en/attendance.json'
 
-// Static namespaces. More page-level namespaces (attendance, repairs, ...)
+// Static namespaces. More page-level namespaces (imports, repairs, ...)
 // are added here as they are extracted.
 const resources = {
   'zh-CN': {
@@ -46,6 +48,7 @@ const resources = {
     courses: coursesZh,
     scheduleConfig: scheduleConfigZh,
     timetable: timetableZh,
+    attendance: attendanceZh,
   },
   en: {
     common: commonEn,
@@ -61,6 +64,7 @@ const resources = {
     courses: coursesEn,
     scheduleConfig: scheduleConfigEn,
     timetable: timetableEn,
+    attendance: attendanceEn,
   },
 }
 
@@ -75,7 +79,7 @@ i18n
     fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: SUPPORTED_LANGUAGES,
     lng: localStorage.getItem('ocm.lang') || undefined,
-    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable'],
+    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable', 'attendance'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes

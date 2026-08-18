@@ -1,0 +1,120 @@
+{
+  "breadcrumb": { "home": "首页", "attendance": "课堂签到", "detail": "签到详情", "report": "考勤报表" },
+  "stat": { "expected": "应到" },
+  "checkinStatus": { "active": "进行中", "closed": "已结束" },
+  "list": {
+    "title": "课堂签到",
+    "subtitle": "发起签到后在大屏展示二维码，学生用小程序扫码或输入 6 位签到码完成签到。",
+    "table": { "title": "签到列表", "description": "共 {{count}} 次签到" },
+    "searchPlaceholder": "搜索标题/课程",
+    "addButton": "发起签到",
+    "noOffering": "未关联开课",
+    "field": {
+      "title": "标题",
+      "offering": "课程 / 教学班",
+      "sessionText": "课次",
+      "status": "状态",
+      "counts": "应到 / 出勤 / 迟到 / 缺勤 / 请假",
+      "startsAt": "开始时间",
+      "actions": "操作"
+    },
+    "filter": {
+      "status": "状态",
+      "allStatuses": "全部状态",
+      "active": "进行中",
+      "closed": "已结束",
+      "from": "开始日期起",
+      "to": "开始日期止"
+    },
+    "action": { "detail": "详情", "close": "结束" },
+    "empty": { "loading": "加载中…", "search": "未找到匹配的签到", "none": "暂无签到，点击右上角发起" },
+    "error": { "load": "加载失败", "close": "结束签到失败", "create": "发起失败" },
+    "modal": { "create": "发起签到", "createSubmit": "发起并展示二维码" },
+    "form": {
+      "offering": "开课（可选）",
+      "offeringPlaceholder": "选择开课后可联动课次与整学期报表",
+      "offeringHelper": "不选择开课则为独立签到（如班会），仅统计扫码实到",
+      "session": "上课实例（可选）",
+      "sessionPlaceholder": "选择本次上课的课次",
+      "sessionHelper": "选择课次后，本次签到计入该开课的整学期考勤",
+      "title": "标题",
+      "titlePlaceholder": "未选择开课时必填；选择开课/课次可留空自动生成",
+      "lateMinutes": "迟到阈值（分钟，0 表示不判迟到）",
+      "duration": "签到时长（分钟，留空则直到手动结束）",
+      "durationPlaceholder": "如 15"
+    },
+    "offeringOption": "{{catalogName}} · {{teachingClassName}} · {{semester}}",
+    "sessionOption": "{{date}} 第{{start}}-{{end}}节 · {{classroom}}",
+    "validation": {
+      "lateNonNeg": "迟到阈值为非负整数（分钟）",
+      "durationNonNeg": "签到时长为非负整数（分钟），0 表示手动结束",
+      "titleRequired": "未选择开课时需填写签到标题"
+    }
+  },
+  "detail": {
+    "titleFallback": "签到详情",
+    "codePrefix": "签到码",
+    "standalone": "独立签到",
+    "courseAndClass": "{{course}} / {{teachingClass}}",
+    "startedAt": "开始于 {{time}}",
+    "remaining": "剩余 {{time}}",
+    "manualMode": "手动结束模式",
+    "elapsed": "已过签到时长，扫码将被拒绝",
+    "lateThreshold": "迟到阈值：{{minutes}} 分钟",
+    "closeBtn": "结束签到",
+    "hint": "学生打开小程序「签到中心」扫码，或输入上方 6 位签到码。",
+    "table": { "title": "签到记录", "description": "共 {{count}} 人" },
+    "searchPlaceholder": "搜索姓名/学号",
+    "field": {
+      "name": "姓名",
+      "studentNo": "学号",
+      "adminClass": "行政班",
+      "status": "状态",
+      "checkedAt": "签到时间",
+      "inRoster": "名单",
+      "actions": "操作"
+    },
+    "inRosterYes": "名单内",
+    "inRosterNo": "名单外",
+    "action": { "modify": "修改" },
+    "empty": { "loading": "加载中…", "filtered": "该状态下暂无记录", "none": "暂无记录" },
+    "error": { "load": "加载失败", "action": "操作失败", "recordLoad": "记录加载失败", "save": "保存失败" },
+    "modal": {
+      "edit": "修改签到：{{name}}",
+      "editSubmit": "保存",
+      "statusLabel": "签到状态",
+      "hint": "学生之后重复扫码不会覆盖本次修正（扫码只对首次生效）。"
+    },
+    "warning": {
+      "zeroExpectedTitle": "应到人数为 0",
+      "noRosterSubtitle": "该开课的教学班尚未配置学生档案（行政班成员），无法统计缺勤。"
+    }
+  },
+  "report": {
+    "title": "考勤报表",
+    "subtitle": "选择一门开课，一次性查看整学期所有签到情况（仅统计关联了该开课/课次的签到）。",
+    "offering": "开课",
+    "offeringPlaceholder": "搜索并选择开课",
+    "noSelection": "请选择开课查看整学期考勤。",
+    "summaryTeacher": "教师 {{teacher}}",
+    "summaryCheckins": "共 {{count}} 次签到",
+    "summaryStudents": "{{count}} 名学生",
+    "table": { "title": "整学期签到明细", "description": "行为学生、列为签到，末列为四态小计" },
+    "field": {
+      "name": "姓名",
+      "studentNo": "学号",
+      "adminClass": "行政班",
+      "totals": "出勤 / 迟到 / 缺勤 / 请假"
+    },
+    "empty": { "loading": "加载中…", "none": "暂无学生数据" },
+    "error": { "load": "加载失败" },
+    "warning": {
+      "noCheckinsTitle": "该开课暂无签到",
+      "noCheckinsSubtitle": "发起签到时选择本开课（或其课次）后才会出现在报表中。",
+      "emptyRosterTitle": "应到名单为空",
+      "emptyRosterSubtitle": "该开课的教学班尚未配置学生档案（行政班成员），无法统计缺勤。"
+    },
+    "legend": "图例：",
+    "lastStarted": "· 最近一次签到开始于 {{time}}"
+  }
+}

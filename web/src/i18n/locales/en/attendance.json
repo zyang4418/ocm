@@ -1,0 +1,120 @@
+{
+  "breadcrumb": { "home": "Home", "attendance": "Attendance", "detail": "Check-in detail", "report": "Attendance report" },
+  "stat": { "expected": "Expected" },
+  "checkinStatus": { "active": "Active", "closed": "Closed" },
+  "list": {
+    "title": "Attendance",
+    "subtitle": "Start a check-in and project a QR code on the big screen; students scan it in the mini-program or enter the 6-digit code to check in.",
+    "table": { "title": "Check-in list", "description": "{{count}} check-ins" },
+    "searchPlaceholder": "Search title / course",
+    "addButton": "Start check-in",
+    "noOffering": "No linked offering",
+    "field": {
+      "title": "Title",
+      "offering": "Course / class",
+      "sessionText": "Session",
+      "status": "Status",
+      "counts": "Expected / Present / Late / Absent / Leave",
+      "startsAt": "Started at",
+      "actions": "Actions"
+    },
+    "filter": {
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "active": "Active",
+      "closed": "Closed",
+      "from": "From",
+      "to": "To"
+    },
+    "action": { "detail": "Detail", "close": "Close" },
+    "empty": { "loading": "Loading…", "search": "No matching check-ins", "none": "No check-ins yet — start one top-right" },
+    "error": { "load": "Failed to load", "close": "Failed to close check-in", "create": "Failed to start" },
+    "modal": { "create": "Start check-in", "createSubmit": "Start & show QR code" },
+    "form": {
+      "offering": "Offering (optional)",
+      "offeringPlaceholder": "Pick an offering to load sessions and the term report",
+      "offeringHelper": "Leave unset for a standalone check-in (e.g. class meeting) — only scans are counted.",
+      "session": "Session (optional)",
+      "sessionPlaceholder": "Pick the session for this class",
+      "sessionHelper": "With a session selected, this check-in counts toward the offering's term attendance.",
+      "title": "Title",
+      "titlePlaceholder": "Required when no offering is set; auto-generated otherwise",
+      "lateMinutes": "Late threshold (minutes; 0 = no late marking)",
+      "duration": "Duration (minutes; blank = until manual close)",
+      "durationPlaceholder": "e.g. 15"
+    },
+    "offeringOption": "{{catalogName}} · {{teachingClassName}} · {{semester}}",
+    "sessionOption": "{{date}} Period {{start}}-{{end}} · {{classroom}}",
+    "validation": {
+      "lateNonNeg": "Late threshold must be a non-negative integer (minutes)",
+      "durationNonNeg": "Duration must be a non-negative integer (minutes); 0 means manual close",
+      "titleRequired": "A title is required when no offering is selected"
+    }
+  },
+  "detail": {
+    "titleFallback": "Check-in detail",
+    "codePrefix": "Code",
+    "standalone": "Standalone check-in",
+    "courseAndClass": "{{course}} / {{teachingClass}}",
+    "startedAt": "Started {{time}}",
+    "remaining": "Remaining {{time}}",
+    "manualMode": "Manual close mode",
+    "elapsed": "Check-in time elapsed; scans will be rejected",
+    "lateThreshold": "Late threshold: {{minutes}} min",
+    "closeBtn": "Close check-in",
+    "hint": "Students open the mini-program Check-in Center to scan, or enter the 6-digit code above.",
+    "table": { "title": "Check-in records", "description": "{{count}} people" },
+    "searchPlaceholder": "Search name / student no.",
+    "field": {
+      "name": "Name",
+      "studentNo": "Student no.",
+      "adminClass": "Admin class",
+      "status": "Status",
+      "checkedAt": "Checked at",
+      "inRoster": "Roster",
+      "actions": "Actions"
+    },
+    "inRosterYes": "In roster",
+    "inRosterNo": "Off roster",
+    "action": { "modify": "Modify" },
+    "empty": { "loading": "Loading…", "filtered": "No records for this status", "none": "No records" },
+    "error": { "load": "Failed to load", "action": "Action failed", "recordLoad": "Failed to load records", "save": "Failed to save" },
+    "modal": {
+      "edit": "Modify check-in: {{name}}",
+      "editSubmit": "Save",
+      "statusLabel": "Attendance status",
+      "hint": "Later scans by this student won't override this correction (scans only apply on first check-in)."
+    },
+    "warning": {
+      "zeroExpectedTitle": "Expected count is 0",
+      "noRosterSubtitle": "The offering's teaching class has no student records (admin-class members) configured, so absences can't be counted."
+    }
+  },
+  "report": {
+    "title": "Attendance report",
+    "subtitle": "Pick an offering to view the whole term's check-ins at once (only check-ins linked to that offering/session are counted).",
+    "offering": "Offering",
+    "offeringPlaceholder": "Search and pick an offering",
+    "noSelection": "Pick an offering to view the term's attendance.",
+    "summaryTeacher": "Teacher {{teacher}}",
+    "summaryCheckins": "{{count}} check-ins",
+    "summaryStudents": "{{count}} students",
+    "table": { "title": "Term check-in matrix", "description": "Rows = students, columns = check-ins, last column = four-status subtotals" },
+    "field": {
+      "name": "Name",
+      "studentNo": "Student no.",
+      "adminClass": "Admin class",
+      "totals": "Present / Late / Absent / Leave"
+    },
+    "empty": { "loading": "Loading…", "none": "No student data" },
+    "error": { "load": "Failed to load" },
+    "warning": {
+      "noCheckinsTitle": "No check-ins for this offering",
+      "noCheckinsSubtitle": "Check-ins appear here once started with this offering (or its session) selected.",
+      "emptyRosterTitle": "Expected roster is empty",
+      "emptyRosterSubtitle": "The offering's teaching class has no student records (admin-class members) configured, so absences can't be counted."
+    },
+    "legend": "Legend: ",
+    "lastStarted": "· Last check-in started {{time}}"
+  }
+}
