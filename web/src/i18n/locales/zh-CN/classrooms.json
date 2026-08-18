@@ -1,0 +1,70 @@
+{
+  "breadcrumb": {
+    "home": "首页",
+    "current": "教室管理"
+  },
+  "title": "教室管理",
+  "subtitle": "维护教室基础信息，为后续预约与报修提供数据基础。",
+  "table": {
+    "title": "教室列表",
+    "description": "共 {{count}} 间教室",
+    "actionsHeader": "操作"
+  },
+  "searchPlaceholder": "搜索教室",
+  "addButton": "添加教室",
+  "field": {
+    "id": "ID",
+    "name": "教室编号",
+    "building": "楼栋",
+    "capacity": "座位数",
+    "type": "类型",
+    "floor": "楼层",
+    "campus": "校区",
+    "status": "状态",
+    "createdAt": "创建时间",
+    "description": "备注",
+    "actions": "操作"
+  },
+  "type": {
+    "standard": "普通教室",
+    "multimedia": "多媒体教室",
+    "computer": "机房",
+    "lab": "实验室",
+    "lecture_hall": "报告厅",
+    "stadium": "体育场",
+    "drawing": "制图教室",
+    "language": "听力教室",
+    "studio": "画室",
+    "special": "专用教室"
+  },
+  "placeholder": {
+    "name": "如 A301",
+    "building": "如 第一教学楼",
+    "floor": "如 3",
+    "campus": "如 校本部"
+  },
+  "modal": {
+    "create": "添加教室",
+    "createSubmit": "创建",
+    "edit": "编辑教室：{{name}}",
+    "editSubmit": "保存",
+    "delete": "删除教室",
+    "deleteSubmit": "删除"
+  },
+  "deleteConfirm": "确定要删除教室「{{name}}」吗？此操作不可撤销。",
+  "empty": {
+    "loading": "加载中…",
+    "search": "未找到匹配的教室",
+    "none": "暂无教室"
+  },
+  "error": {
+    "load": "加载失败",
+    "create": "创建失败",
+    "save": "保存失败",
+    "delete": "删除失败"
+  },
+  "validation": {
+    "nameRequired": "教室编号为必填项",
+    "capacityPositive": "座位数必须大于 0"
+  }
+}

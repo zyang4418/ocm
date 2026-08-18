@@ -1,0 +1,79 @@
+{
+  "breadcrumb": {
+    "home": "首页",
+    "current": "教室预约"
+  },
+  "title": "教室预约",
+  "subtitle": "按节次预约教室，提交后由管理员审批；与课表共享冲突检测，避免重复占用。",
+  "table": {
+    "title": "预约列表",
+    "description": "共 {{count}} 条预约",
+    "actionsHeader": "操作"
+  },
+  "searchPlaceholder": "搜索预约",
+  "addButton": "新建预约",
+  "field": {
+    "classroom": "教室",
+    "date": "日期",
+    "period": "节次",
+    "purpose": "用途",
+    "status": "状态",
+    "bookedBy": "预约人",
+    "createdAt": "创建时间",
+    "actions": "操作"
+  },
+  "filter": {
+    "classroom": "教室",
+    "status": "状态",
+    "from": "开始日期",
+    "to": "结束日期",
+    "allClassrooms": "全部教室",
+    "allStatuses": "全部状态"
+  },
+  "action": {
+    "cancel": "取消",
+    "approve": "通过",
+    "reject": "拒绝"
+  },
+  "periodLabel": {
+    "single": "第 {{period}} 节",
+    "range": "第 {{start}}–{{end}} 节"
+  },
+  "periodOption": "第 {{period}} 节（{{start}}-{{end}}）",
+  "form": {
+    "create": "新建预约",
+    "createSubmit": "提交",
+    "classroom": "教室",
+    "date": "日期",
+    "periodStart": "起始节次",
+    "periodEnd": "结束节次",
+    "purpose": "用途",
+    "purposePlaceholder": "如 社团活动、会议",
+    "selectClassroom": "请选择教室",
+    "busyPrefix": "当日已占用节次：",
+    "busyNone": "当日暂无占用节次"
+  },
+  "cancelModal": {
+    "title": "取消预约",
+    "submit": "确认取消",
+    "secondary": "返回",
+    "confirm": "确定要取消「{{classroom}} · {{date}} · {{period}}」的预约吗？"
+  },
+  "empty": {
+    "loading": "加载中…",
+    "search": "未找到匹配的预约",
+    "none": "暂无预约"
+  },
+  "error": {
+    "action": "操作失败",
+    "submit": "提交失败"
+  },
+  "validation": {
+    "selectClassroom": "请选择教室",
+    "selectDate": "请选择日期",
+    "selectPeriod": "请选择节次",
+    "periodOrder": "起始节次不能大于结束节次",
+    "purposeRequired": "用途为必填项",
+    "noSchedule": "该日期未配置作息制度，无法预约"
+  }
+}
