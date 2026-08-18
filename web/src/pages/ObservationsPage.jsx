@@ -41,10 +41,12 @@ const statusKind = { draft: 'gray', submitted: 'green' }
 // indicatorScoreGroups mirrors the backend: an explicit score_groups list wins,
 // otherwise a single group keyed by the indicator key.
 function indicatorScoreGroups(ind) {
-  if (ind.scoreGroups && ind.scoreGroups.length) {
-    return ind.scoreGroups.map((g) => ({
+  // NOTE: backend schema uses snake_case keys (score_groups / line_indexes),
+  // matching the Python-derived schema.json — NOT camelCase.
+  if (ind.score_groups && ind.score_groups.length) {
+    return ind.score_groups.map((g) => ({
       key: g.key,
-      lines: (g.lineIndexes || []).map((i) => ind.lines?.[i]).filter(Boolean),
+      lines: (g.line_indexes || []).map((i) => ind.lines?.[i]).filter(Boolean),
     }))
   }
   return [{ key: ind.key, lines: ind.lines || [] }]
@@ -60,7 +62,7 @@ function fmtScore(v) {
   return String(v)
 }
 
-const emptyMeta = { templateType: '', courseId: '', observeDate: '', sections: [], isAnonymous: false }
+const emptyMeta = { templateType: '', courseId: '', classroomId: '', observeDate: '', sections: [], isAnonymous: false }
 const emptyFormData = {
   indicatorScores: {},
   totalScore: '',
@@ -88,9 +90,10 @@ export default function ObservationsPage() {
   const canWrite = can('observation:write')
   const canManage = can('observation:manage')
 
-  // Static reference data: form schema, course offerings, active regime periods.
+  // Static reference data: form schema, course offerings, classrooms, periods.
   const [schema, setSchema] = useState(null)
   const [offerings, setOfferings] = useState([])
+  const [classrooms, setClassrooms] = useState([])
   const [periods, setPeriods] = useState([])
   const [schemaError, setSchemaError] = useState('')
 
@@ -120,10 +123,12 @@ export default function ObservationsPage() {
     Promise.all([
       apiFetch('/api/observations/templates', { token }),
       apiFetch('/api/offerings?page_size=500', { token }),
+      apiFetch('/api/classrooms?page_size=500', { token }),
     ])
-      .then(([sch, off]) => {
+      .then(([sch, off, clr]) => {
         setSchema(sch)
         setOfferings(Array.isArray(off?.items) ? off.items : [])
+        setClassrooms(Array.isArray(clr?.items) ? clr.items : [])
       })
       .catch((err) => setSchemaError(err.message))
   }, [token])
@@ -170,6 +175,7 @@ export default function ObservationsPage() {
       setMeta({
         templateType: v.templateType || '',
         courseId: v.courseId ? String(v.courseId) : '',
+        classroomId: v.classroomId ? String(v.classroomId) : '',
         observeDate: v.observeDate || '',
         sections: Array.isArray(v.sections) ? v.sections : [],
         isAnonymous: Boolean(v.isAnonymous),
@@ -192,6 +198,7 @@ export default function ObservationsPage() {
   const buildPayload = () => ({
     templateType: meta.templateType,
     courseId: Number(meta.courseId),
+    classroomId: meta.classroomId ? Number(meta.classroomId) : null,
     observeDate: meta.observeDate,
     sections: meta.sections.map(Number).sort((a, b) => a - b),
     isAnonymous: meta.isAnonymous,
@@ -209,6 +216,7 @@ export default function ObservationsPage() {
   const handleSave = async () => {
     if (!meta.templateType) return setFormError('请选择模板类型')
     if (!meta.courseId) return setFormError('请选择课程')
+    if (!meta.classroomId) return setFormError('请选择听课地点')
     if (!meta.observeDate) return setFormError('请选择听课日期')
     try {
       setSaving(true)
@@ -510,6 +518,21 @@ export default function ObservationsPage() {
                   key={o.id}
                   value={String(o.id)}
                   text={`${o.catalogName}（${o.teachingClassName} · ${o.teacher}）`}
+                />
+              ))}
+            </Select>
+            <Select
+              id="o-classroom"
+              labelText="听课地点"
+              value={meta.classroomId}
+              onChange={(e) => setMeta({ ...meta, classroomId: e.target.value })}
+            >
+              <SelectItem value="" text="请选择听课地点" />
+              {classrooms.map((c) => (
+                <SelectItem
+                  key={c.id}
+                  value={String(c.id)}
+                  text={c.building ? `${c.building} ${c.name}` : c.name}
                 />
               ))}
             </Select>
