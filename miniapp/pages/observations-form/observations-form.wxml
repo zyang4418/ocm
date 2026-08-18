@@ -26,6 +26,12 @@
           </picker>
         </view>
         <view class="field">
+          <text class="field-label">听课地点</text>
+          <picker mode="selector" range="{{classroomOptions}}" value="{{classroomIndex}}" bindchange="onClassroomChange">
+            <view class="field-value {{!classroomValues[classroomIndex] ? 'field-placeholder' : ''}}">{{classroomOptions[classroomIndex] || '请选择听课地点'}}</view>
+          </picker>
+        </view>
+        <view class="field">
           <text class="field-label">听课日期</text>
           <picker mode="date" value="{{observeDate}}" bindchange="onDateChange">
             <view class="field-value {{observeDate ? '' : 'field-placeholder'}}">{{observeDate || '请选择日期'}}</view>

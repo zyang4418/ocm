@@ -8,10 +8,12 @@ interface Extra { key: string; label: string; options: string[]; value: string; 
 interface StudentQuestion { key: string; title: string; optionValues: string[]; optionLabels: string[]; answers: string[] }
 
 function indicatorScoreGroups(ind: any): { key: string; lines: string[] }[] {
-  if (ind.scoreGroups && ind.scoreGroups.length) {
-    return ind.scoreGroups.map((g: any) => ({
+  // NOTE: backend schema uses snake_case keys (score_groups / line_indexes),
+  // matching the Python-derived schema.json — NOT camelCase.
+  if (ind.score_groups && ind.score_groups.length) {
+    return ind.score_groups.map((g: any) => ({
       key: g.key,
-      lines: (g.lineIndexes || []).map((i: number) => ind.lines?.[i]).filter(Boolean)
+      lines: (g.line_indexes || []).map((i: number) => ind.lines?.[i]).filter(Boolean)
     }))
   }
   return [{ key: ind.key, lines: ind.lines || [] }]
@@ -31,6 +33,9 @@ Page({
     offeringOptions: [] as string[],
     offeringValues: [] as string[],
     offeringIndex: 0,
+    classroomOptions: [] as string[],
+    classroomValues: [] as string[],
+    classroomIndex: 0,
     observeDate: '',
     periodLabels: [] as string[],
     periodValues: [] as number[],
@@ -55,6 +60,7 @@ Page({
 
   _templates: [] as any[],
   _offerings: [] as any[],
+  _classrooms: [] as any[],
   _periods: [] as any[],
   _raw: null as any,
 
@@ -65,18 +71,22 @@ Page({
     const mode: 'create' | 'edit' = id ? 'edit' : 'create'
     this.setData({ mode, id })
     try {
-      const [sch, off] = await Promise.all([
+      const [sch, off, clr] = await Promise.all([
         request<{ rating_options: RatingOption[]; templates: any[] }>({ path: '/api/observations/templates' }),
-        request<{ items: any[] }>({ path: '/api/offerings', params: { page_size: 500 } })
+        request<{ items: any[] }>({ path: '/api/offerings', params: { page_size: 500 } }),
+        request<{ items: any[] }>({ path: '/api/classrooms', params: { page_size: 500 } })
       ])
       this._templates = (sch && sch.templates) || []
       this._offerings = (off && off.items) || []
+      this._classrooms = (clr && clr.items) || []
       this.setData({
         ratingOptions: (sch && sch.rating_options) || [],
         templateOptions: ['请选择模板'].concat(this._templates.map((t) => t.label)),
         templateValues: [''].concat(this._templates.map((t) => t.value)),
         offeringOptions: ['请选择课程'].concat(this._offerings.map((o) => `${o.catalogName}（${o.teachingClassName} · ${o.teacher}）`)),
-        offeringValues: [''].concat(this._offerings.map((o: any) => String(o.id)))
+        offeringValues: [''].concat(this._offerings.map((o: any) => String(o.id))),
+        classroomOptions: ['请选择听课地点'].concat(this._classrooms.map((c) => (c.building ? `${c.building} ${c.name}` : c.name))),
+        classroomValues: [''].concat(this._classrooms.map((c: any) => String(c.id)))
       })
       if (mode === 'edit') {
         await this.loadDetail(id)
@@ -93,9 +103,11 @@ Page({
     const fd = v.formData && typeof v.formData === 'object' ? v.formData : {}
     const tIdx = this._templates.findIndex((t) => t.value === v.templateType)
     const oIdx = this._offerings.findIndex((o: any) => o.id === v.courseId)
+    const cIdx = this._classrooms.findIndex((c: any) => c.id === v.classroomId)
     this.setData({
       templateIndex: tIdx >= 0 ? tIdx + 1 : 0,
       offeringIndex: oIdx >= 0 ? oIdx + 1 : 0,
+      classroomIndex: cIdx >= 0 ? cIdx + 1 : 0,
       observeDate: v.observeDate || '',
       sections: Array.isArray(v.sections) ? v.sections : [],
       isAnonymous: Boolean(v.isAnonymous),
@@ -193,6 +205,10 @@ Page({
     this.setData({ offeringIndex: Number(e.detail.value) })
   },
 
+  onClassroomChange(e: WechatMiniprogram.PickerChange) {
+    this.setData({ classroomIndex: Number(e.detail.value) })
+  },
+
   async onDateChange(e: WechatMiniprogram.PickerChange) {
     const d = String(e.detail.value)
     this.setData({ observeDate: d })
@@ -277,6 +293,7 @@ Page({
     const d = this.data
     if (!d.templateValues[d.templateIndex]) return this.toast('请选择模板类型')
     if (!d.offeringValues[d.offeringIndex]) return this.toast('请选择课程')
+    if (!d.classroomValues[d.classroomIndex]) return this.toast('请选择听课地点')
     if (!d.observeDate) return this.toast('请选择听课日期')
 
     const indicatorScores: Record<string, string> = {}
@@ -304,6 +321,7 @@ Page({
     const payload = {
       templateType: d.templateValues[d.templateIndex],
       courseId: Number(d.offeringValues[d.offeringIndex]),
+      classroomId: d.classroomValues[d.classroomIndex] ? Number(d.classroomValues[d.classroomIndex]) : null,
       observeDate: d.observeDate,
       sections: d.sections.slice().sort((a, b) => a - b),
       isAnonymous: d.isAnonymous,
