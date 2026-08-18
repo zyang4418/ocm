@@ -23,33 +23,25 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
-
-const headers = [
-  { key: 'id', header: 'ID' },
-  { key: 'name', header: '组名' },
-  { key: 'description', header: '描述' },
-  { key: 'memberCount', header: '成员数' },
-  { key: 'createdAt', header: '创建时间' },
-]
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDate } from '../i18n/formatters.js'
 
 const emptyForm = { name: '', description: '', members: [], roles: [] }
 
 export default function GroupsPage() {
+  const { t } = useTranslation('groups')
   const { token } = useAuth()
   const navigate = useNavigate()
+
+  const headers = [
+    { key: 'id', header: t('field.id') },
+    { key: 'name', header: t('field.name') },
+    { key: 'description', header: t('field.description') },
+    { key: 'memberCount', header: t('field.memberCount') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
 
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -99,13 +91,13 @@ export default function GroupsPage() {
     setUserOptions(
       usersPage.items.map((u) => ({
         id: String(u.id),
-        text: `${u.displayName}（@${u.username}）`,
+        text: t('picker.userOption', { name: u.displayName, username: u.username }),
       })),
     )
     setRoleOptions(
       roles.map((r) => ({
         id: String(r.id),
-        text: `${r.name}（${r.code}）`,
+        text: t('picker.roleOption', { name: r.name, code: r.code }),
       })),
     )
   }
@@ -123,7 +115,7 @@ export default function GroupsPage() {
 
   const handleCreate = async () => {
     if (!createForm.name.trim()) {
-      setCreateError('组名为必填项')
+      setCreateError(t('validation.nameRequired'))
       return
     }
     try {
@@ -169,7 +161,7 @@ export default function GroupsPage() {
 
   const handleEdit = async () => {
     if (!editForm.name.trim()) {
-      setEditError('组名为必填项')
+      setEditError(t('validation.nameRequired'))
       return
     }
     try {
@@ -211,7 +203,7 @@ export default function GroupsPage() {
   return (
     <Grid fullWidth className="groups-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -219,21 +211,19 @@ export default function GroupsPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>用户组管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="groups-page__heading">用户组管理</h1>
-        <p className="groups-page__subtitle">
-          将用户组织成组并整体授予角色，成员权限 = 个人授权 ∪ 所在组授权。
-        </p>
+        <h1 className="groups-page__heading">{t('title')}</h1>
+        <p className="groups-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {loadError && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={loadError}
             lowContrast
             hideCloseButton
@@ -243,11 +233,11 @@ export default function GroupsPage() {
 
         <DataTable rows={groups} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
-            <TableContainer title="用户组列表" description={`共 ${groups.length} 个用户组`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: groups.length })}>
               <TableToolbar>
                 <TableToolbarContent>
                   <Button renderIcon={Add} size="sm" onClick={openCreate}>
-                    新建用户组
+                    {t('addButton')}
                   </Button>
                 </TableToolbarContent>
               </TableToolbar>
@@ -259,17 +249,17 @@ export default function GroupsPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + 1}>加载中…</TableCell>
+                      <TableCell colSpan={headers.length + 1}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + 1}>暂无用户组</TableCell>
+                      <TableCell colSpan={headers.length + 1}>{t('empty.none')}</TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
@@ -289,7 +279,7 @@ export default function GroupsPage() {
                                 size="sm"
                                 hasIconOnly
                                 renderIcon={Edit}
-                                iconDescription="编辑"
+                                iconDescription={t('action.edit', { ns: 'common' })}
                                 onClick={() => openEdit(group)}
                               />
                               <Button
@@ -297,7 +287,7 @@ export default function GroupsPage() {
                                 size="sm"
                                 hasIconOnly
                                 renderIcon={TrashCan}
-                                iconDescription="删除"
+                                iconDescription={t('action.delete', { ns: 'common' })}
                                 onClick={() => {
                                   setDeleteTarget(group)
                                   setDeleteError('')
@@ -319,9 +309,9 @@ export default function GroupsPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="新建用户组"
-        primaryButtonText="创建"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -329,21 +319,21 @@ export default function GroupsPage() {
         <div className="groups-page__form">
           <TextInput
             id="create-group-name"
-            labelText="组名"
-            placeholder="如 办公室助理组"
+            labelText={t('form.name')}
+            placeholder={t('placeholder.name')}
             value={createForm.name}
             onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           />
           <TextArea
             id="create-group-description"
-            labelText="描述"
+            labelText={t('form.description')}
             value={createForm.description}
             onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
           />
           <MultiSelect
             id="create-group-members"
-            titleText="成员"
-            label="选择成员…"
+            titleText={t('form.members')}
+            label={t('picker.members')}
             items={userOptions}
             selectedItems={userOptions.filter((o) => createForm.members.includes(o.id))}
             onChange={({ selectedItems }) =>
@@ -352,8 +342,8 @@ export default function GroupsPage() {
           />
           <MultiSelect
             id="create-group-roles"
-            titleText="角色"
-            label="选择角色…"
+            titleText={t('form.roles')}
+            label={t('picker.roles')}
             items={roleOptions}
             selectedItems={roleOptions.filter((o) => createForm.roles.includes(o.id))}
             onChange={({ selectedItems }) =>
@@ -363,7 +353,7 @@ export default function GroupsPage() {
           {createError && (
             <InlineNotification
               kind="error"
-              title="创建失败"
+              title={t('error.create')}
               subtitle={createError}
               lowContrast
               hideCloseButton
@@ -375,9 +365,9 @@ export default function GroupsPage() {
       {/* Edit */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`编辑用户组：${editTarget?.name ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.edit', { name: editTarget?.name ?? '' })}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleEdit}
         primaryButtonDisabled={editing}
@@ -385,20 +375,20 @@ export default function GroupsPage() {
         <div className="groups-page__form">
           <TextInput
             id="edit-group-name"
-            labelText="组名"
+            labelText={t('form.name')}
             value={editForm.name}
             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
           />
           <TextArea
             id="edit-group-description"
-            labelText="描述"
+            labelText={t('form.description')}
             value={editForm.description}
             onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
           />
           <MultiSelect
             id="edit-group-members"
-            titleText="成员"
-            label="选择成员…"
+            titleText={t('form.members')}
+            label={t('picker.members')}
             items={userOptions}
             selectedItems={userOptions.filter((o) => editForm.members.includes(o.id))}
             onChange={({ selectedItems }) =>
@@ -407,8 +397,8 @@ export default function GroupsPage() {
           />
           <MultiSelect
             id="edit-group-roles"
-            titleText="角色"
-            label="选择角色…"
+            titleText={t('form.roles')}
+            label={t('picker.roles')}
             items={roleOptions}
             selectedItems={roleOptions.filter((o) => editForm.roles.includes(o.id))}
             onChange={({ selectedItems }) =>
@@ -418,7 +408,7 @@ export default function GroupsPage() {
           {editError && (
             <InlineNotification
               kind="error"
-              title="保存失败"
+              title={t('error.save')}
               subtitle={editError}
               lowContrast
               hideCloseButton
@@ -431,20 +421,20 @@ export default function GroupsPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除用户组"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="groups-page__confirm-text">
-          确定要删除用户组「{deleteTarget?.name}」吗？组内成员的组级授权将一并撤销。
+          {t('deleteConfirm', { name: deleteTarget?.name })}
         </p>
         {deleteError && (
           <InlineNotification
             kind="error"
-            title="删除失败"
+            title={t('error.delete')}
             subtitle={deleteError}
             lowContrast
             hideCloseButton

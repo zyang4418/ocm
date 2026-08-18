@@ -97,5 +97,9 @@
   "language": {
     "zh-CN": "简体中文",
     "en": "English"
+  },
+  "password": {
+    "show": "Show password",
+    "hide": "Hide password"
   }
 }

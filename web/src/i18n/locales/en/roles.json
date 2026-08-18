@@ -1,0 +1,47 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Roles" },
+  "title": "Roles",
+  "subtitle": "Define roles and their permission sets; grant roles to users or groups.",
+  "table": {
+    "title": "Role list",
+    "description": "{{count}} roles",
+    "actionsHeader": "Actions"
+  },
+  "addButton": "New role",
+  "field": {
+    "id": "ID",
+    "code": "Role code",
+    "name": "Role name",
+    "description": "Description",
+    "permissions": "Permissions",
+    "isSystem": "Type",
+    "actions": "Actions"
+  },
+  "permissions": { "all": "All", "count": "{{count}} items" },
+  "system": { "builtin": "Built-in", "custom": "Custom" },
+  "modal": {
+    "create": "New role",
+    "createSubmit": "Create",
+    "edit": "Edit role: {{name}}",
+    "editSubmit": "Save",
+    "delete": "Delete role",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": "Are you sure you want to delete role \"{{name}}\"? Roles still in use cannot be deleted.",
+  "form": { "code": "Role code", "name": "Role name", "description": "Description" },
+  "codeHelperCreate": "Starts with a lowercase letter; only lowercase letters, digits, and underscores. Cannot be changed after creation.",
+  "codeHelperEdit": "Role code cannot be changed after creation.",
+  "placeholder": { "code": "e.g. office-assistant", "name": "e.g. Office assistant" },
+  "permOption": "{{name}} ({{code}})",
+  "empty": { "loading": "Loading…", "none": "No roles" },
+  "error": {
+    "load": "Failed to load",
+    "create": "Failed to create",
+    "save": "Failed to save",
+    "delete": "Failed to delete"
+  },
+  "validation": {
+    "codeRequired": "Role code is required",
+    "nameRequired": "Role name is required"
+  }
+}

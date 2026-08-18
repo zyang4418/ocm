@@ -1,0 +1,44 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Groups" },
+  "title": "Groups",
+  "subtitle": "Organize users into groups and grant roles to the group; a member's effective permissions = direct grants ∪ group grants.",
+  "table": {
+    "title": "Group list",
+    "description": "{{count}} groups",
+    "actionsHeader": "Actions"
+  },
+  "addButton": "New group",
+  "field": {
+    "id": "ID",
+    "name": "Name",
+    "description": "Description",
+    "memberCount": "Members",
+    "createdAt": "Created at",
+    "actions": "Actions"
+  },
+  "modal": {
+    "create": "New group",
+    "createSubmit": "Create",
+    "edit": "Edit group: {{name}}",
+    "editSubmit": "Save",
+    "delete": "Delete group",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": "Are you sure you want to delete group \"{{name}}\"? Group-level grants for its members will be revoked.",
+  "form": { "name": "Name", "description": "Description", "members": "Members", "roles": "Roles" },
+  "placeholder": { "name": "e.g. Office assistants" },
+  "picker": {
+    "members": "Select members…",
+    "roles": "Select roles…",
+    "userOption": "{{name}} (@{{username}})",
+    "roleOption": "{{name}} ({{code}})"
+  },
+  "empty": { "loading": "Loading…", "none": "No groups" },
+  "error": {
+    "load": "Failed to load",
+    "create": "Failed to create",
+    "save": "Failed to save",
+    "delete": "Failed to delete"
+  },
+  "validation": { "nameRequired": "Group name is required" }
+}

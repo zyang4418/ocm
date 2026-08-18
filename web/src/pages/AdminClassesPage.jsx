@@ -23,37 +23,18 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
-
-// 行政班 (admin class): a persistent student cohort identified by grade + name.
-// Managed here because it is an organizational unit, not a course-delivery
-// concept; teaching classes (合班) reference admin classes as members.
-const headers = [
-  { key: 'id', header: 'ID' },
-  { key: 'grade', header: '年级' },
-  { key: 'name', header: '班级名称' },
-  { key: 'note', header: '备注' },
-  { key: 'createdAt', header: '创建时间' },
-]
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDate } from '../i18n/formatters.js'
 
 const emptyForm = { grade: '', name: '', note: '' }
 
 export default function AdminClassesPage() {
+  const { t } = useTranslation('adminClasses')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('admin_class:manage')
@@ -61,6 +42,14 @@ export default function AdminClassesPage() {
   // curate members even without admin-class manage rights.
   const canRoster = can('attendance:read')
   const canRosterManage = can('attendance:manage')
+
+  const headers = [
+    { key: 'id', header: t('field.id') },
+    { key: 'grade', header: t('field.grade') },
+    { key: 'name', header: t('field.name') },
+    { key: 'note', header: t('field.note') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
 
   const list = usePagedList({ path: '/api/admin-classes', token })
   const { loading } = list
@@ -131,7 +120,7 @@ export default function AdminClassesPage() {
       setStudentOptions(
         ((data && data.items) || [])
           .filter((u) => u.type === 'student')
-          .map((u) => ({ id: String(u.id), text: `${u.displayName}（${u.username}）` }))
+          .map((u) => ({ id: String(u.id), text: t('picker.userOption', { name: u.displayName, username: u.username }) }))
       )
     } catch {
       setStudentOptions([])
@@ -140,7 +129,7 @@ export default function AdminClassesPage() {
 
   const handleAddMember = async () => {
     if (!pickStudent) {
-      setAddError('请选择学生')
+      setAddError(t('validation.selectStudent'))
       return
     }
     try {
@@ -208,7 +197,7 @@ export default function AdminClassesPage() {
   }
 
   const validate = (form) => {
-    if (!form.name.trim()) return '班级名称为必填项'
+    if (!form.name.trim()) return t('validation.nameRequired')
     return ''
   }
 
@@ -288,7 +277,7 @@ export default function AdminClassesPage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -296,21 +285,19 @@ export default function AdminClassesPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>行政班管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">行政班管理</h1>
-        <p className="courses-page__subtitle">
-          维护行政班（年级 + 班级名称），作为教学班合班与排课的基础数据。
-        </p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -320,10 +307,10 @@ export default function AdminClassesPage() {
 
         <DataTable rows={list.items} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="行政班列表" description={`共 ${list.total} 个行政班`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索行政班" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('searchPlaceholder')} />
                   <ExportButton
                     path="/api/admin-classes/export"
                     fallbackName="admin-classes.xlsx"
@@ -331,7 +318,7 @@ export default function AdminClassesPage() {
                   />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
-                      添加行政班
+                      {t('addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -344,18 +331,18 @@ export default function AdminClassesPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    {canAdmin && <TableHeader>操作</TableHeader>}
+                    {canAdmin && <TableHeader>{t('field.actions')}</TableHeader>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {list.q ? '未找到匹配的行政班' : '暂无行政班'}
+                        {list.q ? t('empty.search') : t('empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -379,7 +366,7 @@ export default function AdminClassesPage() {
                                       size="sm"
                                       hasIconOnly
                                       renderIcon={Edit}
-                                      iconDescription="编辑"
+                                      iconDescription={t('action.edit', { ns: 'common' })}
                                       onClick={() => openEdit(c)}
                                     />
                                     <Button
@@ -387,14 +374,14 @@ export default function AdminClassesPage() {
                                       size="sm"
                                       hasIconOnly
                                       renderIcon={TrashCan}
-                                      iconDescription="删除"
+                                      iconDescription={t('action.delete', { ns: 'common' })}
                                       onClick={() => openDelete(c)}
                                     />
                                   </>
                                 )}
                                 {canRoster && (
                                   <Button kind="ghost" size="sm" onClick={() => openMembers(c)}>
-                                    成员
+                                    {t('field.members')}
                                   </Button>
                                 )}
                               </div>
@@ -421,9 +408,9 @@ export default function AdminClassesPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="添加行政班"
-        primaryButtonText="创建"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -431,26 +418,26 @@ export default function AdminClassesPage() {
         <div className="courses-page__form">
           <TextInput
             id="ac-grade"
-            labelText="年级"
-            placeholder="如 2024级"
+            labelText={t('form.grade')}
+            placeholder={t('placeholder.grade')}
             value={createForm.grade}
             onChange={(e) => setCreateForm({ ...createForm, grade: e.target.value })}
           />
           <TextInput
             id="ac-name"
-            labelText="班级名称"
-            placeholder="如 计算机244"
+            labelText={t('form.name')}
+            placeholder={t('placeholder.name')}
             value={createForm.name}
             onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           />
           <TextInput
             id="ac-note"
-            labelText="备注"
+            labelText={t('form.note')}
             value={createForm.note}
             onChange={(e) => setCreateForm({ ...createForm, note: e.target.value })}
           />
           {createError && (
-            <InlineNotification kind="error" title="创建失败" subtitle={createError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.create')} subtitle={createError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -458,9 +445,9 @@ export default function AdminClassesPage() {
       {/* Edit */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`编辑行政班：${editTarget?.name ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.edit', { name: editTarget?.name ?? '' })}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleEdit}
         primaryButtonDisabled={editing}
@@ -468,24 +455,24 @@ export default function AdminClassesPage() {
         <div className="courses-page__form">
           <TextInput
             id="ac-edit-grade"
-            labelText="年级"
+            labelText={t('form.grade')}
             value={editForm.grade}
             onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}
           />
           <TextInput
             id="ac-edit-name"
-            labelText="班级名称"
+            labelText={t('form.name')}
             value={editForm.name}
             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
           />
           <TextInput
             id="ac-edit-note"
-            labelText="备注"
+            labelText={t('form.note')}
             value={editForm.note}
             onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
           />
           {editError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={editError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={editError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -494,26 +481,26 @@ export default function AdminClassesPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除行政班"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="courses-page__confirm-text">
-          确定要删除行政班「{deleteTarget?.name}」吗？若该班已被教学班引用，需先移除引用。此操作不可撤销。
+          {t('deleteConfirm', { name: deleteTarget?.name })}
         </p>
         {deleteError && (
-          <InlineNotification kind="error" title="删除失败" subtitle={deleteError} lowContrast hideCloseButton />
+          <InlineNotification kind="error" title={t('error.delete')} subtitle={deleteError} lowContrast hideCloseButton />
         )}
       </Modal>
 
       {/* Members (学生档案): attendance-gated roster of one admin class. */}
       <Modal
         open={Boolean(membersTarget)}
-        modalHeading={`班级成员：${membersTarget?.name ?? ''}`}
-        primaryButtonText="关闭"
+        modalHeading={t('modal.members', { name: membersTarget?.name ?? '' })}
+        primaryButtonText={t('modal.membersSubmit')}
         onRequestClose={() => {
           setMembersTarget(null)
           setEditMember(null)
@@ -523,15 +510,13 @@ export default function AdminClassesPage() {
         size="lg"
       >
         <div className="courses-page__form">
-          <p className="courses-page__subtitle">
-            维护学生档案（账号 ↔ 行政班）。名单用于课堂签到的应到统计，学生可在此添加或移除。
-          </p>
+          <p className="courses-page__subtitle">{t('membersSubtitle')}</p>
           {canRosterManage && (
             <div className="courses-page__member-add">
               <ComboBox
                 id="member-pick"
-                titleText="添加学生"
-                placeholder="输入姓名/用户名搜索学生"
+                titleText={t('memberAdd.title')}
+                placeholder={t('memberAdd.placeholder')}
                 items={studentOptions}
                 itemToString={(item) => (item ? item.text : '')}
                 selectedItem={pickStudent}
@@ -547,35 +532,38 @@ export default function AdminClassesPage() {
               />
               <TextInput
                 id="member-no"
-                labelText="学号（可选）"
-                placeholder="如 2023001"
+                labelText={t('memberAdd.studentNoLabel')}
+                placeholder={t('placeholder.studentNo')}
                 value={pickNo}
                 onChange={(e) => setPickNo(e.target.value)}
               />
               <Button size="sm" onClick={handleAddMember} disabled={adding || !pickStudent}>
-                {adding ? '添加中…' : '添加'}
+                {adding ? t('memberAdd.buttonLoading') : t('memberAdd.button')}
               </Button>
               {addError && (
-                <InlineNotification kind="error" title="添加失败" subtitle={addError} lowContrast hideCloseButton />
+                <InlineNotification kind="error" title={t('error.addMember')} subtitle={addError} lowContrast hideCloseButton />
               )}
             </div>
           )}
           {membersError && (
-            <InlineNotification kind="error" title="加载失败" subtitle={membersError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.load')} subtitle={membersError} lowContrast hideCloseButton />
           )}
           {membersLoading ? (
-            <p>加载中…</p>
+            <p>{t('empty.loading')}</p>
           ) : members.length === 0 ? (
-            <p>暂无成员。{canRosterManage ? '请通过上方搜索添加学生。' : ''}</p>
+            <p>
+              {t('empty.members')}
+              {canRosterManage ? t('empty.membersHint') : ''}
+            </p>
           ) : (
-            <TableContainer title={`共 ${members.length} 名学生`}>
+            <TableContainer title={t('memberTable.description', { count: members.length })}>
               <Table size="sm">
                 <TableHead>
                   <TableRow>
-                    <TableHeader>姓名</TableHeader>
-                    <TableHeader>用户名</TableHeader>
-                    <TableHeader>学号</TableHeader>
-                    {canRosterManage && <TableHeader>操作</TableHeader>}
+                    <TableHeader>{t('memberTable.name')}</TableHeader>
+                    <TableHeader>{t('memberTable.username')}</TableHeader>
+                    <TableHeader>{t('memberTable.studentNo')}</TableHeader>
+                    {canRosterManage && <TableHeader>{t('memberTable.actions')}</TableHeader>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -588,10 +576,10 @@ export default function AdminClassesPage() {
                         <TableCell>
                           <div className="courses-page__actions">
                             <Button kind="ghost" size="sm" onClick={() => openEditMember(m)}>
-                              编辑
+                              {t('memberTable.edit')}
                             </Button>
                             <Button kind="ghost" size="sm" onClick={() => openRemoveMember(m)}>
-                              移除
+                              {t('memberTable.remove')}
                             </Button>
                           </div>
                         </TableCell>
@@ -608,9 +596,9 @@ export default function AdminClassesPage() {
       {/* Edit member metadata */}
       <Modal
         open={Boolean(editMember)}
-        modalHeading="编辑学生档案"
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.editMember')}
+        primaryButtonText={t('modal.editMemberSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditMember(null)}
         onRequestSubmit={handleSaveMember}
         primaryButtonDisabled={savingMember}
@@ -618,18 +606,18 @@ export default function AdminClassesPage() {
         <div className="courses-page__form">
           <TextInput
             id="member-edit-no"
-            labelText="学号"
+            labelText={t('memberEditForm.studentNo')}
             value={editMember?.studentNo ?? ''}
             onChange={(e) => setEditMember({ ...editMember, studentNo: e.target.value })}
           />
           <TextInput
             id="member-edit-note"
-            labelText="备注"
+            labelText={t('memberEditForm.note')}
             value={editMember?.note ?? ''}
             onChange={(e) => setEditMember({ ...editMember, note: e.target.value })}
           />
           {editMemberError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={editMemberError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.saveMember')} subtitle={editMemberError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -638,18 +626,18 @@ export default function AdminClassesPage() {
       <Modal
         danger
         open={Boolean(removeMember)}
-        modalHeading="移除学生"
-        primaryButtonText="移除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.removeMember')}
+        primaryButtonText={t('modal.removeMemberSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setRemoveMember(null)}
         onRequestSubmit={handleRemoveMember}
         primaryButtonDisabled={removing}
       >
         <p className="courses-page__confirm-text">
-          确定要将「{removeMember?.displayName}」移出该行政班吗？历史签到记录不受影响。
+          {t('removeMemberConfirm', { name: removeMember?.displayName })}
         </p>
         {removeError && (
-          <InlineNotification kind="error" title="移除失败" subtitle={removeError} lowContrast hideCloseButton />
+          <InlineNotification kind="error" title={t('error.removeMember')} subtitle={removeError} lowContrast hideCloseButton />
         )}
       </Modal>
     </Grid>

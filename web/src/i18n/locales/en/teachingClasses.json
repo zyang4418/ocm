@@ -1,0 +1,47 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Teaching classes" },
+  "title": "Teaching classes",
+  "subtitle": "A teaching class merges several admin classes and is the unit a course offering belongs to. The same course/teacher/semester taught to different cohorts is distinguished by different teaching classes.",
+  "table": {
+    "title": "Teaching class list",
+    "description": "{{count}} teaching classes",
+    "actionsHeader": "Actions"
+  },
+  "searchPlaceholder": "Search teaching classes",
+  "addButton": "Add teaching class",
+  "field": {
+    "id": "ID",
+    "name": "Teaching class name",
+    "members": "Admin classes",
+    "note": "Note",
+    "createdAt": "Created at",
+    "actions": "Actions"
+  },
+  "info": {
+    "title": "Create admin classes first",
+    "subtitle": "Teaching classes reference admin classes as members — create them in Admin classes first."
+  },
+  "modal": {
+    "create": "Add teaching class",
+    "createSubmit": "Create",
+    "edit": "Edit teaching class: {{name}}",
+    "editSubmit": "Save",
+    "delete": "Delete teaching class",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": "Are you sure you want to delete teaching class \"{{name}}\"? If course offerings reference it, remove them first. This action cannot be undone.",
+  "form": { "name": "Teaching class name", "classes": "Admin classes", "note": "Note" },
+  "placeholder": { "name": "e.g. Calculus-A (1+2)" },
+  "classesPicker": { "label": "Select admin classes" },
+  "empty": { "loading": "Loading…", "search": "No matching teaching classes", "none": "No teaching classes" },
+  "error": {
+    "load": "Failed to load",
+    "create": "Failed to create",
+    "save": "Failed to save",
+    "delete": "Failed to delete"
+  },
+  "validation": {
+    "nameRequired": "Teaching class name is required",
+    "selectClass": "Select at least one admin class"
+  }
+}

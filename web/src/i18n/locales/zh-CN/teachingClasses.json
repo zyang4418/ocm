@@ -1,0 +1,47 @@
+{
+  "breadcrumb": { "home": "首页", "current": "教学班管理" },
+  "title": "教学班管理",
+  "subtitle": "教学班由若干行政班合班而成，是开课的归属单位。同一课程、教师、学期面向不同群体开课时，通过不同教学班区分。",
+  "table": {
+    "title": "教学班列表",
+    "description": "共 {{count}} 个教学班",
+    "actionsHeader": "操作"
+  },
+  "searchPlaceholder": "搜索教学班",
+  "addButton": "添加教学班",
+  "field": {
+    "id": "ID",
+    "name": "教学班名称",
+    "members": "包含行政班",
+    "note": "备注",
+    "createdAt": "创建时间",
+    "actions": "操作"
+  },
+  "info": {
+    "title": "请先创建行政班",
+    "subtitle": "教学班需引用行政班作为成员，请先在「行政班管理」中创建。"
+  },
+  "modal": {
+    "create": "添加教学班",
+    "createSubmit": "创建",
+    "edit": "编辑教学班：{{name}}",
+    "editSubmit": "保存",
+    "delete": "删除教学班",
+    "deleteSubmit": "删除"
+  },
+  "deleteConfirm": "确定要删除教学班「{{name}}」吗？若已有开课引用该教学班，需先移除引用。此操作不可撤销。",
+  "form": { "name": "教学班名称", "classes": "包含行政班", "note": "备注" },
+  "placeholder": { "name": "如 高数-A班（1+2）" },
+  "classesPicker": { "label": "选择行政班" },
+  "empty": { "loading": "加载中…", "search": "未找到匹配的教学班", "none": "暂无教学班" },
+  "error": {
+    "load": "加载失败",
+    "create": "创建失败",
+    "save": "保存失败",
+    "delete": "删除失败"
+  },
+  "validation": {
+    "nameRequired": "教学班名称为必填项",
+    "selectClass": "至少选择一个行政班"
+  }
+}

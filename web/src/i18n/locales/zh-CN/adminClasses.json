@@ -1,0 +1,80 @@
+{
+  "breadcrumb": { "home": "首页", "current": "行政班管理" },
+  "title": "行政班管理",
+  "subtitle": "维护行政班（年级 + 班级名称），作为教学班合班与排课的基础数据。",
+  "table": {
+    "title": "行政班列表",
+    "description": "共 {{count}} 个行政班",
+    "actionsHeader": "操作"
+  },
+  "searchPlaceholder": "搜索行政班",
+  "addButton": "添加行政班",
+  "field": {
+    "id": "ID",
+    "grade": "年级",
+    "name": "班级名称",
+    "note": "备注",
+    "createdAt": "创建时间",
+    "actions": "操作",
+    "members": "成员"
+  },
+  "picker": {
+    "userOption": "{{name}}（{{username}}）"
+  },
+  "modal": {
+    "create": "添加行政班",
+    "createSubmit": "创建",
+    "edit": "编辑行政班：{{name}}",
+    "editSubmit": "保存",
+    "delete": "删除行政班",
+    "deleteSubmit": "删除",
+    "members": "班级成员：{{name}}",
+    "membersSubmit": "关闭",
+    "editMember": "编辑学生档案",
+    "editMemberSubmit": "保存",
+    "removeMember": "移除学生",
+    "removeMemberSubmit": "移除"
+  },
+  "deleteConfirm": "确定要删除行政班「{{name}}」吗？若该班已被教学班引用，需先移除引用。此操作不可撤销。",
+  "removeMemberConfirm": "确定要将「{{name}}」移出该行政班吗？历史签到记录不受影响。",
+  "membersSubtitle": "维护学生档案（账号 ↔ 行政班）。名单用于课堂签到的应到统计，学生可在此添加或移除。",
+  "form": { "grade": "年级", "name": "班级名称", "note": "备注" },
+  "placeholder": { "grade": "如 2024级", "name": "如 计算机244", "studentNo": "如 2023001" },
+  "memberAdd": {
+    "title": "添加学生",
+    "placeholder": "输入姓名/用户名搜索学生",
+    "studentNoLabel": "学号（可选）",
+    "button": "添加",
+    "buttonLoading": "添加中…"
+  },
+  "memberTable": {
+    "description": "共 {{count}} 名学生",
+    "name": "姓名",
+    "username": "用户名",
+    "studentNo": "学号",
+    "actions": "操作",
+    "edit": "编辑",
+    "remove": "移除"
+  },
+  "memberEditForm": { "studentNo": "学号", "note": "备注" },
+  "empty": {
+    "loading": "加载中…",
+    "search": "未找到匹配的行政班",
+    "none": "暂无行政班",
+    "members": "暂无成员。",
+    "membersHint": "请通过上方搜索添加学生。"
+  },
+  "error": {
+    "load": "加载失败",
+    "create": "创建失败",
+    "save": "保存失败",
+    "delete": "删除失败",
+    "addMember": "添加失败",
+    "removeMember": "移除失败",
+    "saveMember": "保存失败"
+  },
+  "validation": {
+    "nameRequired": "班级名称为必填项",
+    "selectStudent": "请选择学生"
+  }
+}
