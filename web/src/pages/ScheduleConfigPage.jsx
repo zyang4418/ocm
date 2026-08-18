@@ -14,20 +14,22 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
 
-const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
-
 const emptyRegime = { name: '', effectiveMonth: 5, effectiveDay: 1 }
 
 export default function ScheduleConfigPage() {
+  const { t } = useTranslation('scheduleConfig')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('course:manage')
+
+  const months = t('months', { returnObjects: true })
 
   const list = usePagedList({ path: '/api/schedule/regimes', token })
   const { loading } = list
@@ -66,7 +68,7 @@ export default function ScheduleConfigPage() {
 
   const submitRegime = async () => {
     if (!regimeForm.name.trim()) {
-      setRegimeError('名称为必填项')
+      setRegimeError(t('validation.nameRequired'))
       return
     }
     const body = {
@@ -142,7 +144,7 @@ export default function ScheduleConfigPage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -150,18 +152,16 @@ export default function ScheduleConfigPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>作息设置</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">作息设置</h1>
-        <p className="courses-page__subtitle">
-          配置冬/夏令时作息及其切换日期，自定义每天节次数与各节次时间。
-        </p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -170,7 +170,7 @@ export default function ScheduleConfigPage() {
         )}
         {canManage && (
           <Button renderIcon={Add} size="sm" onClick={openCreateRegime} className="courses-page__add">
-            添加作息
+            {t('addButton')}
           </Button>
         )}
         <ExportButton
@@ -183,9 +183,9 @@ export default function ScheduleConfigPage() {
 
       <Column sm={4} md={8} lg={16}>
         {loading ? (
-          <p>加载中…</p>
+          <p>{t('empty.loading')}</p>
         ) : list.items.length === 0 ? (
-          <p>暂无作息配置，请先添加。</p>
+          <p>{t('empty.none')}</p>
         ) : (
           list.items.map((r) => (
             <Tile key={r.id} className="schedule-regime">
@@ -194,23 +194,23 @@ export default function ScheduleConfigPage() {
                   <strong>{r.name}</strong>
                   <span className="schedule-regime__date">
                     {' '}
-                    · 每年 {r.effectiveMonth} 月 {r.effectiveDay} 日起生效
+                    {t('effective', { month: r.effectiveMonth, day: r.effectiveDay })}
                   </span>
                 </div>
                 {canManage && (
                   <div className="schedule-regime__actions">
                     <Button size="sm" kind="ghost" renderIcon={Edit} onClick={() => openEditRegime(r)}>
-                      编辑
+                      {t('action.edit')}
                     </Button>
                     <Button size="sm" kind="ghost" onClick={() => openEditPeriods(r)}>
-                      编辑节次
+                      {t('action.editPeriods')}
                     </Button>
                     <Button
                       size="sm"
                       kind="ghost"
                       hasIconOnly
                       renderIcon={TrashCan}
-                      iconDescription="删除"
+                      iconDescription={t('action.delete', { ns: 'common' })}
                       onClick={() => setDelTarget(r)}
                     />
                   </div>
@@ -220,15 +220,15 @@ export default function ScheduleConfigPage() {
                 <table className="schedule-regime__periods">
                   <thead>
                     <tr>
-                      <th>节次</th>
-                      <th>开始</th>
-                      <th>结束</th>
+                      <th>{t('periodForm.period')}</th>
+                      <th>{t('periodForm.start')}</th>
+                      <th>{t('periodForm.end')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {r.periods.map((p) => (
                       <tr key={p.id || p.periodIndex}>
-                        <td>第 {p.periodIndex} 节</td>
+                        <td>{t('periodLabel.single', { period: p.periodIndex })}</td>
                         <td>{p.startTime}</td>
                         <td>{p.endTime}</td>
                       </tr>
@@ -236,7 +236,7 @@ export default function ScheduleConfigPage() {
                   </tbody>
                 </table>
               ) : (
-                <p className="schedule-regime__empty">尚未配置节次</p>
+                <p className="schedule-regime__empty">{t('empty.noPeriods')}</p>
               )}
             </Tile>
           ))
@@ -253,9 +253,9 @@ export default function ScheduleConfigPage() {
       {/* Regime create/edit modal */}
       <Modal
         open={regimeOpen}
-        modalHeading={regimeEditId ? '编辑作息' : '添加作息'}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={regimeEditId ? t('modal.regimeEdit') : t('modal.regimeCreate')}
+        primaryButtonText={t('modal.regimeSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setRegimeOpen(false)}
         onRequestSubmit={submitRegime}
         primaryButtonDisabled={regimeSaving}
@@ -263,14 +263,14 @@ export default function ScheduleConfigPage() {
         <div className="courses-page__form">
           <TextInput
             id="regime-name"
-            labelText="名称"
-            placeholder="如 冬令时 / 夏令时"
+            labelText={t('regimeForm.name')}
+            placeholder={t('regimeForm.namePlaceholder')}
             value={regimeForm.name}
             onChange={(e) => setRegimeForm({ ...regimeForm, name: e.target.value })}
           />
           <Select
             id="regime-month"
-            labelText="生效月份"
+            labelText={t('regimeForm.month')}
             value={String(regimeForm.effectiveMonth)}
             onChange={(e) => setRegimeForm({ ...regimeForm, effectiveMonth: Number(e.target.value) })}
           >
@@ -281,14 +281,14 @@ export default function ScheduleConfigPage() {
           <TextInput
             id="regime-day"
             type="number"
-            labelText="生效日"
+            labelText={t('regimeForm.day')}
             min="1"
             max="31"
             value={regimeForm.effectiveDay}
             onChange={(e) => setRegimeForm({ ...regimeForm, effectiveDay: e.target.value })}
           />
           {regimeError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={regimeError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={regimeError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -296,22 +296,22 @@ export default function ScheduleConfigPage() {
       {/* Periods edit modal */}
       <Modal
         open={Boolean(periodsTarget)}
-        modalHeading={`编辑节次：${periodsTarget?.name ?? ''}`}
-        primaryButtonText="保存节次"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.periodsTitle', { name: periodsTarget?.name ?? '' })}
+        primaryButtonText={t('modal.periodsSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setPeriodsTarget(null)}
         onRequestSubmit={submitPeriods}
         primaryButtonDisabled={periodsSaving}
         size="lg"
       >
         <div className="courses-page__form">
-          <p className="schedule-periods__hint">每天节次数 = 下方行数，可增删行调整。</p>
+          <p className="schedule-periods__hint">{t('periodsHint')}</p>
           {periodRows.map((row, i) => (
             <div key={i} className="schedule-periods__row">
               <TextInput
                 id={`pi-${i}`}
                 type="number"
-                labelText="节次"
+                labelText={t('periodForm.period')}
                 min="1"
                 value={row.periodIndex}
                 onChange={(e) => updateRow(i, 'periodIndex', e.target.value)}
@@ -319,14 +319,14 @@ export default function ScheduleConfigPage() {
               <TextInput
                 id={`st-${i}`}
                 type="time"
-                labelText="开始"
+                labelText={t('periodForm.start')}
                 value={row.startTime}
                 onChange={(e) => updateRow(i, 'startTime', e.target.value)}
               />
               <TextInput
                 id={`et-${i}`}
                 type="time"
-                labelText="结束"
+                labelText={t('periodForm.end')}
                 value={row.endTime}
                 onChange={(e) => updateRow(i, 'endTime', e.target.value)}
               />
@@ -335,7 +335,7 @@ export default function ScheduleConfigPage() {
                 size="sm"
                 hasIconOnly
                 renderIcon={TrashCan}
-                iconDescription="删除该节"
+                iconDescription={t('periodForm.removePeriod')}
                 onClick={() => setPeriodRows(periodRows.filter((_, j) => j !== i))}
               />
             </div>
@@ -351,10 +351,10 @@ export default function ScheduleConfigPage() {
               ])
             }
           >
-            添加节次
+            {t('periodForm.addPeriod')}
           </Button>
           {periodsError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={periodsError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={periodsError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -363,18 +363,18 @@ export default function ScheduleConfigPage() {
       <Modal
         danger
         open={Boolean(delTarget)}
-        modalHeading="删除作息"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDelTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="courses-page__confirm-text">
-          确定要删除作息「{delTarget?.name}」及其所有节次吗？此操作不可撤销。
+          {t('deleteConfirm', { name: delTarget?.name })}
         </p>
         {delError && (
-          <InlineNotification kind="error" title="删除失败" subtitle={delError} lowContrast hideCloseButton />
+          <InlineNotification kind="error" title={t('error.delete')} subtitle={delError} lowContrast hideCloseButton />
         )}
       </Modal>
     </Grid>

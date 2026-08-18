@@ -1,0 +1,63 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Courses" },
+  "title": "Courses",
+  "subtitle": "Maintain the course catalog and per-class offerings — the base data for scheduling and timetables.",
+  "tabs": { "ariaLabel": "Courses", "offerings": "Offerings", "catalog": "Catalog" },
+  "table": {
+    "offering": { "title": "Offerings", "description": "{{count}} items" },
+    "catalog": { "title": "Catalog", "description": "{{count}} items" }
+  },
+  "searchPlaceholder": "Search",
+  "addButton": { "offering": "Add offering", "catalog": "Add course" },
+  "offeringField": {
+    "id": "ID",
+    "catalogName": "Course",
+    "catalogCode": "Course code",
+    "teachingClassName": "Teaching class",
+    "classNames": "Admin classes",
+    "teacher": "Teacher",
+    "semester": "Semester"
+  },
+  "catalogField": {
+    "id": "ID",
+    "name": "Course name",
+    "code": "Course code",
+    "description": "Description"
+  },
+  "field": { "actions": "Actions" },
+  "offeringForm": {
+    "catalog": "Course (catalog)",
+    "teachingClass": "Teaching class",
+    "teacher": "Teacher",
+    "semester": "Semester",
+    "note": "Note",
+    "selectCatalog": "Select a course",
+    "selectTeachingClass": "Select a teaching class",
+    "semesterPlaceholder": "e.g. 2026 Fall",
+    "courseOption": "{{name}} ({{code}})"
+  },
+  "catalogForm": {
+    "name": "Course name",
+    "code": "Course code",
+    "description": "Description",
+    "codePlaceholder": "e.g. MATH101"
+  },
+  "modal": {
+    "offeringCreate": "Add offering",
+    "catalogCreate": "Add course",
+    "edit": "Edit course: {{name}}",
+    "editSubmit": "Save",
+    "delete": "Delete",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": {
+    "offering": "Are you sure you want to delete offering \"{{name}}\"? This action cannot be undone.",
+    "catalog": "Are you sure you want to delete course \"{{name}}\"? This action cannot be undone."
+  },
+  "empty": { "loading": "Loading…" },
+  "error": { "load": "Failed to load", "save": "Failed to save", "delete": "Failed to delete" },
+  "validation": {
+    "offeringRequired": "Course, teaching class, teacher, and semester are all required",
+    "catalogNameRequired": "Course name is required"
+  }
+}

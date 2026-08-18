@@ -13,11 +13,10 @@ import {
 } from '@carbon/react'
 import { ChevronLeft, ChevronRight, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
-
-const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 function fmt(d) {
   const y = d.getFullYear()
@@ -40,9 +39,12 @@ function addDays(d, n) {
 }
 
 export default function TimetablePage() {
+  const { t } = useTranslation('timetable')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('course:manage')
+
+  const dayNames = t('dayNames', { returnObjects: true })
 
   const [classrooms, setClassrooms] = useState([])
   const [offerings, setOfferings] = useState([])
@@ -100,7 +102,7 @@ export default function TimetablePage() {
         if (!map.has(s.periodIndex)) map.set(s.periodIndex, { startTime: s.startTime, endTime: s.endTime })
       }),
     )
-    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([idx, t]) => ({ periodIndex: idx, ...t }))
+    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([idx, t2]) => ({ periodIndex: idx, ...t2 }))
   }, [days])
 
   const slotFor = (day, periodIndex) => day.slots.find((s) => s.periodIndex === periodIndex)
@@ -120,13 +122,13 @@ export default function TimetablePage() {
 
   const submit = async () => {
     if (!form.offeringId) {
-      setModalError('请选择课程')
+      setModalError(t('validation.selectOffering'))
       return
     }
     const periodStart = Number(form.periodStart)
     const periodEnd = form.periodEnd ? Number(form.periodEnd) : periodStart
     if (!periodStart || periodStart < 1 || periodEnd < periodStart) {
-      setModalError('节次范围不合法：起始节次须 ≥1 且不大于结束节次')
+      setModalError(t('validation.periodRange'))
       return
     }
     const body = {
@@ -171,7 +173,7 @@ export default function TimetablePage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -179,16 +181,16 @@ export default function TimetablePage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>教室课表</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">教室课表</h1>
-        <p className="courses-page__subtitle">查看各教室周课表，支持加课、调课、删课。</p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -201,27 +203,31 @@ export default function TimetablePage() {
         <div className="timetable__controls">
           <Select
             id="tt-classroom"
-            labelText="教室"
+            labelText={t('filter.classroom')}
             value={classroomId}
             onChange={(e) => setClassroomId(e.target.value)}
             className="timetable__select"
           >
-            <SelectItem value="" text="请选择教室" />
+            <SelectItem value="" text={t('filter.selectClassroom')} />
             {classrooms.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)} text={`${c.name}${c.building ? `（${c.building}）` : ''}`} />
+              <SelectItem
+                key={c.id}
+                value={String(c.id)}
+                text={c.building ? t('filter.classroomOption', { name: c.name, building: c.building }) : c.name}
+              />
             ))}
           </Select>
           <div className="timetable__week">
-            <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronLeft} iconDescription="上一周" onClick={() => setWeekStart(addDays(weekStart, -7))} />
+            <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronLeft} iconDescription={t('weekNav.prev')} onClick={() => setWeekStart(addDays(weekStart, -7))} />
             <span className="timetable__week-label">
               {from} ~ {to}
             </span>
-            <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronRight} iconDescription="下一周" onClick={() => setWeekStart(addDays(weekStart, 7))} />
+            <Button kind="ghost" size="sm" hasIconOnly renderIcon={ChevronRight} iconDescription={t('weekNav.next')} onClick={() => setWeekStart(addDays(weekStart, 7))} />
           </div>
           <ExportButton
             path={`/api/timetable/export?classroom_id=${classroomId}&from=${from}&to=${to}`}
-            fallbackName="教室周课表.xlsx"
-            label="导出课表"
+            fallbackName={t('export.filename')}
+            label={t('export.label')}
             onError={setError}
             disabled={!classroomId}
           />
@@ -230,17 +236,17 @@ export default function TimetablePage() {
 
       <Column sm={4} md={8} lg={16}>
         {!classroomId ? (
-          <p>请先选择教室。</p>
+          <p>{t('empty.selectClassroom')}</p>
         ) : loading ? (
-          <p>加载中…</p>
+          <p>{t('empty.loading')}</p>
         ) : days.length === 0 ? (
-          <p>暂无数据。</p>
+          <p>{t('empty.none')}</p>
         ) : (
           <div className="timetable__scroll">
             <table className="timetable__grid">
               <thead>
                 <tr>
-                  <th className="timetable__corner">节次</th>
+                  <th className="timetable__corner">{t('corner')}</th>
                   {days.map((d) => (
                     <th key={d.date}>
                       {dayNames[d.dayOfWeek - 1]}
@@ -254,7 +260,7 @@ export default function TimetablePage() {
                 {periods.map((p) => (
                   <tr key={p.periodIndex}>
                     <td className="timetable__period">
-                      <span>第 {p.periodIndex} 节</span>
+                      <span>{t('periodLabel.single', { period: p.periodIndex })}</span>
                       <span className="timetable__time">{p.startTime}-{p.endTime}</span>
                     </td>
                     {days.map((d) => {
@@ -299,36 +305,40 @@ export default function TimetablePage() {
       {/* Session add/edit modal */}
       <Modal
         open={Boolean(modal)}
-        modalHeading={modal?.session ? '调课' : '添加课次'}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={modal?.session ? t('modal.edit') : t('modal.create')}
+        primaryButtonText={t('modal.submit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setModal(null)}
         onRequestSubmit={submit}
         primaryButtonDisabled={saving}
       >
         <div className="courses-page__form">
-          <Select id="s-offering" labelText="课程" value={form.offeringId} onChange={(e) => setForm({ ...form, offeringId: e.target.value })}>
-            <SelectItem value="" text="请选择课程" />
+          <Select id="s-offering" labelText={t('form.offering')} value={form.offeringId} onChange={(e) => setForm({ ...form, offeringId: e.target.value })}>
+            <SelectItem value="" text={t('form.selectOffering')} />
             {offerings.map((o) => (
-              <SelectItem key={o.id} value={String(o.id)} text={`${o.catalogName} · ${o.teachingClassName} · ${o.semester}`} />
+              <SelectItem
+                key={o.id}
+                value={String(o.id)}
+                text={t('form.offeringOption', { catalogName: o.catalogName, teachingClassName: o.teachingClassName, semester: o.semester })}
+              />
             ))}
           </Select>
-          <Select id="s-classroom" labelText="教室" value={form.classroomId} onChange={(e) => setForm({ ...form, classroomId: e.target.value })}>
+          <Select id="s-classroom" labelText={t('form.classroom')} value={form.classroomId} onChange={(e) => setForm({ ...form, classroomId: e.target.value })}>
             {classrooms.map((c) => (
               <SelectItem key={c.id} value={String(c.id)} text={c.name} />
             ))}
           </Select>
-          <TextInput id="s-date" type="date" labelText="日期" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-          <TextInput id="s-period-start" type="number" labelText="起始节次" min="1" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} />
-          <TextInput id="s-period-end" type="number" labelText="结束节次（连上多节填末节，单节留空）" min="1" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} />
-          <TextInput id="s-note" labelText="备注" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          <TextInput id="s-date" type="date" labelText={t('form.date')} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <TextInput id="s-period-start" type="number" labelText={t('form.periodStart')} min="1" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} />
+          <TextInput id="s-period-end" type="number" labelText={t('form.periodEnd')} min="1" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} />
+          <TextInput id="s-note" labelText={t('form.note')} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           {modalError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={modalError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={modalError} lowContrast hideCloseButton />
           )}
         </div>
         {modal?.session && canManage && (
           <Button kind="danger" size="sm" renderIcon={TrashCan} onClick={remove} disabled={saving} className="timetable__delete">
-            删除此课次
+            {t('modal.remove')}
           </Button>
         )}
       </Modal>

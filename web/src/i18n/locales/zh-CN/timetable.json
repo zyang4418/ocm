@@ -1,0 +1,37 @@
+{
+  "breadcrumb": { "home": "首页", "current": "教室课表" },
+  "title": "教室课表",
+  "subtitle": "查看各教室周课表，支持加课、调课、删课。",
+  "filter": {
+    "classroom": "教室",
+    "selectClassroom": "请选择教室",
+    "classroomOption": "{{name}}（{{building}}）"
+  },
+  "weekNav": { "prev": "上一周", "next": "下一周" },
+  "export": { "label": "导出课表", "filename": "教室周课表.xlsx" },
+  "empty": { "selectClassroom": "请先选择教室。", "loading": "加载中…", "none": "暂无数据。" },
+  "corner": "节次",
+  "periodLabel": { "single": "第 {{period}} 节" },
+  "modal": {
+    "edit": "调课",
+    "create": "添加课次",
+    "submit": "保存",
+    "remove": "删除此课次"
+  },
+  "form": {
+    "offering": "课程",
+    "selectOffering": "请选择课程",
+    "offeringOption": "{{catalogName}} · {{teachingClassName}} · {{semester}}",
+    "classroom": "教室",
+    "date": "日期",
+    "periodStart": "起始节次",
+    "periodEnd": "结束节次（连上多节填末节，单节留空）",
+    "note": "备注"
+  },
+  "error": { "load": "加载失败", "save": "保存失败" },
+  "validation": {
+    "selectOffering": "请选择课程",
+    "periodRange": "节次范围不合法：起始节次须 ≥1 且不大于结束节次"
+  },
+  "dayNames": ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+}

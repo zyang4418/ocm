@@ -1,0 +1,37 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Schedule config" },
+  "title": "Schedule config",
+  "subtitle": "Configure winter/summer regimes and their switch dates; customize the number of periods per day and their times.",
+  "addButton": "Add regime",
+  "effective": "· Effective from {{month}}/{{day}} each year",
+  "periodLabel": { "single": "Period {{period}}" },
+  "action": { "edit": "Edit", "editPeriods": "Edit periods" },
+  "empty": { "loading": "Loading…", "none": "No regimes yet — add one to begin.", "noPeriods": "No periods configured" },
+  "modal": {
+    "regimeCreate": "Add regime",
+    "regimeEdit": "Edit regime",
+    "regimeSubmit": "Save",
+    "periodsTitle": "Edit periods: {{name}}",
+    "periodsSubmit": "Save periods",
+    "delete": "Delete regime",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": "Are you sure you want to delete regime \"{{name}}\" and all its periods? This action cannot be undone.",
+  "regimeForm": {
+    "name": "Name",
+    "namePlaceholder": "e.g. Winter / Summer",
+    "month": "Effective month",
+    "day": "Effective day"
+  },
+  "periodsHint": "The number of rows below equals the periods per day; add or remove rows to adjust.",
+  "periodForm": {
+    "period": "Period",
+    "start": "Start",
+    "end": "End",
+    "addPeriod": "Add period",
+    "removePeriod": "Remove period"
+  },
+  "error": { "load": "Failed to load", "save": "Failed to save", "delete": "Failed to delete" },
+  "validation": { "nameRequired": "Name is required" },
+  "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+}
