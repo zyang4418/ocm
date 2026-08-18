@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"ocm-backend/internal/dbutil"
 )
@@ -208,6 +209,13 @@ func (s *RepairStore) Page(ctx context.Context, f RepairFilter, q string, viewer
 	if f.Status != "" {
 		where += ` AND r.status = ?`
 		args = append(args, f.Status)
+	}
+	if len(f.Statuses) > 0 {
+		marks := strings.Repeat("?,", len(f.Statuses))
+		where += ` AND r.status IN (` + marks[:len(marks)-1] + `)`
+		for _, st := range f.Statuses {
+			args = append(args, st)
+		}
 	}
 	if q != "" {
 		where += ` AND (r.description LIKE ? OR c.name LIKE ? OR cu.display_name LIKE ?)`

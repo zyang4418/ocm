@@ -378,35 +378,302 @@
   margin-block: $spacing-03 $spacing-07;
 }
 
-.dashboard__metric {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-05;
-  min-height: 10rem;
+.dashboard__error {
+  // InlineNotification keeps its own margins; undo the grid row gap visually.
+  margin-block-end: $spacing-05;
 }
 
-.dashboard__metric-header {
+// KPI row: a responsive card grid independent of the Carbon grid so the cards
+// stretch evenly regardless of how many permissions the user holds.
+.dashboard__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: $spacing-05;
+}
+
+.dashboard__kpi {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: $spacing-05;
+  min-block-size: 7.5rem;
+}
+
+.dashboard__kpi--alert {
+  // Attention cue for queues that need action (pending approvals, open
+  // repairs) - a left accent bar rather than a full recolor, per Carbon's
+  // "accent, not decoration" guidance.
+  border-inline-start: 3px solid var(--cds-border-inverse);
+}
+
+.dashboard__kpi-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: var(--cds-text-secondary);
 }
 
-.dashboard__metric-label {
+.dashboard__kpi-label {
   @include type-style('label-01');
 }
 
-.dashboard__metric-value {
-  @include type-style('heading-06');
+.dashboard__kpi-value {
+  @include type-style('productive-heading-04');
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-03;
+  margin: 0;
+}
+
+.dashboard__kpi-unit {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+}
+
+.dashboard__kpi-skeleton {
+  // SkeletonText line height stack roughly matching a KPI card.
+  height: 5rem;
+}
+
+// Section panels (today's sessions, to-do center, recent activity)
+.dashboard__main-col {
+  margin-block-start: $spacing-07;
+
+  &:first-of-type {
+    margin-block-start: 0;
+  }
+}
+
+.dashboard__panel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+  block-size: 100%;
+}
+
+.dashboard__panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-03;
+}
+
+.dashboard__panel-title {
+  @include type-style('heading-02');
+  margin: 0;
+}
+
+.dashboard__panel-link {
+  @include type-style('label-01');
+  flex: none;
+}
+
+.dashboard__todos {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  block-size: 100%;
+}
+
+// Charts band (@carbon/charts, lazy-loaded with its own chunk)
+.dashboard__charts-col {
+  margin-block-start: $spacing-07;
+}
+
+.dashboard__charts {
+  // Nested grid: the outer column already pads, so the two chart panels line
+  // up with the KPI/list panels above them.
+  margin-block: 0;
+}
+
+.dashboard__chart-panel {
+  gap: $spacing-04;
+}
+
+.dashboard__chart-holder {
+  // Charts size themselves to their holder div - pin the band's height so
+  // both panels match regardless of axis label wrapping.
+  block-size: 16rem;
+
+  > div {
+    block-size: 100%;
+  }
+}
+
+.dashboard__chart-skeleton {
+  height: 12rem;
+}
+
+// Shared compact list rows (pending bookings, repairs, my bookings)
+.dashboard__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  li + li {
+    border-block-start: 1px solid var(--cds-border-subtle);
+  }
+}
+
+.dashboard__list-row {
+  display: flex;
+  align-items: center;
+  gap: $spacing-03;
+  padding-block: $spacing-03;
+}
+
+.dashboard__list-main {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard__list-title {
+  @include type-style('body-short-01');
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dashboard__list-meta {
+  @include type-style('label-01');
+  color: var(--cds-text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// Today's sessions
+.dashboard__sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  li + li {
+    border-block-start: 1px solid var(--cds-border-subtle);
+  }
+}
+
+.dashboard__session {
+  display: flex;
+  align-items: center;
+  gap: $spacing-04;
+  padding-block: $spacing-03;
+
+  // Fixed-width period tag column so course names align vertically.
+  .cds--tag {
+    flex: 0 0 5.5rem;
+    justify-content: center;
+  }
+}
+
+.dashboard__session-main {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard__session-course {
+  @include type-style('body-short-01');
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dashboard__session-meta {
+  @include type-style('label-01');
+  color: var(--cds-text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dashboard__more {
+  @include type-style('helper-text-01');
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.dashboard__empty {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin: 0;
+  padding-block: $spacing-03;
+}
+
+// Recent activity
+.dashboard__logs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  li + li {
+    border-block-start: 1px solid var(--cds-border-subtle);
+  }
+}
+
+.dashboard__log {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-04;
+  padding-block: $spacing-03;
+}
+
+.dashboard__log-time {
+  @include type-style('code-02');
+  flex: 0 0 7.5rem;
+  color: var(--cds-text-secondary);
+}
+
+.dashboard__log-actor {
+  @include type-style('body-short-01');
+  flex: 0 0 6rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dashboard__log-text {
+  @include type-style('body-short-01');
+  flex: 1;
+  min-inline-size: 0;
+  color: var(--cds-text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// Quick start
+.dashboard__quicklinks {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
 }
 
 .dashboard__section {
   @include type-style('heading-03');
-  margin-block: $spacing-07 $spacing-05;
+  margin: 0;
+}
+
+.dashboard__quickgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: $spacing-05;
 }
 
 .dashboard__quicklink {
-  min-height: 8rem;
+  min-block-size: 7rem;
 }
 
 .dashboard__quicklink-title {
