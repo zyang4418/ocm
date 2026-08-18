@@ -4,12 +4,16 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 
 import commonZh from './locales/zh-CN/common.json'
 import commonEn from './locales/en/common.json'
+import loginZh from './locales/zh-CN/login.json'
+import loginEn from './locales/en/login.json'
+import dashboardZh from './locales/zh-CN/dashboard.json'
+import dashboardEn from './locales/en/dashboard.json'
 
-// Static namespaces for the first phase. More page-level namespaces (login,
-// dashboard, classrooms, ...) are added here as they are extracted.
+// Static namespaces. More page-level namespaces (classrooms, bookings, ...)
+// are added here as they are extracted.
 const resources = {
-  'zh-CN': { common: commonZh },
-  en: { common: commonEn },
+  'zh-CN': { common: commonZh, login: loginZh, dashboard: dashboardZh },
+  en: { common: commonEn, login: loginEn, dashboard: dashboardEn },
 }
 
 const SUPPORTED_LANGUAGES = ['zh-CN', 'en']
@@ -23,7 +27,7 @@ i18n
     fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: SUPPORTED_LANGUAGES,
     lng: localStorage.getItem('ocm.lang') || undefined,
-    ns: ['common'],
+    ns: ['common', 'login', 'dashboard'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes
