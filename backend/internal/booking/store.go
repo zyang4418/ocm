@@ -158,6 +158,49 @@ func (s *Store) PageBookings(ctx context.Context, f ListFilter, q string, p dbut
 	return list, total, nil
 }
 
+// DailyCount is one calendar-day aggregate of bookings. Days with no match
+// are simply absent from a CountByDate result; callers zero-fill their range.
+type DailyCount struct {
+	Date  string `json:"date"`
+	Count int64  `json:"count"`
+}
+
+// CountByDate counts bookings per calendar day in [from, to] (inclusive,
+// "YYYY-MM-DD") for the non-zero ListFilter fields (Status/UserID). The
+// aggregate needs no joins, so it builds its own small WHERE instead of
+// reusing the list-oriented buildBookingWhere.
+func (s *Store) CountByDate(ctx context.Context, f ListFilter, from, to string) ([]DailyCount, error) {
+	where := ` WHERE b.date >= ? AND b.date <= ?`
+	args := []any{from, to}
+	if f.Status != "" {
+		where += ` AND b.status = ?`
+		args = append(args, f.Status)
+	}
+	if f.UserID > 0 {
+		where += ` AND b.user_id = ?`
+		args = append(args, f.UserID)
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT b.date, COUNT(*) FROM classroom_bookings b`+where+` GROUP BY b.date ORDER BY b.date`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("count bookings by date: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []DailyCount{}
+	for rows.Next() {
+		var dc DailyCount
+		var date time.Time
+		if err := rows.Scan(&date, &dc.Count); err != nil {
+			return nil, fmt.Errorf("scan daily booking count: %w", err)
+		}
+		dc.Date = date.Format("2006-01-02")
+		list = append(list, dc)
+	}
+	return list, rows.Err()
+}
+
 func (s *Store) GetByID(ctx context.Context, id int64) (BookingView, error) {
 	q := `SELECT ` + selectColumns + bookingJoin + ` WHERE b.id = ?`
 	v, err := scanBookingView(s.db.QueryRowContext(ctx, q, id))

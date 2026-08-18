@@ -17,6 +17,7 @@ import (
 	"ocm-backend/internal/booking"
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
+	"ocm-backend/internal/dashboard"
 	"ocm-backend/internal/db"
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/iam"
@@ -204,6 +205,11 @@ func main() {
 		os.Exit(1)
 	}
 	ai.NewHandler(aiStore, classroomStore, scheduleStore, courseStore, bookingStore).RegisterRoutes(mux, authenticate)
+
+	// Console homepage: read-only aggregation over the business stores above.
+	// Owns no tables, so it wires last and needs no migration.
+	dashboard.NewHandler(classroomStore, repairStore, courseStore, bookingStore, systemlogStore).
+		RegisterRoutes(mux, authenticate)
 
 	importerStore := importer.NewStore(database)
 	if err := importerStore.Migrate(ctx); err != nil {

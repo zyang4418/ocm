@@ -66,7 +66,10 @@ type RepairUpdateInput struct {
 }
 
 // RepairFilter carries the optional list filters. Zero values are ignored.
+// Statuses matches ANY of the listed statuses (used by the dashboard's
+// "unresolved" view: open OR processing); Status matches exactly one.
 type RepairFilter struct {
 	ClassroomID int64
 	Status      string
+	Statuses    []string
 }
