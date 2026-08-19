@@ -1,0 +1,42 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Repairs" },
+  "title": "Classroom repairs",
+  "subtitle": "Submit and track classroom equipment/facility repair requests; maintenance assigns and handles them, and the reporter confirms completion.",
+  "filter": { "status": "Status", "allStatuses": "All statuses" },
+  "table": { "title": "Repair tickets", "description": "{{count}} tickets", "searchPlaceholder": "Search repairs", "addButton": "Submit repair" },
+  "field": {
+    "classroom": "Classroom",
+    "description": "Fault description",
+    "creatorName": "Reporter",
+    "assigneeName": "Assignee",
+    "status": "Status",
+    "createdAt": "Submitted at",
+    "actions": "Actions"
+  },
+  "action": { "start": "Start", "finish": "Complete", "confirm": "Confirm done" },
+  "empty": { "loading": "Loading…", "search": "No matching repairs", "none": "No repair tickets" },
+  "error": { "action": "Action failed", "submit": "Submit failed" },
+  "modal": {
+    "create": "Submit repair",
+    "createSubmit": "Submit",
+    "processStart": "Start handling",
+    "processFinish": "Complete repair",
+    "processSubmit": "OK",
+    "classroomLine": "Classroom: {{classroom}}",
+    "remark": "Remark (optional)",
+    "remarkPlaceholder": "Describe what was done; shown to the reporter"
+  },
+  "form": {
+    "classroom": "Classroom",
+    "classroomPlaceholder": "Select a classroom",
+    "description": "Fault description",
+    "descriptionPlaceholder": "Describe the fault, e.g. projector won't turn on, AC not cooling"
+  },
+  "validation": { "classroomRequired": "Please select a classroom", "descriptionRequired": "Please describe the fault" },
+  "status": {
+    "open": "Open",
+    "processing": "In progress",
+    "completed": "Awaiting confirm",
+    "confirmed": "Confirmed"
+  }
+}

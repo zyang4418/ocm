@@ -1,0 +1,166 @@
+{
+  "breadcrumb": { "home": "首页", "current": "数据导入" },
+  "title": "数据导入",
+  "subtitle": "上传 xlsx 文件异步导入业务数据。先选择导入类型，再上传文件；解析后可预览并确认。",
+  "upload": {
+    "typeLabel": "导入类型",
+    "button": "上传导入",
+    "uploading": "上传中…",
+    "error": "上传失败"
+  },
+  "schemaIntroTail": " 表头（按列名识别，顺序无关）：",
+  "unnamed": "(未命名)",
+  "split": {
+    "heading": "教务处课表拆分",
+    "subtitle": "上传教务处导出的聚合课表（含教室 / 课程 / 行政班 / 教师 / 周次），填学期与第一周周一，系统自动拆为 6 个导入任务（教室 / 课程库 / 行政班 / 教学班 / 开课 / 课次），各自进入预览。请按依赖顺序确认：教室 → 课程库 → 行政班 → 教学班 → 开课 → 课次（开课与课次引用课程库与教学班，未先确认时预览会报「不存在」，确认后重校通过）。",
+    "semester": "学期",
+    "week1": "第一周周一（须为周一）",
+    "button": "拆分并建任务",
+    "splitting": "拆分中…",
+    "error": "拆分失败",
+    "successTitle": "拆分完成，已建 {{count}} 个导入任务",
+    "successSubtitle": "教室 {{classrooms}} · 课程 {{catalogCourses}} · 行政班 {{adminClasses}} · 教学班 {{teachingClasses}} · 开课 {{offerings}} · 课次 {{sessions}}（跳过 空行政班 {{skippedEmptyAdmin}} / 平行 {{skippedParallel}} / 无教师填未安排 {{noTeacherFilled}}）",
+    "warningsSummary": "告警 {{count}} 条（点击展开）",
+    "warningsMore": "…其余 {{count}} 条省略"
+  },
+  "table": { "title": "导入任务", "description": "共 {{count}} 个任务", "searchPlaceholder": "搜索导入任务" },
+  "field": {
+    "type": "类型",
+    "filename": "文件",
+    "status": "状态",
+    "totalRows": "总行数",
+    "succeededRows": "成功",
+    "failedRows": "失败",
+    "createdAt": "创建时间",
+    "actions": "操作"
+  },
+  "action": { "viewPreview": "查看预览", "viewDetail": "查看明细" },
+  "empty": { "loading": "加载中…", "search": "未找到匹配的导入任务", "none": "暂无导入任务" },
+  "error": { "load": "加载失败", "action": "操作失败" },
+  "modal": {
+    "previewHeading": "预览：确认导入「{{label}}」",
+    "detailHeading": "导入明细：{{label}}",
+    "close": "关闭",
+    "previewSummary": "将导入 {{succeeded}} / 失败 {{failed}} / 总 {{total}} 行",
+    "detailSummary": "成功 {{succeeded}} / 失败 {{failed}} / 总 {{total}} 行",
+    "commit": "确认导入",
+    "cancel": "取消导入",
+    "loadingPreview": "加载预览数据…",
+    "loading": "加载中…",
+    "rowsCap": "仅显示前 {{shown}} 行，共 {{total}} 行",
+    "errorRow": "第 {{row}} 行：",
+    "noErrors": "无错误"
+  },
+  "status": {
+    "pending": "待处理",
+    "processing": "处理中",
+    "preview": "待确认",
+    "succeeded": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消"
+  },
+  "types": {
+    "sessions": {
+      "label": "课表（课次）",
+      "note": "教室与开课需预先建立，按名称引用；按教室+日期+节次区间去重，冲突行跳过。period_end 可省略，默认为 period_start（连上多节如 3-4 为一条课次）。"
+    },
+    "classrooms": {
+      "label": "教室",
+      "note": "按教室名称 upsert：已存在则更新，否则新增。floor/campus 为可选的楼层与校区。"
+    },
+    "admin_classes": {
+      "label": "行政班",
+      "note": "按年级+班级名称 upsert。"
+    },
+    "teaching_classes": {
+      "label": "教学班",
+      "note": "父子表扁平化：每个成员行政班一行，按 name 分组。被开课引用的教学班成员不可修改。"
+    },
+    "catalog": {
+      "label": "课程库",
+      "note": "按课程名称 upsert。code 加唯一索引（留空存 NULL，互不冲突）；credits/total_hours/category/exam_type 为可选的教务处属性。"
+    },
+    "offerings": {
+      "label": "开课",
+      "note": "按课程+教学班+学期 upsert；课程与教学班按名称引用，需预先建立。course_seq..weekly_hours 为可选的教务处开课元数据。"
+    },
+    "regimes": {
+      "label": "作息制度",
+      "note": "父子表扁平化：每节次一行，按 regime_name 分组；提交时整套替换该制度的节次。"
+    },
+    "bookings": {
+      "label": "教室预约",
+      "note": "恢复模式：按文件中的 status 还原。pending/approved 行占用时段并做冲突校验。"
+    }
+  },
+  "columns": {
+    "sessions": {
+      "date": "日期",
+      "periodStart": "起始节次",
+      "periodEnd": "结束节次",
+      "classroom": "教室",
+      "course": "课程",
+      "teachingClass": "教学班",
+      "semester": "学期",
+      "note": "备注"
+    },
+    "classrooms": {
+      "name": "教室编号",
+      "building": "楼栋",
+      "capacity": "座位数",
+      "type": "类型",
+      "floor": "楼层",
+      "campus": "校区",
+      "status": "状态",
+      "description": "备注"
+    },
+    "admin_classes": {
+      "grade": "年级",
+      "name": "班级",
+      "note": "备注"
+    },
+    "teaching_classes": {
+      "name": "教学班",
+      "note": "备注",
+      "admin_classes": "成员行政班"
+    },
+    "catalog": {
+      "name": "课程",
+      "code": "代码",
+      "credits": "学分",
+      "totalHours": "总学时",
+      "category": "课程类别",
+      "examType": "考核方式",
+      "description": "说明"
+    },
+    "offerings": {
+      "course": "课程",
+      "teachingClass": "教学班",
+      "semester": "学期",
+      "teacher": "教师",
+      "courseSeq": "课程序号",
+      "teacherId": "教师工号",
+      "teacherTitle": "教师职称",
+      "college": "开课学院",
+      "maxStudents": "人数上限",
+      "requirement": "课程类别一",
+      "weeklyHours": "周学时",
+      "note": "备注"
+    },
+    "regimes": {
+      "name": "制度",
+      "effectiveMonth": "生效月",
+      "effectiveDay": "生效日",
+      "periods": "节次"
+    },
+    "bookings": {
+      "classroom": "教室",
+      "username": "预约人",
+      "date": "日期",
+      "periodStart": "起始节次",
+      "periodEnd": "结束节次",
+      "status": "状态",
+      "purpose": "事由"
+    }
+  }
+}

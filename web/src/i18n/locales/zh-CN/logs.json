@@ -1,0 +1,33 @@
+{
+  "breadcrumb": { "home": "首页", "current": "审计日志" },
+  "title": "审计日志",
+  "subtitle": "记录系统中的所有写操作（增删改、审批、导入等），仅管理员可见。日志按保留策略自动清理。",
+  "searchPlaceholder": "搜索操作人 / 操作内容 / 请求路径",
+  "field": {
+    "createdAt": "时间",
+    "actorName": "操作人",
+    "summary": "操作",
+    "request": "请求",
+    "statusCode": "结果",
+    "clientIp": "IP"
+  },
+  "result": {
+    "2": "成功",
+    "3": "重定向",
+    "4": "拒绝",
+    "5": "错误"
+  },
+  "empty": { "loading": "加载中…", "search": "未找到匹配的日志", "none": "暂无日志" },
+  "error": { "load": "加载失败" },
+  "filter": { "from": "开始日期", "to": "结束日期", "clear": "清空筛选" },
+  "settings": {
+    "heading": "日志保留策略",
+    "hint": "超过保留天数的日志将被自动清理",
+    "adminOnlySuffix": "（仅管理员可修改）",
+    "retentionEnabledLabel": "启用日志保留",
+    "retentionDaysLabel": "保留天数",
+    "retentionDaysInvalid": "保留天数需在 1–3650 之间",
+    "saveButton": "保存设置",
+    "savedNotice": "日志保留设置已保存"
+  }
+}

@@ -22,23 +22,19 @@ import {
   TextInput,
   Toggle,
 } from '@carbon/react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
+import { formatDate } from '../i18n/formatters.js'
 
 // statusLabel/statusKind group HTTP status codes by class: the audit log
 // records the outcome of every mutating request, so a 4xx shows an attempted
 // (rejected) change, a 5xx a server-side failure.
 function statusClass(code) {
   return Math.floor(code / 100)
-}
-
-const statusLabel = {
-  2: '成功',
-  3: '重定向',
-  4: '拒绝',
-  5: '错误',
 }
 
 const statusKind = {
@@ -48,13 +44,13 @@ const statusKind = {
   5: 'red',
 }
 
-const headers = [
-  { key: 'createdAt', header: '时间' },
-  { key: 'actorName', header: '操作人' },
-  { key: 'summary', header: '操作' },
-  { key: 'request', header: '请求' },
-  { key: 'statusCode', header: '结果' },
-  { key: 'clientIp', header: 'IP' },
+const headers = (t) => [
+  { key: 'createdAt', header: t('field.createdAt') },
+  { key: 'actorName', header: t('field.actorName') },
+  { key: 'summary', header: t('field.summary') },
+  { key: 'request', header: t('field.request') },
+  { key: 'statusCode', header: t('field.statusCode') },
+  { key: 'clientIp', header: t('field.clientIp') },
 ]
 
 function pad(n) {
@@ -65,21 +61,12 @@ function fmt(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 const defaultSettings = { retentionEnabled: true, retentionDays: 180 }
 
 export default function LogsPage() {
+  const { t } = useTranslation('logs')
   const { token, can } = useAuth()
+  const navigate = useNavigate()
   const canManage = can('log:manage')
 
   // Date filters default to the last 30 days, the same window convention as
@@ -126,28 +113,36 @@ export default function LogsPage() {
       token,
     })
       .then(() => {
-        setSaveNotice('日志保留设置已保存')
+        setSaveNotice(t('settings.savedNotice'))
         list.reload()
       })
       .catch((err) => setActionError(err.message))
       .finally(() => setSaving(false))
   }
 
+  const tableHeaders = headers(t)
+
   return (
     <div className="logs-page">
       <Grid fullWidth>
         <Column sm={4} md={8} lg={16}>
-          <Breadcrumb>
-            <BreadcrumbItem href="/">首页</BreadcrumbItem>
-            <BreadcrumbItem isCurrentPage>审计日志</BreadcrumbItem>
+          <Breadcrumb aria-label={t('aria.breadcrumb', { ns: 'common' })}>
+            <BreadcrumbItem
+              href="/"
+              onClick={(e) => {
+                e.preventDefault()
+                navigate('/')
+              }}
+            >
+              {t('breadcrumb.home')}
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
           </Breadcrumb>
-          <h1 className="logs-page__heading">审计日志</h1>
-          <p className="logs-page__subtitle">
-            记录系统中的所有写操作（增删改、审批、导入等），仅管理员可见。日志按保留策略自动清理。
-          </p>
+          <h1 className="logs-page__heading">{t('title')}</h1>
+          <p className="logs-page__subtitle">{t('subtitle')}</p>
 
           {error && (
-            <InlineNotification kind="error" lowContrast title="加载失败" subtitle={error} />
+            <InlineNotification kind="error" lowContrast title={t('error.load')} subtitle={error} />
           )}
           {saveNotice && (
             <InlineNotification kind="success" lowContrast title={saveNotice} />
@@ -157,14 +152,14 @@ export default function LogsPage() {
             <TextInput
               id="logs-from"
               type="date"
-              labelText="开始日期"
+              labelText={t('filter.from')}
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
             <TextInput
               id="logs-to"
               type="date"
-              labelText="结束日期"
+              labelText={t('filter.to')}
               value={to}
               onChange={(e) => setTo(e.target.value)}
             />
@@ -176,17 +171,17 @@ export default function LogsPage() {
                 setTo(fmt(today))
               }}
             >
-              清空筛选
+              {t('filter.clear')}
             </Button>
           </div>
 
-          <DataTable rows={list.items} headers={headers}>
-            {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
+          <DataTable rows={list.items} headers={tableHeaders}>
+            {({ rows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps }) => (
               <TableContainer className="logs-page__table">
                 <TableToolbar>
                   <TableToolbarContent>
                     <TableToolbarSearch
-                      placeholder="搜索操作人 / 操作内容 / 请求路径"
+                      placeholder={t('searchPlaceholder')}
                       value={list.q}
                       onChange={(e, v) => list.setQ(v ?? '')}
                     />
@@ -195,7 +190,7 @@ export default function LogsPage() {
                 <Table {...getTableProps()}>
                   <TableHead>
                     <TableRow>
-                      {tableHeaders.map((h) => (
+                      {renderedHeaders.map((h) => (
                         <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
                           {h.header}
                         </TableHeader>
@@ -205,12 +200,12 @@ export default function LogsPage() {
                   <TableBody>
                     {list.loading ? (
                       <TableRow>
-                        <TableCell colSpan={headers.length}>加载中…</TableCell>
+                        <TableCell colSpan={tableHeaders.length}>{t('empty.loading')}</TableCell>
                       </TableRow>
                     ) : rows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={headers.length}>
-                          {list.q || from || to ? '未找到匹配的日志' : '暂无日志'}
+                        <TableCell colSpan={tableHeaders.length}>
+                          {list.q || from || to ? t('empty.search') : t('empty.none')}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -227,7 +222,7 @@ export default function LogsPage() {
                             <TableCell>{`${log.method ?? ''} ${log.path ?? ''}`.trim() || '-'}</TableCell>
                             <TableCell>
                               <Tag type={statusKind[cls] || 'gray'} size="sm">
-                                {statusLabel[cls] || ''} {log.statusCode ?? ''}
+                                {t('result.' + cls, { defaultValue: '' })} {log.statusCode ?? ''}
                               </Tag>
                             </TableCell>
                             <TableCell>{log.clientIp || '-'}</TableCell>
@@ -249,25 +244,25 @@ export default function LogsPage() {
           />
 
           <section className="logs-page__settings">
-            <h2 className="logs-page__settings-heading">日志保留策略</h2>
+            <h2 className="logs-page__settings-heading">{t('settings.heading')}</h2>
             <p className="logs-page__settings-hint">
-              超过保留天数的日志将被自动清理{canManage ? '' : '（仅管理员可修改）'}。
+              {t('settings.hint')}{canManage ? '' : t('settings.adminOnlySuffix')}
             </p>
             <Toggle
               id="retentionEnabled"
-              labelText="启用日志保留"
+              labelText={t('settings.retentionEnabledLabel')}
               toggled={settings.retentionEnabled}
               disabled={!canManage || !settingsLoaded}
               onToggle={(checked) => setSettings({ ...settings, retentionEnabled: checked })}
             />
             <NumberInput
               id="retentionDays"
-              label="保留天数"
+              label={t('settings.retentionDaysLabel')}
               min={1}
               max={3650}
               value={settings.retentionDays}
               disabled={!canManage || !settingsLoaded || !settings.retentionEnabled}
-              invalidText={`保留天数需在 1–3650 之间`}
+              invalidText={t('settings.retentionDaysInvalid')}
               onChange={(e, { value }) =>
                 setSettings({ ...settings, retentionDays: Number(value) })
               }
@@ -278,7 +273,7 @@ export default function LogsPage() {
                 disabled={saving || settings.retentionDays < 1 || settings.retentionDays > 3650}
                 onClick={saveSettings}
               >
-                保存设置
+                {t('settings.saveButton')}
               </Button>
             )}
           </section>

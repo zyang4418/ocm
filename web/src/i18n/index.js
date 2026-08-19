@@ -30,9 +30,18 @@ import timetableZh from './locales/zh-CN/timetable.json'
 import timetableEn from './locales/en/timetable.json'
 import attendanceZh from './locales/zh-CN/attendance.json'
 import attendanceEn from './locales/en/attendance.json'
+import importsZh from './locales/zh-CN/imports.json'
+import importsEn from './locales/en/imports.json'
+import observationsZh from './locales/zh-CN/observations.json'
+import observationsEn from './locales/en/observations.json'
+import repairsZh from './locales/zh-CN/repairs.json'
+import repairsEn from './locales/en/repairs.json'
+import logsZh from './locales/zh-CN/logs.json'
+import logsEn from './locales/en/logs.json'
+import settingsZh from './locales/zh-CN/settings.json'
+import settingsEn from './locales/en/settings.json'
 
-// Static namespaces. More page-level namespaces (imports, repairs, ...)
-// are added here as they are extracted.
+// Static namespaces.
 const resources = {
   'zh-CN': {
     common: commonZh,
@@ -49,6 +58,11 @@ const resources = {
     scheduleConfig: scheduleConfigZh,
     timetable: timetableZh,
     attendance: attendanceZh,
+    imports: importsZh,
+    observations: observationsZh,
+    repairs: repairsZh,
+    logs: logsZh,
+    settings: settingsZh,
   },
   en: {
     common: commonEn,
@@ -65,6 +79,11 @@ const resources = {
     scheduleConfig: scheduleConfigEn,
     timetable: timetableEn,
     attendance: attendanceEn,
+    imports: importsEn,
+    observations: observationsEn,
+    repairs: repairsEn,
+    logs: logsEn,
+    settings: settingsEn,
   },
 }
 
@@ -79,7 +98,7 @@ i18n
     fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: SUPPORTED_LANGUAGES,
     lng: localStorage.getItem('ocm.lang') || undefined,
-    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable', 'attendance'],
+    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable', 'attendance', 'imports', 'observations', 'repairs', 'logs', 'settings'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes

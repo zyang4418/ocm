@@ -1,0 +1,50 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Parameters" },
+  "title": "Parameters",
+  "subtitle": "Email, object storage, and AI assistant service configuration. System admins only.",
+  "error": { "action": "Action failed" },
+  "saveButton": "Save",
+  "placeholder": { "set": "Set — leave blank to keep", "unset": "Not set" },
+  "secret": { "show": "Show secret", "hide": "Hide secret" },
+  "mail": {
+    "heading": "Email service",
+    "hint": "SMTP sending configuration. Currently only stored; sending is not wired up yet.",
+    "savedNotice": "Email service configuration saved",
+    "enabledLabel": "Enable email service",
+    "host": "SMTP server",
+    "port": "Port",
+    "portInvalid": "Port must be between 1 and 65535",
+    "username": "Username",
+    "password": "Password",
+    "fromName": "From name",
+    "fromNamePlaceholder": "OCM Notifications",
+    "fromAddress": "From address",
+    "encryption": "Encryption",
+    "encryptionSsl": "SSL",
+    "encryptionStarttls": "STARTTLS",
+    "encryptionNone": "None"
+  },
+  "storage": {
+    "heading": "Object storage",
+    "hint": "S3-compatible storage (Tencent COS, Alibaba OSS, MinIO, etc.) configuration. Currently only stored; uploads are not wired up yet.",
+    "savedNotice": "Object storage configuration saved",
+    "enabledLabel": "Enable object storage",
+    "endpoint": "Endpoint",
+    "region": "Region",
+    "bucket": "Bucket",
+    "accessKey": "AccessKey",
+    "secretKey": "SecretKey",
+    "useSsl": "Use HTTPS",
+    "usePathStyle": "Path-style access (for MinIO and other self-hosted)",
+    "publicBaseUrl": "Public base URL (optional)"
+  },
+  "ai": {
+    "heading": "AI assistant",
+    "hint": "Large-model API configuration (OpenAI-compatible). The key is stored only on the backend and never sent to the browser; once enabled, the “AI assistant” permission controls who can use it.",
+    "savedNotice": "AI assistant configuration saved",
+    "enabledLabel": "Enable AI assistant",
+    "baseUrl": "Base URL",
+    "model": "Model name",
+    "apiKey": "API key"
+  }
+}

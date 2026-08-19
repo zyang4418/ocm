@@ -1,0 +1,42 @@
+{
+  "breadcrumb": { "home": "首页", "current": "教室报修" },
+  "title": "教室报修",
+  "subtitle": "提交与跟踪教室设备设施报修，维修端指派处理，报修人确认完成。",
+  "filter": { "status": "状态", "allStatuses": "全部状态" },
+  "table": { "title": "报修工单", "description": "共 {{count}} 条工单", "searchPlaceholder": "搜索报修", "addButton": "提交报修" },
+  "field": {
+    "classroom": "教室",
+    "description": "故障描述",
+    "creatorName": "报修人",
+    "assigneeName": "处理人",
+    "status": "状态",
+    "createdAt": "提交时间",
+    "actions": "操作"
+  },
+  "action": { "start": "开始处理", "finish": "完成", "confirm": "确认完成" },
+  "empty": { "loading": "加载中…", "search": "未找到匹配的报修", "none": "暂无报修工单" },
+  "error": { "action": "操作失败", "submit": "提交失败" },
+  "modal": {
+    "create": "提交报修",
+    "createSubmit": "提交",
+    "processStart": "开始处理",
+    "processFinish": "完成报修",
+    "processSubmit": "确定",
+    "classroomLine": "教室：{{classroom}}",
+    "remark": "处理备注（选填）",
+    "remarkPlaceholder": "填写处理说明，将展示给报修人"
+  },
+  "form": {
+    "classroom": "教室",
+    "classroomPlaceholder": "请选择教室",
+    "description": "故障描述",
+    "descriptionPlaceholder": "请描述故障现象，如投影仪无法开机、空调不制冷等"
+  },
+  "validation": { "classroomRequired": "请选择教室", "descriptionRequired": "请填写故障描述" },
+  "status": {
+    "open": "待处理",
+    "processing": "处理中",
+    "completed": "待确认",
+    "confirmed": "已确认"
+  }
+}
