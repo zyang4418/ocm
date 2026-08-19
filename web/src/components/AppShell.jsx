@@ -100,8 +100,10 @@ export default function AppShell({ children }) {
                 <OverflowMenu
                   renderIcon={Translate}
                   aria-label={t('aria.languageSwitcher')}
-                  tooltipAlignment="end"
+                  iconDescription={t('aria.languageSwitcher')}
+                  align="bottom-end"
                   flipped
+                  className="app-shell__lang-switcher"
                 >
                   {languages.map((lng) => (
                     <OverflowMenuItem

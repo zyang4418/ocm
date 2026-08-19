@@ -127,6 +127,8 @@ export default function LoginPage() {
             className="login__nav-item login__lang"
             renderIcon={Translate}
             aria-label={t('aria.languageSwitcher', { ns: 'common' })}
+            iconDescription={t('aria.languageSwitcher', { ns: 'common' })}
+            align="bottom-end"
             flipped
           >
             {languages.map((lng) => (

@@ -362,6 +362,24 @@
   min-height: 100vh;
 }
 
+// Language switcher in the header global bar. The OverflowMenu trigger
+// defaults to a 40px (md layout token) square, while the neighbouring
+// HeaderGlobalAction buttons are a fixed 48px (mini-units(6)) square that
+// fills the bar. The shorter trigger top-aligns inside its stretched 48px
+// wrapper, so its icon sits ~4px higher than the other buttons. Pin the
+// trigger to the same 48px square as a header action and bump its icon to
+// 20px to match the size={20} icons used by the other HeaderGlobalActions,
+// so all four buttons read as a single row.
+.cds--header__global .app-shell__lang-switcher {
+  block-size: $spacing-09; // 3rem = 48px = mini-units(6)
+  inline-size: $spacing-09;
+
+  .cds--overflow-menu__icon {
+    block-size: 1.25rem; // 20px, matching the size={20} header-action icons
+    inline-size: 1.25rem;
+  }
+}
+
 // --- Dashboard -------------------------------------------------------------
 .dashboard {
   padding-block: $spacing-07 $spacing-09;
