@@ -1,0 +1,33 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Audit logs" },
+  "title": "Audit logs",
+  "subtitle": "Records every write operation in the system (create/delete/update, approvals, imports, etc.). Admin-only. Logs are auto-cleaned per the retention policy.",
+  "searchPlaceholder": "Search actor / action / request path",
+  "field": {
+    "createdAt": "Time",
+    "actorName": "Actor",
+    "summary": "Action",
+    "request": "Request",
+    "statusCode": "Result",
+    "clientIp": "IP"
+  },
+  "result": {
+    "2": "OK",
+    "3": "Redirect",
+    "4": "Rejected",
+    "5": "Error"
+  },
+  "empty": { "loading": "Loading…", "search": "No matching logs", "none": "No logs" },
+  "error": { "load": "Failed to load" },
+  "filter": { "from": "From", "to": "To", "clear": "Clear filters" },
+  "settings": {
+    "heading": "Log retention policy",
+    "hint": "Logs older than the retention window are cleaned up automatically",
+    "adminOnlySuffix": " (admin-only)",
+    "retentionEnabledLabel": "Enable log retention",
+    "retentionDaysLabel": "Retention days",
+    "retentionDaysInvalid": "Retention days must be between 1 and 3650",
+    "saveButton": "Save settings",
+    "savedNotice": "Log retention settings saved"
+  }
+}

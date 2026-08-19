@@ -25,17 +25,13 @@ import {
 } from '@carbon/react'
 import { Add, CheckmarkOutline } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
+import { formatDate } from '../i18n/formatters.js'
 
-const statusLabel = {
-  open: '待处理',
-  processing: '处理中',
-  completed: '待确认',
-  confirmed: '已确认',
-}
 const statusKind = {
   open: 'red',
   processing: 'blue',
@@ -43,31 +39,21 @@ const statusKind = {
   confirmed: 'green',
 }
 
-const headers = [
-  { key: 'classroom', header: '教室' },
-  { key: 'description', header: '故障描述' },
-  { key: 'creatorName', header: '报修人' },
-  { key: 'assigneeName', header: '处理人' },
-  { key: 'status', header: '状态' },
-  { key: 'createdAt', header: '提交时间' },
+const headers = (t) => [
+  { key: 'classroom', header: t('field.classroom') },
+  { key: 'description', header: t('field.description') },
+  { key: 'creatorName', header: t('field.creatorName') },
+  { key: 'assigneeName', header: t('field.assigneeName') },
+  { key: 'status', header: t('field.status') },
+  { key: 'createdAt', header: t('field.createdAt') },
 ]
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function classroomLabel(r) {
   return r.building ? `${r.building} ${r.classroomName}` : r.classroomName
 }
 
 export default function RepairsPage() {
+  const { t } = useTranslation('repairs')
   const { token, user: currentUser, can } = useAuth()
   const navigate = useNavigate()
   const canSubmit = can('repair:create')
@@ -113,8 +99,8 @@ export default function RepairsPage() {
   }
 
   const handleCreate = async () => {
-    if (!form.classroomId) return setFormError('请选择教室')
-    if (!form.description.trim()) return setFormError('请填写故障描述')
+    if (!form.classroomId) return setFormError(t('validation.classroomRequired'))
+    if (!form.description.trim()) return setFormError(t('validation.descriptionRequired'))
     try {
       setSaving(true)
       setFormError('')
@@ -180,12 +166,13 @@ export default function RepairsPage() {
     createdAt: formatDate(r.createdAt),
   }))
 
-  const colSpan = headers.length + 1
+  const tableHeaders = headers(t)
+  const colSpan = tableHeaders.length + 1
 
   return (
     <Grid fullWidth className="classrooms-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -193,21 +180,19 @@ export default function RepairsPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>教室报修</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="classrooms-page__heading">教室报修</h1>
-        <p className="classrooms-page__subtitle">
-          提交与跟踪教室设备设施报修，维修端指派处理，报修人确认完成。
-        </p>
+        <h1 className="classrooms-page__heading">{t('title')}</h1>
+        <p className="classrooms-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {error && (
           <InlineNotification
             kind="error"
-            title="操作失败"
+            title={t('error.action')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -218,28 +203,28 @@ export default function RepairsPage() {
         <div className="bookings-page__filters">
           <Select
             id="f-status"
-            labelText="状态"
+            labelText={t('filter.status')}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="bookings-page__filter"
           >
-            <SelectItem value="" text="全部状态" />
-            <SelectItem value="open" text="待处理" />
-            <SelectItem value="processing" text="处理中" />
-            <SelectItem value="completed" text="待确认" />
-            <SelectItem value="confirmed" text="已确认" />
+            <SelectItem value="" text={t('filter.allStatuses')} />
+            <SelectItem value="open" text={t('status.open')} />
+            <SelectItem value="processing" text={t('status.processing')} />
+            <SelectItem value="completed" text={t('status.completed')} />
+            <SelectItem value="confirmed" text={t('status.confirmed')} />
           </Select>
         </div>
 
-        <DataTable rows={rows} headers={headers}>
-          {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="报修工单" description={`共 ${list.total} 条工单`}>
+        <DataTable rows={rows} headers={tableHeaders}>
+          {({ rows: tableRows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索报修" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('table.searchPlaceholder')} />
                   {canSubmit && (
                     <Button renderIcon={Add} size="sm" onClick={openCreate}>
-                      提交报修
+                      {t('table.addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -247,22 +232,22 @@ export default function RepairsPage() {
               <Table {...getTableProps()}>
                 <TableHead>
                   <TableRow>
-                    {tableHeaders.map((header) => (
+                    {renderedHeaders.map((header) => (
                       <TableHeader key={header.key} {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>{list.q ? '未找到匹配的报修' : '暂无报修工单'}</TableCell>
+                      <TableCell colSpan={colSpan}>{list.q ? t('empty.search') : t('empty.none')}</TableCell>
                     </TableRow>
                   ) : (
                     tableRows.map((row) => {
@@ -278,7 +263,7 @@ export default function RepairsPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {statusLabel[cell.value] ?? cell.value}
+                                    {t('status.' + cell.value, { defaultValue: cell.value })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -289,17 +274,17 @@ export default function RepairsPage() {
                             <div className="classrooms-page__actions">
                               {canStart && (
                                 <Button kind="ghost" size="sm" onClick={() => openProcess(r, 'processing')} disabled={actingId === r.id}>
-                                  开始处理
+                                  {t('action.start')}
                                 </Button>
                               )}
                               {canFinish && (
                                 <Button kind="ghost" size="sm" onClick={() => openProcess(r, 'completed')} disabled={actingId === r.id}>
-                                  完成
+                                  {t('action.finish')}
                                 </Button>
                               )}
                               {canConfirm && (
                                 <Button kind="ghost" size="sm" renderIcon={CheckmarkOutline} onClick={() => handleConfirm(r)} disabled={actingId === r.id}>
-                                  确认完成
+                                  {t('action.confirm')}
                                 </Button>
                               )}
                               {!canStart && !canFinish && !canConfirm && (
@@ -328,9 +313,9 @@ export default function RepairsPage() {
       {/* Submit form */}
       <Modal
         open={formOpen}
-        modalHeading="提交报修"
-        primaryButtonText="提交"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setFormOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={saving}
@@ -338,25 +323,25 @@ export default function RepairsPage() {
         <div className="classrooms-page__form">
           <Select
             id="r-classroom"
-            labelText="教室"
+            labelText={t('form.classroom')}
             value={form.classroomId}
             onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
           >
-            <SelectItem value="" text="请选择教室" />
+            <SelectItem value="" text={t('form.classroomPlaceholder')} />
             {classrooms.map((c) => (
               <SelectItem key={c.id} value={String(c.id)} text={classroomLabel({ building: c.building, classroomName: c.name })} />
             ))}
           </Select>
           <TextArea
             id="r-description"
-            labelText="故障描述"
-            placeholder="请描述故障现象，如投影仪无法开机、空调不制冷等"
+            labelText={t('form.description')}
+            placeholder={t('form.descriptionPlaceholder')}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={4}
           />
           {formError && (
-            <InlineNotification kind="error" title="提交失败" subtitle={formError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.submit')} subtitle={formError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -364,27 +349,27 @@ export default function RepairsPage() {
       {/* Process dialog */}
       <Modal
         open={Boolean(processTarget)}
-        modalHeading={processTarget?.nextStatus === 'processing' ? '开始处理' : '完成报修'}
-        primaryButtonText="确定"
-        secondaryButtonText="取消"
+        modalHeading={processTarget?.nextStatus === 'processing' ? t('modal.processStart') : t('modal.processFinish')}
+        primaryButtonText={t('modal.processSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setProcessTarget(null)}
         onRequestSubmit={handleProcess}
         primaryButtonDisabled={processing}
       >
         <div className="classrooms-page__form">
           <p className="classrooms-page__confirm-text">
-            教室：{processTarget ? classroomLabel(processTarget) : ''}
+            {t('modal.classroomLine', { classroom: processTarget ? classroomLabel(processTarget) : '' })}
           </p>
           <TextArea
             id="r-remark"
-            labelText="处理备注（选填）"
-            placeholder="填写处理说明，将展示给报修人"
+            labelText={t('modal.remark')}
+            placeholder={t('modal.remarkPlaceholder')}
             value={processRemark}
             onChange={(e) => setProcessRemark(e.target.value)}
             rows={3}
           />
           {processError && (
-            <InlineNotification kind="error" title="操作失败" subtitle={processError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.action')} subtitle={processError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>

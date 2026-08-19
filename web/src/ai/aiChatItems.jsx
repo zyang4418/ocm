@@ -1,41 +1,35 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, InlineNotification, Loading, Tag } from '@carbon/react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 
-// Labels for the assistant's tools, shown in the per-message tool indicators.
-const toolLabels = {
-  list_classrooms: '查询教室',
-  query_availability: '查询空闲教室',
-  query_timetable: '查询课表',
-  propose_booking: '生成预约方案',
-}
-
 // These components render inside Carbon AI Chat's user_defined slots. The chat
 // renders them through a React portal from the app tree, so contexts
-// (useAuth) and the global Carbon styles apply normally.
+// (useAuth, useTranslation) and the global Carbon styles apply normally.
 
 function ToolIndicator({ tools }) {
+  const { t } = useTranslation('aiChat')
   if (!tools || tools.length === 0) return null
   return (
     <div className="ai-chat-item__tools">
-      {tools.map((t, i) => {
-        const label = toolLabels[t.name] ?? t.name
+      {tools.map((tool, i) => {
+        const label = t('tools.' + tool.name, { defaultValue: tool.name })
         let type = 'cyan'
-        let text = `${label}中…`
+        let text = t('tool.running', { label })
         let spinning = true
-        if (t.status === 'ok') {
+        if (tool.status === 'ok') {
           type = 'green'
-          text = `已${label}`
+          text = t('tool.ok', { label })
           spinning = false
-        } else if (t.status === 'error') {
+        } else if (tool.status === 'error') {
           type = 'red'
-          text = `${label}失败`
+          text = t('tool.error', { label })
           spinning = false
         }
         return (
-          <Tag key={`${t.name}-${i}`} type={type} size="sm">
+          <Tag key={`${tool.name}-${i}`} type={type} size="sm">
             {spinning && <Loading small withOverlay={false} className="ai-chat-item__tool-spinner" />}
             {text}
           </Tag>
@@ -46,21 +40,21 @@ function ToolIndicator({ tools }) {
 }
 
 function ConflictNote({ conflicts }) {
+  const { t } = useTranslation('aiChat')
   if (!conflicts || conflicts.length === 0) return null
+  const items = conflicts.slice(0, 5).map((c) => {
+    const kind = c.kind === 'session' ? t('conflict.sessionKind') : t('conflict.bookingKind')
+    const course = c.courseName ? ' ' + c.courseName : ''
+    const name = c.displayName ? t('conflict.nameWrap', { name: c.displayName }) : ''
+    return t('conflict.item', { kind, start: c.periodStart, end: c.periodEnd, course, name })
+  })
   return (
     <InlineNotification
       kind="warning"
       lowContrast
       hideCloseButton
-      title={`该时段存在 ${conflicts.length} 项冲突`}
-      subtitle={conflicts
-        .slice(0, 5)
-        .map(
-          (c) =>
-            `${c.kind === 'session' ? '课程' : '预约'}：第${c.periodStart}-${c.periodEnd}节` +
-            `${c.courseName ? ` ${c.courseName}` : ''}${c.displayName ? `（${c.displayName}）` : ''}`,
-        )
-        .join('；')}
+      title={t('conflict.title', { count: conflicts.length })}
+      subtitle={items.join(t('conflict.join'))}
     />
   )
 }
@@ -70,12 +64,13 @@ function ConflictNote({ conflicts }) {
 // dismissed. The confirm button submits through the existing booking API,
 // which re-validates permissions and conflicts server-side.
 function ProposalCard({ proposal }) {
+  const { t } = useTranslation('aiChat')
   const { token } = useAuth()
   const [state, setState] = useState('proposed') // proposed | submitting | confirmed | failed | dismissed
   const [error, setError] = useState('')
 
   if (state === 'dismissed') {
-    return <p className="ai-chat-item__proposal-dismissed">已取消此预约方案。</p>
+    return <p className="ai-chat-item__proposal-dismissed">{t('proposal.dismissed')}</p>
   }
 
   const confirm = async () => {
@@ -94,36 +89,36 @@ function ProposalCard({ proposal }) {
       })
       setState('confirmed')
     } catch (err) {
-      setError(err.status === 409 ? '该教室该时段已被占用，请重新选择' : err.message)
+      setError(err.status === 409 ? t('error.bookingConflict') : err.message)
       setState('failed')
     }
   }
 
   return (
     <div className="ai-chat-item__proposal">
-      <h3 className="ai-chat-item__proposal-title">预约预览</h3>
+      <h3 className="ai-chat-item__proposal-title">{t('proposal.title')}</h3>
       <div className="ai-chat-item__proposal-fields">
-        <span>教室：{proposal.payload.classroomName}</span>
-        <span>日期：{proposal.payload.date}</span>
-        <span>节次：{proposal.payload.periodLabel}</span>
-        <span>用途：{proposal.payload.purpose}</span>
+        <span>{t('proposal.field.classroom', { value: proposal.payload.classroomName })}</span>
+        <span>{t('proposal.field.date', { value: proposal.payload.date })}</span>
+        <span>{t('proposal.field.period', { value: proposal.payload.periodLabel })}</span>
+        <span>{t('proposal.field.purpose', { value: proposal.payload.purpose })}</span>
       </div>
       {state === 'proposed' && <ConflictNote conflicts={proposal.payload.conflicts} />}
       {state === 'confirmed' && (
-        <InlineNotification kind="success" lowContrast hideCloseButton title="已提交预约，等待管理员审批">
-          <Link to="/bookings">查看预约</Link>
+        <InlineNotification kind="success" lowContrast hideCloseButton title={t('proposal.successTitle')}>
+          <Link to="/bookings">{t('proposal.successLink')}</Link>
         </InlineNotification>
       )}
       {state === 'failed' && (
-        <InlineNotification kind="error" lowContrast hideCloseButton title="预约提交失败" subtitle={error} />
+        <InlineNotification kind="error" lowContrast hideCloseButton title={t('proposal.failedTitle')} subtitle={error} />
       )}
       {(state === 'proposed' || state === 'submitting') && (
         <div className="ai-chat-item__proposal-actions">
           <Button size="sm" kind="primary" disabled={state === 'submitting'} onClick={confirm}>
-            {state === 'submitting' ? '提交中…' : '确认预约'}
+            {state === 'submitting' ? t('proposal.confirming') : t('proposal.confirm')}
           </Button>
           <Button size="sm" kind="ghost" disabled={state === 'submitting'} onClick={() => setState('dismissed')}>
-            取消
+            {t('action.cancel', { ns: 'common' })}
           </Button>
         </div>
       )}

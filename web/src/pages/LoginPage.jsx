@@ -5,11 +5,15 @@ import {
   Checkbox,
   Dropdown,
   InlineNotification,
+  OverflowMenu,
+  OverflowMenuItem,
   PasswordInput,
   TextInput,
 } from '@carbon/react'
-import { ArrowRight, Document, Edit } from '@carbon/icons-react'
+import { ArrowRight, Document, Edit, Translate } from '@carbon/icons-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
+import useLanguage from '../i18n/useLanguage.js'
 import logoUrl from '../assets/logo.png'
 import wechatIconUrl from '../assets/wechat-icon.png'
 
@@ -34,12 +38,14 @@ function WeChatIcon({ className }) {
   )
 }
 
-const realmItems = [{ id: 'Email', label: 'Email' }]
-
 export default function LoginPage() {
+  const { t } = useTranslation('login')
+  const { languages, setLanguage } = useLanguage()
   const { user, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const realmItems = [{ id: 'Email', label: t('email') }]
 
   const [step, setStep] = useState('id')
   const [username, setUsername] = useState(() => localStorage.getItem(REMEMBER_KEY) || '')
@@ -64,7 +70,7 @@ export default function LoginPage() {
   const handleContinue = (event) => {
     event.preventDefault()
     if (!username.trim()) {
-      setIdError('Enter your ID')
+      setIdError(t('enterId'))
       return
     }
     setIdError('')
@@ -82,7 +88,7 @@ export default function LoginPage() {
     event.preventDefault()
     if (submitting) return
     if (!password) {
-      setPasswordError('Enter your password')
+      setPasswordError(t('enterPassword'))
       return
     }
     setPasswordError('')
@@ -108,16 +114,33 @@ export default function LoginPage() {
     <div className="login">
       <header className="login__header">
         <a href="#" className="login__brand" onClick={displayOnly}>
-          <span className="login__brand-name">OCM</span>
+          <span className="login__brand-name">{t('brand')}</span>
         </a>
-        {docsUrl && (
-          <nav className="login__nav" aria-label="Docs">
+        <nav className="login__nav" aria-label={t('docs')}>
+          {docsUrl && (
             <a href={docsUrl} className="login__nav-item" target="_blank" rel="noreferrer">
               <span className="login__nav-icon"><Document size={20} /></span>
-              <span className="login__nav-text">Docs</span>
+              <span className="login__nav-text">{t('docs')}</span>
             </a>
-          </nav>
-        )}
+          )}
+          <OverflowMenu
+            className="login__nav-item login__lang"
+            renderIcon={Translate}
+            aria-label={t('aria.languageSwitcher', { ns: 'common' })}
+            iconDescription={t('aria.languageSwitcher', { ns: 'common' })}
+            align="bottom-end"
+            flipped
+          >
+            {languages.map((lng) => (
+              <OverflowMenuItem
+                key={lng}
+                itemText={t(`language.${lng}`, { ns: 'common' })}
+                isDelete={false}
+                onClick={() => setLanguage(lng)}
+              />
+            ))}
+          </OverflowMenu>
+        </nav>
       </header>
 
       <div className="login__container">
@@ -125,12 +148,12 @@ export default function LoginPage() {
           <div className="login__panel-main">
             <img src={logoUrl} className="login__logo" alt="" aria-hidden="true" />
             <h1 className="login__title">
-              Log in to
-              <span className="login__title-cloud">OCM</span>
+              {t('titlePrefix')}
+              <span className="login__title-cloud">{t('titleCloud')}</span>
             </h1>
             <p className="login__create-account">
-              Don&apos;t have an account?{' '}
-              <a href="#" onClick={displayOnly}>Create an account</a>
+              {t('createAccountPrefix')}{' '}
+              <a href="#" onClick={displayOnly}>{t('createAccountLink')}</a>
             </p>
 
             <div className="login__rows">
@@ -140,13 +163,13 @@ export default function LoginPage() {
                 noValidate
                 aria-hidden={step === 'password'}
               >
-                <div className="login__label">Sign in with</div>
+                <div className="login__label">{t('signInWith')}</div>
                 <div className="login__id-inputs">
                   <div className="login__realm">
                     <Dropdown
                       id="realm"
-                      label="Sign in with"
-                      aria-label="Sign in with"
+                      label={t('signInWith')}
+                      aria-label={t('signInWith')}
                       items={realmItems}
                       selectedItem={realmItems[0]}
                       size="lg"
@@ -156,9 +179,9 @@ export default function LoginPage() {
                   <div className="login__userid">
                     <TextInput
                       id="userid"
-                      labelText="Email"
+                      labelText={t('email')}
                       hideLabel
-                      placeholder="username@example.com"
+                      placeholder={t('usernamePlaceholder')}
                       value={username}
                       onChange={(e) => {
                         setUsername(e.target.value)
@@ -175,22 +198,22 @@ export default function LoginPage() {
                 </div>
                 <div className="login__button-row">
                   <Button type="submit" kind="primary" size="lg" renderIcon={ArrowRight} className="login__primary-btn">
-                    Continue
+                    {t('continue')}
                   </Button>
                 </div>
                 <div className="login__aux">
                   <a href="#" className="login__link" onClick={displayOnly} tabIndex={step === 'password' ? -1 : 0}>
-                    Forgot ID?
+                    {t('forgotId')}
                   </a>
                   <Checkbox
                     id="remember-id"
-                    labelText="Remember ID"
+                    labelText={t('rememberId')}
                     checked={rememberId}
                     onChange={(_, { checked }) => setRememberId(checked)}
                     tabIndex={step === 'password' ? -1 : 0}
                   />
                 </div>
-                <div className="login__separator">Or</div>
+                <div className="login__separator">{t('or')}</div>
                 <Button
                   kind="tertiary"
                   size="lg"
@@ -199,7 +222,7 @@ export default function LoginPage() {
                   onClick={displayOnly}
                   tabIndex={step === 'password' ? -1 : 0}
                 >
-                  Continue with WeChat
+                  {t('continueWithWeChat')}
                 </Button>
               </form>
 
@@ -212,7 +235,7 @@ export default function LoginPage() {
                 {error && (
                   <InlineNotification
                     kind="error"
-                    title="Your ID or password was entered incorrectly."
+                    title={t('errorTitle')}
                     subtitle={error}
                     lowContrast
                     hideCloseButton
@@ -225,8 +248,8 @@ export default function LoginPage() {
                 </button>
                 <PasswordInput
                   id="password"
-                  labelText="Password"
-                  placeholder="Enter your password"
+                  labelText={t('password')}
+                  placeholder={t('passwordPlaceholder')}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
@@ -235,8 +258,8 @@ export default function LoginPage() {
                   invalid={Boolean(passwordError)}
                   invalidText={passwordError}
                   autoComplete="current-password"
-                  showPasswordLabel="Show password"
-                  hidePasswordLabel="Hide password"
+                  showPasswordLabel={t('showPassword')}
+                  hidePasswordLabel={t('hidePassword')}
                   size="lg"
                   ref={passwordRef}
                   tabIndex={step === 'id' ? -1 : 0}
@@ -250,12 +273,12 @@ export default function LoginPage() {
                     className="login__primary-btn"
                     disabled={submitting}
                   >
-                    {submitting ? 'Logging in…' : 'Log in'}
+                    {submitting ? t('loggingIn') : t('logIn')}
                   </Button>
                 </div>
                 <div className="login__aux login__aux--password">
                   <a href="#" className="login__link" onClick={displayOnly} tabIndex={step === 'id' ? -1 : 0}>
-                    Forgot password?
+                    {t('forgotPassword')}
                   </a>
                 </div>
               </form>

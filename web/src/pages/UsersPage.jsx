@@ -30,34 +30,18 @@ import {
 } from '@carbon/react'
 import { Add, Edit, Password as PasswordIcon, TrashCan, UserSettings } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import usePagedList from '../hooks/usePagedList.js'
 import ListPagination from '../components/ListPagination.jsx'
+import { formatDate } from '../i18n/formatters.js'
+import { datePickerLocale } from '../i18n/carbonLocale.js'
 
-const headers = [
-  { key: 'id', header: 'ID' },
-  { key: 'username', header: '用户名' },
-  { key: 'displayName', header: '显示名称' },
-  { key: 'type', header: '类型' },
-  { key: 'roles', header: '角色' },
-  { key: 'groups', header: '用户组' },
-  { key: 'createdAt', header: '创建时间' },
-]
+// User type enum values (not translatable text — labels come from i18n).
+const TYPE_KEYS = ['student', 'teacher', 'staff']
 
-const typeLabel = (type) => ({ student: '学生', teacher: '教师', staff: '职员' }[type] ?? type)
 const typeKind = (type) => ({ student: 'teal', teacher: 'blue', staff: 'gray' }[type] ?? 'gray')
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 const emptyCreate = { username: '', password: '', displayName: '', type: 'staff' }
 
@@ -66,9 +50,21 @@ const emptyCreate = { username: '', password: '', displayName: '', type: 'staff'
 const emptyGrantForm = { roles: {}, permissions: {}, groups: [] }
 
 export default function UsersPage() {
+  const { t } = useTranslation('users')
   const { token, user: currentUser, can } = useAuth()
   const canManage = can('user:manage')
   const navigate = useNavigate()
+
+  const headers = [
+    { key: 'id', header: t('field.id') },
+    { key: 'username', header: t('field.username') },
+    { key: 'displayName', header: t('field.displayName') },
+    { key: 'type', header: t('field.type') },
+    { key: 'roles', header: t('field.roles') },
+    { key: 'groups', header: t('field.groups') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
+
   const list = usePagedList({ path: '/api/users', token })
   const { loading } = list
 
@@ -102,7 +98,7 @@ export default function UsersPage() {
   const handleCreate = async () => {
     const { username, password, displayName, type } = createForm
     if (!username.trim() || !password || !displayName.trim()) {
-      setCreateError('用户名、密码和显示名称均为必填项')
+      setCreateError(t('validation.createRequired'))
       return
     }
     try {
@@ -135,7 +131,7 @@ export default function UsersPage() {
 
   const handleEdit = async () => {
     if (!editForm.displayName.trim()) {
-      setEditError('显示名称为必填项')
+      setEditError(t('validation.displayNameRequired'))
       return
     }
     try {
@@ -166,11 +162,11 @@ export default function UsersPage() {
 
   const handlePassword = async () => {
     if (!pwdForm.password) {
-      setPwdError('请输入新密码')
+      setPwdError(t('validation.passwordRequired'))
       return
     }
     if (pwdForm.password !== pwdForm.confirm) {
-      setPwdError('两次输入的密码不一致')
+      setPwdError(t('validation.passwordMismatch'))
       return
     }
     try {
@@ -277,7 +273,7 @@ export default function UsersPage() {
   return (
     <Grid fullWidth className="users-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -285,19 +281,19 @@ export default function UsersPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>用户管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="users-page__heading">用户管理</h1>
-        <p className="users-page__subtitle">维护系统用户账号、类型、角色授权与密码。</p>
+        <h1 className="users-page__heading">{t('title')}</h1>
+        <p className="users-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {list.error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={list.error}
             lowContrast
             hideCloseButton
@@ -314,13 +310,13 @@ export default function UsersPage() {
             getRowProps,
             getToolbarProps,
           }) => (
-            <TableContainer title="用户列表" description={`共 ${list.total} 个账号`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索用户" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('searchPlaceholder')} />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
-                      添加用户
+                      {t('addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -333,18 +329,18 @@ export default function UsersPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + 1}>加载中…</TableCell>
+                      <TableCell colSpan={headers.length + 1}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={headers.length + 1}>
-                        {list.q ? '未找到匹配的用户' : '暂无用户'}
+                        {list.q ? t('empty.search') : t('empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -357,7 +353,7 @@ export default function UsersPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={typeKind(cell.value)} size="sm">
-                                    {typeLabel(cell.value)}
+                                    {t('type.' + cell.value, { defaultValue: cell.value })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -394,7 +390,7 @@ export default function UsersPage() {
                                     size="sm"
                                     hasIconOnly
                                     renderIcon={Edit}
-                                    iconDescription="编辑"
+                                    iconDescription={t('action.edit', { ns: 'common' })}
                                     onClick={() => openEdit(u)}
                                   />
                                   <Button
@@ -402,7 +398,7 @@ export default function UsersPage() {
                                     size="sm"
                                     hasIconOnly
                                     renderIcon={PasswordIcon}
-                                    iconDescription="重置密码"
+                                    iconDescription={t('iconAction.password')}
                                     onClick={() => openPassword(u)}
                                   />
                                   <Button
@@ -410,7 +406,7 @@ export default function UsersPage() {
                                     size="sm"
                                     hasIconOnly
                                     renderIcon={UserSettings}
-                                    iconDescription="角色与权限"
+                                    iconDescription={t('iconAction.grants')}
                                     onClick={() => openGrants(u)}
                                   />
                                   <Button
@@ -418,13 +414,13 @@ export default function UsersPage() {
                                     size="sm"
                                     hasIconOnly
                                     renderIcon={TrashCan}
-                                    iconDescription="删除"
+                                    iconDescription={t('action.delete', { ns: 'common' })}
                                     disabled={isSelf(u)}
                                     onClick={() => openDelete(u)}
                                   />
                                 </>
                               )}
-                              {!canManage && <span className="users-page__readonly">只读</span>}
+                              {!canManage && <span className="users-page__readonly">{t('readonly')}</span>}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -448,9 +444,9 @@ export default function UsersPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="添加用户"
-        primaryButtonText="创建"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -458,39 +454,39 @@ export default function UsersPage() {
         <div className="users-page__form">
           <TextInput
             id="create-username"
-            labelText="用户名"
+            labelText={t('form.username')}
             value={createForm.username}
             onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
           />
           <PasswordInput
             id="create-password"
-            labelText="密码"
-            placeholder="设置初始密码"
+            labelText={t('form.password')}
+            placeholder={t('form.passwordPlaceholder')}
             value={createForm.password}
             onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-            showPasswordLabel="显示密码"
-            hidePasswordLabel="隐藏密码"
+            showPasswordLabel={t('password.show', { ns: 'common' })}
+            hidePasswordLabel={t('password.hide', { ns: 'common' })}
           />
           <TextInput
             id="create-displayName"
-            labelText="显示名称"
+            labelText={t('form.displayName')}
             value={createForm.displayName}
             onChange={(e) => setCreateForm({ ...createForm, displayName: e.target.value })}
           />
           <Select
             id="create-type"
-            labelText="类型"
+            labelText={t('form.type')}
             value={createForm.type}
             onChange={(e) => setCreateForm({ ...createForm, type: e.target.value })}
           >
-            <SelectItem value="student" text="学生" />
-            <SelectItem value="teacher" text="教师" />
-            <SelectItem value="staff" text="职员" />
+            {TYPE_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('type.' + k)} />
+            ))}
           </Select>
           {createError && (
             <InlineNotification
               kind="error"
-              title="创建失败"
+              title={t('error.create')}
               subtitle={createError}
               lowContrast
               hideCloseButton
@@ -502,9 +498,9 @@ export default function UsersPage() {
       {/* Edit */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`编辑用户：${editTarget?.username ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.edit', { name: editTarget?.username ?? '' })}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleEdit}
         primaryButtonDisabled={editing}
@@ -512,24 +508,24 @@ export default function UsersPage() {
         <div className="users-page__form">
           <TextInput
             id="edit-displayName"
-            labelText="显示名称"
+            labelText={t('form.displayName')}
             value={editForm.displayName}
             onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
           />
           <Select
             id="edit-type"
-            labelText="类型"
+            labelText={t('form.type')}
             value={editForm.type}
             onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
           >
-            <SelectItem value="student" text="学生" />
-            <SelectItem value="teacher" text="教师" />
-            <SelectItem value="staff" text="职员" />
+            {TYPE_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('type.' + k)} />
+            ))}
           </Select>
           {editError && (
             <InlineNotification
               kind="error"
-              title="保存失败"
+              title={t('error.save')}
               subtitle={editError}
               lowContrast
               hideCloseButton
@@ -541,9 +537,9 @@ export default function UsersPage() {
       {/* Password */}
       <Modal
         open={Boolean(pwdTarget)}
-        modalHeading={`重置密码：${pwdTarget?.username ?? ''}`}
-        primaryButtonText="重置密码"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.password', { name: pwdTarget?.username ?? '' })}
+        primaryButtonText={t('modal.passwordSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setPwdTarget(null)}
         onRequestSubmit={handlePassword}
         primaryButtonDisabled={pwdSaving}
@@ -551,24 +547,24 @@ export default function UsersPage() {
         <div className="users-page__form">
           <PasswordInput
             id="pwd-password"
-            labelText="新密码"
+            labelText={t('form.newPassword')}
             value={pwdForm.password}
             onChange={(e) => setPwdForm({ ...pwdForm, password: e.target.value })}
-            showPasswordLabel="显示密码"
-            hidePasswordLabel="隐藏密码"
+            showPasswordLabel={t('password.show', { ns: 'common' })}
+            hidePasswordLabel={t('password.hide', { ns: 'common' })}
           />
           <PasswordInput
             id="pwd-confirm"
-            labelText="确认新密码"
+            labelText={t('form.confirmPassword')}
             value={pwdForm.confirm}
             onChange={(e) => setPwdForm({ ...pwdForm, confirm: e.target.value })}
-            showPasswordLabel="显示密码"
-            hidePasswordLabel="隐藏密码"
+            showPasswordLabel={t('password.show', { ns: 'common' })}
+            hidePasswordLabel={t('password.hide', { ns: 'common' })}
           />
           {pwdError && (
             <InlineNotification
               kind="error"
-              title="重置失败"
+              title={t('error.password')}
               subtitle={pwdError}
               lowContrast
               hideCloseButton
@@ -580,20 +576,20 @@ export default function UsersPage() {
       {/* Grants */}
       <Modal
         open={Boolean(grantTarget)}
-        modalHeading={`角色与权限：${grantTarget?.displayName ?? ''}`}
-        primaryButtonText="保存授权"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.grants', { name: grantTarget?.displayName ?? '' })}
+        primaryButtonText={t('modal.grantsSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setGrantTarget(null)}
         onRequestSubmit={handleGrantSave}
         primaryButtonDisabled={grantSaving}
         size="lg"
       >
         <div className="users-page__grants">
-          {grantLoading && <p>加载中…</p>}
+          {grantLoading && <p>{t('empty.loading')}</p>}
           {grantError && (
             <InlineNotification
               kind="error"
-              title="授权失败"
+              title={t('error.grants')}
               subtitle={grantError}
               lowContrast
               hideCloseButton
@@ -602,8 +598,8 @@ export default function UsersPage() {
           {!grantLoading && (
             <>
               <section className="users-page__grants-section">
-                <h3>角色</h3>
-                <p className="users-page__grants-hint">勾选后可为该角色设置有效期，留空表示长期有效。</p>
+                <h3>{t('grants.roles')}</h3>
+                <p className="users-page__grants-hint">{t('grants.rolesHint')}</p>
                 {grantRoles.map((role) => {
                   const entry = grantForm.roles[role.code] ?? { checked: false, expiresAt: '' }
                   const expired = entry.checked && entry.expiresAt && new Date(entry.expiresAt) < startOfToday()
@@ -620,11 +616,12 @@ export default function UsersPage() {
                           })
                         }
                       />
-                      {role.isSystem && <Tag type="purple" size="sm">内置</Tag>}
+                      {role.isSystem && <Tag type="purple" size="sm">{t('grants.builtin')}</Tag>}
                       {entry.checked && (
                         <DatePicker
                           datePickerType="single"
                           dateFormat="Y-m-d"
+                          locale={datePickerLocale()}
                           onChange={(dates) =>
                             setGrantForm({
                               ...grantForm,
@@ -637,21 +634,21 @@ export default function UsersPage() {
                         >
                           <DatePickerInput
                             id={`grant-role-${role.id}-expiry`}
-                            placeholder="长期有效"
-                            labelText="有效期至"
+                            placeholder={t('grants.expiryPlaceholder')}
+                            labelText={t('grants.expiryLabel')}
                             value={entry.expiresAt}
                             size="sm"
                           />
                         </DatePicker>
                       )}
-                      {expired && <Tag type="red" size="sm">已过期</Tag>}
+                      {expired && <Tag type="red" size="sm">{t('grants.expired')}</Tag>}
                     </div>
                   )
                 })}
               </section>
               <section className="users-page__grants-section">
-                <h3>直接授权权限</h3>
-                <p className="users-page__grants-hint">在角色之外额外授予的单项权限，适合临时授权场景。</p>
+                <h3>{t('grants.permissions')}</h3>
+                <p className="users-page__grants-hint">{t('grants.permissionsHint')}</p>
                 {catalogGroups.map((group) => (
                   <CheckboxGroup
                     key={group.name}
@@ -662,7 +659,7 @@ export default function UsersPage() {
                       <Checkbox
                         key={perm.code}
                         id={`grant-perm-${perm.code}`}
-                        labelText={`${perm.name}（${perm.code}）`}
+                        labelText={t('grants.permOption', { name: perm.name, code: perm.code })}
                         checked={Boolean(grantForm.permissions[perm.code])}
                         onChange={(_, { checked }) =>
                           setGrantForm({
@@ -676,10 +673,10 @@ export default function UsersPage() {
                 ))}
               </section>
               <section className="users-page__grants-section">
-                <h3>所属用户组</h3>
-                <p className="users-page__grants-hint">组成员身份在「用户组管理」中维护，此处只读。</p>
+                <h3>{t('grants.groups')}</h3>
+                <p className="users-page__grants-hint">{t('grants.groupsHint')}</p>
                 {grantForm.groups.length === 0 ? (
-                  <p className="users-page__grants-empty">未加入任何用户组</p>
+                  <p className="users-page__grants-empty">{t('grants.groupsEmpty')}</p>
                 ) : (
                   <div className="users-page__tags">
                     {grantForm.groups.map((g) => (
@@ -699,20 +696,20 @@ export default function UsersPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除用户"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="users-page__confirm-text">
-          确定要删除用户「{deleteTarget?.displayName}」（@{deleteTarget?.username}）吗？此操作不可撤销。
+          {t('deleteConfirm', { displayName: deleteTarget?.displayName, username: deleteTarget?.username })}
         </p>
         {deleteError && (
           <InlineNotification
             kind="error"
-            title="删除失败"
+            title={t('error.delete')}
             subtitle={deleteError}
             lowContrast
             hideCloseButton

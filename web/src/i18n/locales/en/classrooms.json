@@ -1,0 +1,70 @@
+{
+  "breadcrumb": {
+    "home": "Home",
+    "current": "Classrooms"
+  },
+  "title": "Classrooms",
+  "subtitle": "Maintain classroom records — the foundation for bookings and repair tickets.",
+  "table": {
+    "title": "Classroom list",
+    "description": "{{count}} classrooms",
+    "actionsHeader": "Actions"
+  },
+  "searchPlaceholder": "Search classrooms",
+  "addButton": "Add classroom",
+  "field": {
+    "id": "ID",
+    "name": "Classroom ID",
+    "building": "Building",
+    "capacity": "Capacity",
+    "type": "Type",
+    "floor": "Floor",
+    "campus": "Campus",
+    "status": "Status",
+    "createdAt": "Created at",
+    "description": "Description",
+    "actions": "Actions"
+  },
+  "type": {
+    "standard": "Standard",
+    "multimedia": "Multimedia",
+    "computer": "Computer lab",
+    "lab": "Laboratory",
+    "lecture_hall": "Lecture hall",
+    "stadium": "Stadium",
+    "drawing": "Drawing room",
+    "language": "Language lab",
+    "studio": "Studio",
+    "special": "Special"
+  },
+  "placeholder": {
+    "name": "e.g. A301",
+    "building": "e.g. Teaching Building 1",
+    "floor": "e.g. 3",
+    "campus": "e.g. Main campus"
+  },
+  "modal": {
+    "create": "Add classroom",
+    "createSubmit": "Create",
+    "edit": "Edit classroom: {{name}}",
+    "editSubmit": "Save",
+    "delete": "Delete classroom",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": "Are you sure you want to delete classroom \"{{name}}\"? This action cannot be undone.",
+  "empty": {
+    "loading": "Loading…",
+    "search": "No matching classrooms",
+    "none": "No classrooms"
+  },
+  "error": {
+    "load": "Failed to load",
+    "create": "Failed to create",
+    "save": "Failed to save",
+    "delete": "Failed to delete"
+  },
+  "validation": {
+    "nameRequired": "Classroom ID is required",
+    "capacityPositive": "Capacity must be greater than 0"
+  }
+}

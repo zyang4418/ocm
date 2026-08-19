@@ -1,0 +1,63 @@
+{
+  "breadcrumb": { "home": "首页", "current": "课程管理" },
+  "title": "课程管理",
+  "subtitle": "维护课程库与各班级开课信息，为排课与课表提供数据基础。",
+  "tabs": { "ariaLabel": "课程管理", "offerings": "课程列表", "catalog": "课程库" },
+  "table": {
+    "offering": { "title": "课程列表", "description": "共 {{count}} 项" },
+    "catalog": { "title": "课程库", "description": "共 {{count}} 项" }
+  },
+  "searchPlaceholder": "搜索",
+  "addButton": { "offering": "添加课程", "catalog": "添加课程库" },
+  "offeringField": {
+    "id": "ID",
+    "catalogName": "课程",
+    "catalogCode": "课程代码",
+    "teachingClassName": "教学班",
+    "classNames": "行政班",
+    "teacher": "教师",
+    "semester": "学期"
+  },
+  "catalogField": {
+    "id": "ID",
+    "name": "课程名称",
+    "code": "课程代码",
+    "description": "描述"
+  },
+  "field": { "actions": "操作" },
+  "offeringForm": {
+    "catalog": "课程（课程库）",
+    "teachingClass": "教学班",
+    "teacher": "教师",
+    "semester": "学期",
+    "note": "备注",
+    "selectCatalog": "请选择课程",
+    "selectTeachingClass": "请选择教学班",
+    "semesterPlaceholder": "如 2026秋",
+    "courseOption": "{{name}}（{{code}}）"
+  },
+  "catalogForm": {
+    "name": "课程名称",
+    "code": "课程代码",
+    "description": "描述",
+    "codePlaceholder": "如 MATH101"
+  },
+  "modal": {
+    "offeringCreate": "添加课程",
+    "catalogCreate": "添加课程库",
+    "edit": "编辑课程：{{name}}",
+    "editSubmit": "保存",
+    "delete": "删除",
+    "deleteSubmit": "删除"
+  },
+  "deleteConfirm": {
+    "offering": "确定要删除课程「{{name}}」吗？此操作不可撤销。",
+    "catalog": "确定要删除课程库「{{name}}」吗？此操作不可撤销。"
+  },
+  "empty": { "loading": "加载中…" },
+  "error": { "load": "加载失败", "save": "保存失败", "delete": "删除失败" },
+  "validation": {
+    "offeringRequired": "课程、教学班、教师、学期为必填项",
+    "catalogNameRequired": "课程名称为必填项"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "breadcrumb": {
+    "home": "Home",
+    "current": "Bookings"
+  },
+  "title": "Bookings",
+  "subtitle": "Book a classroom by period; submissions are reviewed by an admin. Bookings share conflict detection with the timetable to prevent double-booking.",
+  "table": {
+    "title": "Booking list",
+    "description": "{{count}} bookings",
+    "actionsHeader": "Actions"
+  },
+  "searchPlaceholder": "Search bookings",
+  "addButton": "New booking",
+  "field": {
+    "classroom": "Classroom",
+    "date": "Date",
+    "period": "Period",
+    "purpose": "Purpose",
+    "status": "Status",
+    "bookedBy": "Booked by",
+    "createdAt": "Created at",
+    "actions": "Actions"
+  },
+  "filter": {
+    "classroom": "Classroom",
+    "status": "Status",
+    "from": "Start date",
+    "to": "End date",
+    "allClassrooms": "All classrooms",
+    "allStatuses": "All statuses"
+  },
+  "action": {
+    "cancel": "Cancel",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "periodLabel": {
+    "single": "Period {{period}}",
+    "range": "Periods {{start}}–{{end}}"
+  },
+  "periodOption": "Period {{period}} ({{start}}-{{end}})",
+  "form": {
+    "create": "New booking",
+    "createSubmit": "Submit",
+    "classroom": "Classroom",
+    "date": "Date",
+    "periodStart": "Start period",
+    "periodEnd": "End period",
+    "purpose": "Purpose",
+    "purposePlaceholder": "e.g. Club activity, meeting",
+    "selectClassroom": "Select a classroom",
+    "busyPrefix": "Busy periods today: ",
+    "busyNone": "No busy periods today"
+  },
+  "cancelModal": {
+    "title": "Cancel booking",
+    "submit": "Confirm cancel",
+    "secondary": "Back",
+    "confirm": "Cancel the booking for \"{{classroom}} · {{date}} · {{period}}\"?"
+  },
+  "empty": {
+    "loading": "Loading…",
+    "search": "No matching bookings",
+    "none": "No bookings"
+  },
+  "error": {
+    "action": "Action failed",
+    "submit": "Submit failed"
+  },
+  "validation": {
+    "selectClassroom": "Please select a classroom",
+    "selectDate": "Please select a date",
+    "selectPeriod": "Please select a period",
+    "periodOrder": "Start period cannot be later than end period",
+    "purposeRequired": "Purpose is required",
+    "noSchedule": "No schedule is configured for this date; booking is unavailable"
+  }
+}

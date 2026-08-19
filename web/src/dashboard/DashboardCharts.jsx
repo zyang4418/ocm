@@ -1,13 +1,12 @@
 import '@carbon/charts-react/styles.css'
 import { Column, Grid, Tile } from '@carbon/react'
 import { SimpleBarChart, LineChart } from '@carbon/charts-react'
+import { useTranslation } from 'react-i18next'
 
 // The app's brand color lives in --color-primary / --cds-link-color, but d3
 // fills resolve to literal strings (no CSS var support), so the chart series
 // pin the same hex here. Keep in sync with app.wxss / app.scss tokens.
 const BRAND = '#2B5FF6'
-
-const BAR_GROUP = '课程场次'
 
 // DashboardCharts renders the homepage's two @carbon/charts panels as one
 // band. It is lazy-loaded from DashboardPage so the ~600KB d3/charts bundle
@@ -16,13 +15,19 @@ const BAR_GROUP = '课程场次'
 // the band degrades the same way the list sections do when the backend omits
 // a field for a low-privilege user or an empty day.
 export default function DashboardCharts({ periods, load, loadAll }) {
+  const { t } = useTranslation('dashboard')
+
+  // Series group names double as the color-scale keys, so the translated
+  // string must be reused consistently for both data and options.
+  const barGroup = t('charts.sessionCount')
+  const lineGroup = loadAll ? t('charts.futureLoadAll') : t('charts.futureLoadMine')
+
   const barData = (periods ?? []).map((p) => ({
-    group: BAR_GROUP,
-    key: `第${p.period}节`,
+    group: barGroup,
+    key: t('periodLabel.single', { period: p.period }),
     value: p.count,
   }))
 
-  const lineGroup = loadAll ? '全馆已批预约' : '我的已批预约'
   // Local-midnight Date objects: the time-scale x-axis needs real dates, and
   // pinning to the client's midnight keeps every point on its own calendar day.
   const lineData = (load ?? []).map((d) => ({
@@ -35,7 +40,7 @@ export default function DashboardCharts({ periods, load, loadAll }) {
     resizable: true,
     toolbar: { enabled: false },
     legend: { enabled: false }, // single series - the axis labels say it all
-    color: { scale: { [BAR_GROUP]: BRAND } },
+    color: { scale: { [barGroup]: BRAND } },
     axes: {
       left: { mapsTo: 'value', includeZero: true },
       bottom: { mapsTo: 'key', scaleType: 'labels' },
@@ -61,7 +66,7 @@ export default function DashboardCharts({ periods, load, loadAll }) {
         <Column md={4} lg={8}>
           <Tile className="dashboard__panel dashboard__chart-panel">
             <div className="dashboard__panel-head">
-              <h2 className="dashboard__panel-title">今日时段分布</h2>
+              <h2 className="dashboard__panel-title">{t('charts.todayDistribution')}</h2>
             </div>
             <div className="dashboard__chart-holder">
               <SimpleBarChart data={barData} options={barOptions} />
@@ -73,7 +78,9 @@ export default function DashboardCharts({ periods, load, loadAll }) {
         <Column md={4} lg={8}>
           <Tile className="dashboard__panel dashboard__chart-panel">
             <div className="dashboard__panel-head">
-              <h2 className="dashboard__panel-title">{loadAll ? '未来 14 天预约负载' : '未来 14 天我的预约'}</h2>
+              <h2 className="dashboard__panel-title">
+                {loadAll ? t('charts.futureLoadAll') : t('charts.futureLoadMine')}
+              </h2>
             </div>
             <div className="dashboard__chart-holder">
               <LineChart data={lineData} options={lineOptions} />

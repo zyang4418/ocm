@@ -1,0 +1,47 @@
+{
+  "breadcrumb": { "home": "首页", "current": "角色管理" },
+  "title": "角色管理",
+  "subtitle": "定义角色及其权限集合，并将角色授予用户或用户组。",
+  "table": {
+    "title": "角色列表",
+    "description": "共 {{count}} 个角色",
+    "actionsHeader": "操作"
+  },
+  "addButton": "新建角色",
+  "field": {
+    "id": "ID",
+    "code": "角色代码",
+    "name": "角色名称",
+    "description": "描述",
+    "permissions": "权限数",
+    "isSystem": "类型",
+    "actions": "操作"
+  },
+  "permissions": { "all": "全部", "count": "{{count}} 项" },
+  "system": { "builtin": "系统内置", "custom": "自定义" },
+  "modal": {
+    "create": "新建角色",
+    "createSubmit": "创建",
+    "edit": "编辑角色：{{name}}",
+    "editSubmit": "保存",
+    "delete": "删除角色",
+    "deleteSubmit": "删除"
+  },
+  "deleteConfirm": "确定要删除角色「{{name}}」吗？仍在使用的角色无法删除。",
+  "form": { "code": "角色代码", "name": "角色名称", "description": "描述" },
+  "codeHelperCreate": "小写字母开头，仅含小写字母、数字与下划线；创建后不可修改",
+  "codeHelperEdit": "角色代码创建后不可修改",
+  "placeholder": { "code": "如 office-assistant", "name": "如 办公室助理" },
+  "permOption": "{{name}}（{{code}}）",
+  "empty": { "loading": "加载中…", "none": "暂无角色" },
+  "error": {
+    "load": "加载失败",
+    "create": "创建失败",
+    "save": "保存失败",
+    "delete": "删除失败"
+  },
+  "validation": {
+    "codeRequired": "角色代码为必填项",
+    "nameRequired": "角色名称为必填项"
+  }
+}

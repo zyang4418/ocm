@@ -25,23 +25,25 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
-
-const headers = [
-  { key: 'id', header: 'ID' },
-  { key: 'code', header: '角色代码' },
-  { key: 'name', header: '角色名称' },
-  { key: 'description', header: '描述' },
-  { key: 'permissions', header: '权限数' },
-  { key: 'isSystem', header: '类型' },
-]
 
 const emptyForm = { code: '', name: '', description: '', permissions: {} }
 
 export default function RolesPage() {
+  const { t } = useTranslation('roles')
   const { token } = useAuth()
   const navigate = useNavigate()
+
+  const headers = [
+    { key: 'id', header: t('field.id') },
+    { key: 'code', header: t('field.code') },
+    { key: 'name', header: t('field.name') },
+    { key: 'description', header: t('field.description') },
+    { key: 'permissions', header: t('field.permissions') },
+    { key: 'isSystem', header: t('field.isSystem') },
+  ]
 
   const [roles, setRoles] = useState([])
   const [catalog, setCatalog] = useState([])
@@ -103,11 +105,11 @@ export default function RolesPage() {
 
   const handleCreate = async () => {
     if (!createForm.code.trim()) {
-      setCreateError('角色代码为必填项')
+      setCreateError(t('validation.codeRequired'))
       return
     }
     if (!createForm.name.trim()) {
-      setCreateError('角色名称为必填项')
+      setCreateError(t('validation.nameRequired'))
       return
     }
     try {
@@ -142,7 +144,7 @@ export default function RolesPage() {
 
   const handleEdit = async () => {
     if (!editForm.name.trim()) {
-      setEditError('角色名称为必填项')
+      setEditError(t('validation.nameRequired'))
       return
     }
     try {
@@ -186,7 +188,7 @@ export default function RolesPage() {
   return (
     <Grid fullWidth className="roles-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -194,19 +196,19 @@ export default function RolesPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>角色管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="roles-page__heading">角色管理</h1>
-        <p className="roles-page__subtitle">定义角色及其权限集合，并将角色授予用户或用户组。</p>
+        <h1 className="roles-page__heading">{t('title')}</h1>
+        <p className="roles-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {loadError && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={loadError}
             lowContrast
             hideCloseButton
@@ -216,11 +218,11 @@ export default function RolesPage() {
 
         <DataTable rows={displayRows} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
-            <TableContainer title="角色列表" description={`共 ${roles.length} 个角色`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: roles.length })}>
               <TableToolbar>
                 <TableToolbarContent>
                   <Button renderIcon={Add} size="sm" onClick={openCreate}>
-                    新建角色
+                    {t('addButton')}
                   </Button>
                 </TableToolbarContent>
               </TableToolbar>
@@ -232,17 +234,17 @@ export default function RolesPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + 1}>加载中…</TableCell>
+                      <TableCell colSpan={headers.length + 1}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={headers.length + 1}>暂无角色</TableCell>
+                      <TableCell colSpan={headers.length + 1}>{t('empty.none')}</TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
@@ -255,7 +257,9 @@ export default function RolesPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={cell.value.includes('*') ? 'purple' : 'blue'} size="sm">
-                                    {cell.value.includes('*') ? '全部' : `${cell.value.length} 项`}
+                                    {cell.value.includes('*')
+                                      ? t('permissions.all')
+                                      : t('permissions.count', { count: cell.value.length })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -264,7 +268,7 @@ export default function RolesPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={cell.value ? 'purple' : 'gray'} size="sm">
-                                    {cell.value ? '系统内置' : '自定义'}
+                                    {cell.value ? t('system.builtin') : t('system.custom')}
                                   </Tag>
                                 </TableCell>
                               )
@@ -278,7 +282,7 @@ export default function RolesPage() {
                                 size="sm"
                                 hasIconOnly
                                 renderIcon={Edit}
-                                iconDescription="编辑"
+                                iconDescription={t('action.edit', { ns: 'common' })}
                                 disabled={isSystem}
                                 onClick={() => openEdit(role)}
                               />
@@ -287,7 +291,7 @@ export default function RolesPage() {
                                 size="sm"
                                 hasIconOnly
                                 renderIcon={TrashCan}
-                                iconDescription="删除"
+                                iconDescription={t('action.delete', { ns: 'common' })}
                                 disabled={isSystem}
                                 onClick={() => {
                                   setDeleteTarget(role)
@@ -310,9 +314,9 @@ export default function RolesPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="新建角色"
-        primaryButtonText="创建"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -321,22 +325,22 @@ export default function RolesPage() {
         <div className="roles-page__form">
           <TextInput
             id="create-role-code"
-            labelText="角色代码"
-            helperText="小写字母开头，仅含小写字母、数字与下划线；创建后不可修改"
-            placeholder="如 office-assistant"
+            labelText={t('form.code')}
+            helperText={t('codeHelperCreate')}
+            placeholder={t('placeholder.code')}
             value={createForm.code}
             onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })}
           />
           <TextInput
             id="create-role-name"
-            labelText="角色名称"
-            placeholder="如 办公室助理"
+            labelText={t('form.name')}
+            placeholder={t('placeholder.name')}
             value={createForm.name}
             onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           />
           <TextArea
             id="create-role-description"
-            labelText="描述"
+            labelText={t('form.description')}
             value={createForm.description}
             onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
           />
@@ -347,7 +351,7 @@ export default function RolesPage() {
                   <Checkbox
                     key={perm.code}
                     id={`create-role-perm-${perm.code}`}
-                    labelText={`${perm.name}（${perm.code}）`}
+                    labelText={t('permOption', { name: perm.name, code: perm.code })}
                     checked={permissionChecked(createForm, perm.code)}
                     onChange={(_, { checked }) =>
                       togglePermission(createForm, setCreateForm, perm.code, checked)
@@ -360,7 +364,7 @@ export default function RolesPage() {
           {createError && (
             <InlineNotification
               kind="error"
-              title="创建失败"
+              title={t('error.create')}
               subtitle={createError}
               lowContrast
               hideCloseButton
@@ -372,9 +376,9 @@ export default function RolesPage() {
       {/* Edit */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`编辑角色：${editTarget?.name ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.edit', { name: editTarget?.name ?? '' })}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleEdit}
         primaryButtonDisabled={editing}
@@ -383,20 +387,20 @@ export default function RolesPage() {
         <div className="roles-page__form">
           <TextInput
             id="edit-role-code"
-            labelText="角色代码"
+            labelText={t('form.code')}
             value={editForm.code}
             readOnly
-            helperText="角色代码创建后不可修改"
+            helperText={t('codeHelperEdit')}
           />
           <TextInput
             id="edit-role-name"
-            labelText="角色名称"
+            labelText={t('form.name')}
             value={editForm.name}
             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
           />
           <TextArea
             id="edit-role-description"
-            labelText="描述"
+            labelText={t('form.description')}
             value={editForm.description}
             onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
           />
@@ -407,7 +411,7 @@ export default function RolesPage() {
                   <Checkbox
                     key={perm.code}
                     id={`edit-role-perm-${perm.code}`}
-                    labelText={`${perm.name}（${perm.code}）`}
+                    labelText={t('permOption', { name: perm.name, code: perm.code })}
                     checked={permissionChecked(editForm, perm.code)}
                     onChange={(_, { checked }) =>
                       togglePermission(editForm, setEditForm, perm.code, checked)
@@ -420,7 +424,7 @@ export default function RolesPage() {
           {editError && (
             <InlineNotification
               kind="error"
-              title="保存失败"
+              title={t('error.save')}
               subtitle={editError}
               lowContrast
               hideCloseButton
@@ -433,20 +437,20 @@ export default function RolesPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除角色"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="roles-page__confirm-text">
-          确定要删除角色「{deleteTarget?.name}」吗？仍在使用的角色无法删除。
+          {t('deleteConfirm', { name: deleteTarget?.name })}
         </p>
         {deleteError && (
           <InlineNotification
             kind="error"
-            title="删除失败"
+            title={t('error.delete')}
             subtitle={deleteError}
             lowContrast
             hideCloseButton

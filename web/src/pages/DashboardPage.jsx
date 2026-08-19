@@ -22,9 +22,11 @@ import {
   WarningAlt,
 } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { openAiChat } from '../ai/chatInstance.js'
 import useDashboardSummary from '../hooks/useDashboardSummary.js'
+import { formatDateTime } from '../i18n/formatters.js'
 
 // The @carbon/charts band is code-split: the d3/charts bundle (~600KB) loads
 // only when the homepage actually renders charts, keeping every other route's
@@ -45,31 +47,6 @@ const repairStatusKind = {
   processing: 'yellow',
   completed: 'gray',
   confirmed: 'green',
-}
-
-const repairStatusLabel = {
-  open: '待处理',
-  processing: '维修中',
-  completed: '已维修',
-  confirmed: '已确认',
-}
-
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
-
-function periodLabel(it) {
-  if (!it) return ''
-  if (it.periodStart === it.periodEnd) return `第 ${it.periodStart} 节`
-  return `第 ${it.periodStart}–${it.periodEnd} 节`
-}
-
-function formatDateTime(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 // Panel is the shared frame for every dashboard section: a Tile with a
@@ -114,15 +91,8 @@ function ChartPanelSkeleton() {
   )
 }
 
-const quickLinks = [
-  { title: 'AI 助手', description: '问答查询教室与课表，生成预约方案', openChat: true, perm: 'ai:chat' },
-  { title: '用户管理', description: '维护组织成员与账号状态', href: '/users', perm: 'user:read' },
-  { title: '角色管理', description: '配置角色与访问权限', href: '/roles', perm: 'role:manage' },
-  { title: '参数配置', description: '调整系统级运行参数', href: '/settings', adminOnly: true },
-  { title: '审计日志', description: '查看关键操作记录', href: '/logs', perm: 'log:read' },
-]
-
 export default function DashboardPage() {
+  const { t } = useTranslation('dashboard')
   const { user, token, can } = useAuth()
   const navigate = useNavigate()
   const { date, data, loading, error, reload } = useDashboardSummary(token)
@@ -132,23 +102,46 @@ export default function DashboardPage() {
     navigate(path)
   }
 
-  const weekday = WEEKDAYS[new Date(`${date}T00:00:00`).getDay()]
-  const dateLabel = `${Number(date.slice(5, 7))} 月 ${Number(date.slice(8, 10))} 日`
+  const weekdays = t('weekdays', { returnObjects: true })
+  const weekday = weekdays[new Date(`${date}T00:00:00`).getDay()]
+  const month = Number(date.slice(5, 7))
+  const day = Number(date.slice(8, 10))
+  const dateLabel = t('dateLabel', { month, day })
+
+  // Each quick link carries a key into dashboard.quickLinks.* for its title
+  // and description; the action (href or openChat) and permission gate stay.
+  const quickLinks = [
+    { key: 'aiAssistant', openChat: true, perm: 'ai:chat' },
+    { key: 'userManagement', href: '/users', perm: 'user:read' },
+    { key: 'roleManagement', href: '/roles', perm: 'role:manage' },
+    { key: 'parameters', href: '/settings', adminOnly: true },
+    { key: 'auditLogs', href: '/logs', perm: 'log:read' },
+  ].map((l) => ({
+    ...l,
+    title: t(`quickLinks.${l.key}.title`),
+    description: t(`quickLinks.${l.key}.description`),
+  }))
 
   // KPI row: built from the fields the backend actually returned - each entry
   // is permission-gated server side, so the row collapses naturally for
   // low-privilege users instead of showing forbidden modules.
   const kpis = []
   if (data?.todaySessions)
-    kpis.push({ key: 'sessions', icon: Calendar, label: '今日课程', value: data.todaySessions.total, unit: '节', href: '/timetable' })
+    kpis.push({ key: 'sessions', icon: Calendar, label: t('kpi.todaySessions'), value: data.todaySessions.total, unit: t('unit.session'), href: '/timetable' })
   if (data?.classroomTotal !== undefined)
-    kpis.push({ key: 'classrooms', icon: Building, label: '教室总数', value: data.classroomTotal, unit: '间', href: '/classrooms' })
+    kpis.push({ key: 'classrooms', icon: Building, label: t('kpi.classroomTotal'), value: data.classroomTotal, unit: t('unit.classroom'), href: '/classrooms' })
   if (data?.pendingBookings)
-    kpis.push({ key: 'pending', icon: CheckmarkOutline, label: '待审批预约', value: data.pendingBookings.total, unit: '项', href: '/bookings', alert: data.pendingBookings.total > 0 })
+    kpis.push({ key: 'pending', icon: CheckmarkOutline, label: t('kpi.pendingBookings'), value: data.pendingBookings.total, unit: t('unit.item'), href: '/bookings', alert: data.pendingBookings.total > 0 })
   if (data?.openRepairs)
-    kpis.push({ key: 'repairs', icon: WarningAlt, label: '未结报修', value: data.openRepairs.total, unit: '项', href: '/repairs', alert: data.openRepairs.total > 0 })
+    kpis.push({ key: 'repairs', icon: WarningAlt, label: t('kpi.openRepairs'), value: data.openRepairs.total, unit: t('unit.item'), href: '/repairs', alert: data.openRepairs.total > 0 })
   if (data?.myBookings)
-    kpis.push({ key: 'mine', icon: Event, label: '我的预约', value: data.myBookings.length, unit: '项', href: '/bookings' })
+    kpis.push({ key: 'mine', icon: Event, label: t('kpi.myBookings'), value: data.myBookings.length, unit: t('unit.item'), href: '/bookings' })
+
+  const periodLabel = (it) => {
+    if (!it) return ''
+    if (it.periodStart === it.periodEnd) return t('periodLabel.single', { period: it.periodStart })
+    return t('periodLabel.range', { start: it.periodStart, end: it.periodEnd })
+  }
 
   const sessions = data?.todaySessions?.items ?? []
   const pending = data?.pendingBookings?.items ?? []
@@ -159,13 +152,13 @@ export default function DashboardPage() {
   return (
     <Grid fullWidth className="dashboard">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
-          <BreadcrumbItem href="/">首页</BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>概览</BreadcrumbItem>
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
+          <BreadcrumbItem href="/">{t('breadcrumb.home')}</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.overview')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="dashboard__heading">概览</h1>
+        <h1 className="dashboard__heading">{t('title')}</h1>
         <p className="dashboard__greeting">
-          {user?.displayName}，欢迎回来。今天是 {dateLabel} 星期{weekday}。
+          {t('greeting', { name: user?.displayName, date: dateLabel, weekday })}
         </p>
       </Column>
 
@@ -173,9 +166,9 @@ export default function DashboardPage() {
         <Column sm={4} md={8} lg={16}>
           <InlineNotification
             kind="error"
-            title="概览数据加载失败"
+            title={t('error.title')}
             subtitle={error}
-            actions={<Button size="sm" kind="tertiary" onClick={reload}>重试</Button>}
+            actions={<Button size="sm" kind="tertiary" onClick={reload}>{t('error.retry')}</Button>}
             className="dashboard__error"
           />
         </Column>
@@ -251,9 +244,9 @@ export default function DashboardPage() {
             <SkeletonText width="85%" />
           </Tile>
         ) : data?.todaySessions ? (
-          <Panel title="今日课程" viewAll={{ to: '/timetable', label: '完整课表' }}>
+          <Panel title={t('panel.todaySessions')} viewAll={{ to: '/timetable', label: t('viewAll.fullTimetable') }}>
             {sessions.length === 0 ? (
-              <EmptyRow text="今日没有排课。" />
+              <EmptyRow text={t('empty.noSessions')} />
             ) : (
               <ul className="dashboard__sessions">
                 {sessions.map((s) => (
@@ -271,7 +264,7 @@ export default function DashboardPage() {
               </ul>
             )}
             {data.todaySessions.total > sessions.length && (
-              <p className="dashboard__more">共 {data.todaySessions.total} 节，仅显示前 {sessions.length} 节</p>
+              <p className="dashboard__more">{t('more', { total: data.todaySessions.total, shown: sessions.length })}</p>
             )}
           </Panel>
         ) : null}
@@ -287,9 +280,9 @@ export default function DashboardPage() {
         ) : (
           <div className="dashboard__todos">
             {data?.pendingBookings && (
-              <Panel title="待审批预约" viewAll={{ to: '/bookings', label: '全部预约' }}>
+              <Panel title={t('panel.pendingBookings')} viewAll={{ to: '/bookings', label: t('viewAll.allBookings') }}>
                 {pending.length === 0 ? (
-                  <EmptyRow text="没有待审批的预约。" />
+                  <EmptyRow text={t('empty.noPendingBookings')} />
                 ) : (
                   <ul className="dashboard__list">
                     {pending.map((b) => (
@@ -303,7 +296,7 @@ export default function DashboardPage() {
                             {b.purpose ? ` · ${b.purpose}` : ''}
                           </span>
                         </div>
-                        <Tag size="sm" type={bookingStatusKind[b.status] ?? 'gray'}>待审批</Tag>
+                        <Tag size="sm" type={bookingStatusKind[b.status] ?? 'gray'}>{t('bookingStatus.pending')}</Tag>
                       </li>
                     ))}
                   </ul>
@@ -311,9 +304,9 @@ export default function DashboardPage() {
               </Panel>
             )}
             {data?.openRepairs && (
-              <Panel title="未结报修" viewAll={{ to: '/repairs', label: '全部工单' }}>
+              <Panel title={t('panel.openRepairs')} viewAll={{ to: '/repairs', label: t('viewAll.allTickets') }}>
                 {repairs.length === 0 ? (
-                  <EmptyRow text="没有未结的报修工单。" />
+                  <EmptyRow text={t('empty.noOpenRepairs')} />
                 ) : (
                   <ul className="dashboard__list">
                     {repairs.map((rp) => (
@@ -325,7 +318,7 @@ export default function DashboardPage() {
                           <span className="dashboard__list-meta">{rp.creatorName}</span>
                         </div>
                         <Tag size="sm" type={repairStatusKind[rp.status] ?? 'gray'}>
-                          {repairStatusLabel[rp.status] ?? rp.status}
+                          {t(`repairStatus.${rp.status}`, { defaultValue: rp.status })}
                         </Tag>
                       </li>
                     ))}
@@ -334,7 +327,7 @@ export default function DashboardPage() {
               </Panel>
             )}
             {data?.myBookings && mine.length > 0 && (
-              <Panel title="我的近期预约" viewAll={{ to: '/bookings', label: '我的预约' }}>
+              <Panel title={t('panel.myRecentBookings')} viewAll={{ to: '/bookings', label: t('viewAll.myBookings') }}>
                 <ul className="dashboard__list">
                   {mine.map((b) => (
                     <li key={b.id} className="dashboard__list-row">
@@ -344,7 +337,7 @@ export default function DashboardPage() {
                         </span>
                         <span className="dashboard__list-meta">{b.purpose}</span>
                       </div>
-                      <Tag size="sm" type={bookingStatusKind[b.status] ?? 'gray'}>已通过</Tag>
+                      <Tag size="sm" type={bookingStatusKind[b.status] ?? 'gray'}>{t('bookingStatus.approved')}</Tag>
                     </li>
                   ))}
                 </ul>
@@ -357,15 +350,15 @@ export default function DashboardPage() {
       {/* Bottom band: recent activity + quick start */}
       {!loading && data?.recentLogs && (
         <Column sm={4} md={8} lg={10}>
-          <Panel title="最近动态" viewAll={{ to: '/logs', label: '全部日志' }}>
+          <Panel title={t('panel.recentActivity')} viewAll={{ to: '/logs', label: t('viewAll.allLogs') }}>
             {logs.length === 0 ? (
-              <EmptyRow text="暂无操作记录。" />
+              <EmptyRow text={t('empty.noLogs')} />
             ) : (
               <ul className="dashboard__logs">
                 {logs.map((l) => (
                   <li key={l.id} className="dashboard__log">
                     <span className="dashboard__log-time">{formatDateTime(l.createdAt)}</span>
-                    <span className="dashboard__log-actor">{l.actorName || '系统'}</span>
+                    <span className="dashboard__log-actor">{l.actorName || t('systemActor')}</span>
                     <span className="dashboard__log-text">
                       {l.summary || `${l.method} ${l.path}`}
                     </span>
@@ -380,7 +373,7 @@ export default function DashboardPage() {
       {!loading && (
         <Column sm={4} md={8} lg={6}>
           <div className="dashboard__quicklinks">
-            <h2 className="dashboard__section">快速开始</h2>
+            <h2 className="dashboard__section">{t('quickStart')}</h2>
             <div className="dashboard__quickgrid">
               {quickLinks
                 .filter((l) => (!l.adminOnly || can('*')) && (!l.perm || can(l.perm)))

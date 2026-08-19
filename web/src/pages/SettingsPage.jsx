@@ -13,6 +13,8 @@ import {
   TextInput,
   Toggle,
 } from '@carbon/react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 
@@ -63,7 +65,8 @@ const mailDefaults = {
 }
 
 function MailSection({ disabled }) {
-  const s = useSettings('/api/settings/email', mailDefaults, '邮件服务配置已保存')
+  const { t } = useTranslation('settings')
+  const s = useSettings('/api/settings/email', mailDefaults, t('mail.savedNotice'))
   const { form, setForm } = s
   // Mirrors the server-side validation for enabled services so the save
   // button stays disabled on invalid input.
@@ -78,24 +81,22 @@ function MailSection({ disabled }) {
 
   return (
     <section className="settings-page__section">
-      <h2 className="settings-page__section-heading">邮件服务</h2>
-      <p className="settings-page__section-hint">
-        SMTP 发信配置。当前仅保存配置，尚未接入实际发送流程。
-      </p>
+      <h2 className="settings-page__section-heading">{t('mail.heading')}</h2>
+      <p className="settings-page__section-hint">{t('mail.hint')}</p>
       {s.error && (
-        <InlineNotification kind="error" lowContrast title="操作失败" subtitle={s.error} />
+        <InlineNotification kind="error" lowContrast title={t('error.action')} subtitle={s.error} />
       )}
       {s.notice && <InlineNotification kind="success" lowContrast title={s.notice} />}
       <Toggle
         id="mail-enabled"
-        labelText="启用邮件服务"
+        labelText={t('mail.enabledLabel')}
         toggled={form.enabled}
         disabled={disabled || !s.loaded}
         onToggle={(checked) => setForm({ ...form, enabled: checked })}
       />
       <TextInput
         id="mail-host"
-        labelText="SMTP 服务器"
+        labelText={t('mail.host')}
         placeholder="smtp.example.com"
         value={form.host}
         disabled={disabled || !s.loaded}
@@ -103,42 +104,42 @@ function MailSection({ disabled }) {
       />
       <NumberInput
         id="mail-port"
-        label="端口"
+        label={t('mail.port')}
         min={1}
         max={65535}
         value={form.port}
         disabled={disabled || !s.loaded}
-        invalidText="端口需在 1–65535 之间"
+        invalidText={t('mail.portInvalid')}
         onChange={(e, { value }) => setForm({ ...form, port: Number(value) })}
       />
       <TextInput
         id="mail-username"
-        labelText="用户名"
+        labelText={t('mail.username')}
         value={form.username}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, username: e.target.value })}
       />
       <PasswordInput
         id="mail-password"
-        labelText="密码"
-        placeholder={form.passwordSet ? '已设置，留空保持不变' : '未设置'}
+        labelText={t('mail.password')}
+        placeholder={form.passwordSet ? t('placeholder.set') : t('placeholder.unset')}
         value={form.password}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, password: e.target.value })}
-        showPasswordLabel="显示密码"
-        hidePasswordLabel="隐藏密码"
+        showPasswordLabel={t('password.show', { ns: 'common' })}
+        hidePasswordLabel={t('password.hide', { ns: 'common' })}
       />
       <TextInput
         id="mail-from-name"
-        labelText="发件人名称"
-        placeholder="OCM 通知"
+        labelText={t('mail.fromName')}
+        placeholder={t('mail.fromNamePlaceholder')}
         value={form.fromName}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, fromName: e.target.value })}
       />
       <TextInput
         id="mail-from-address"
-        labelText="发件人邮箱"
+        labelText={t('mail.fromAddress')}
         placeholder="notify@example.com"
         value={form.fromAddress}
         disabled={disabled || !s.loaded}
@@ -146,18 +147,18 @@ function MailSection({ disabled }) {
       />
       <Select
         id="mail-encryption"
-        labelText="加密方式"
+        labelText={t('mail.encryption')}
         value={form.encryption}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, encryption: e.target.value })}
       >
-        <SelectItem value="ssl" text="SSL" />
-        <SelectItem value="starttls" text="STARTTLS" />
-        <SelectItem value="none" text="不加密" />
+        <SelectItem value="ssl" text={t('mail.encryptionSsl')} />
+        <SelectItem value="starttls" text={t('mail.encryptionStarttls')} />
+        <SelectItem value="none" text={t('mail.encryptionNone')} />
       </Select>
       {!disabled && (
         <Button size="md" disabled={s.saving || !s.loaded || !valid} onClick={s.save}>
-          保存配置
+          {t('saveButton')}
         </Button>
       )}
     </section>
@@ -178,7 +179,8 @@ const storageDefaults = {
 }
 
 function StorageSection({ disabled }) {
-  const s = useSettings('/api/settings/storage', storageDefaults, '对象存储配置已保存')
+  const { t } = useTranslation('settings')
+  const s = useSettings('/api/settings/storage', storageDefaults, t('storage.savedNotice'))
   const { form, setForm } = s
   // Mirrors the server-side validation for enabled services so the save
   // button stays disabled on invalid input.
@@ -191,24 +193,22 @@ function StorageSection({ disabled }) {
 
   return (
     <section className="settings-page__section">
-      <h2 className="settings-page__section-heading">对象存储</h2>
-      <p className="settings-page__section-hint">
-        S3 兼容存储（腾讯云 COS、阿里云 OSS、MinIO 等）配置。当前仅保存配置，尚未接入实际上传流程。
-      </p>
+      <h2 className="settings-page__section-heading">{t('storage.heading')}</h2>
+      <p className="settings-page__section-hint">{t('storage.hint')}</p>
       {s.error && (
-        <InlineNotification kind="error" lowContrast title="操作失败" subtitle={s.error} />
+        <InlineNotification kind="error" lowContrast title={t('error.action')} subtitle={s.error} />
       )}
       {s.notice && <InlineNotification kind="success" lowContrast title={s.notice} />}
       <Toggle
         id="storage-enabled"
-        labelText="启用对象存储"
+        labelText={t('storage.enabledLabel')}
         toggled={form.enabled}
         disabled={disabled || !s.loaded}
         onToggle={(checked) => setForm({ ...form, enabled: checked })}
       />
       <TextInput
         id="storage-endpoint"
-        labelText="服务地址 (Endpoint)"
+        labelText={t('storage.endpoint')}
         placeholder="cos.ap-guangzhou.myqcloud.com"
         value={form.endpoint}
         disabled={disabled || !s.loaded}
@@ -216,7 +216,7 @@ function StorageSection({ disabled }) {
       />
       <TextInput
         id="storage-region"
-        labelText="地域 (Region)"
+        labelText={t('storage.region')}
         placeholder="ap-guangzhou"
         value={form.region}
         disabled={disabled || !s.loaded}
@@ -224,45 +224,45 @@ function StorageSection({ disabled }) {
       />
       <TextInput
         id="storage-bucket"
-        labelText="存储桶 (Bucket)"
+        labelText={t('storage.bucket')}
         value={form.bucket}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, bucket: e.target.value })}
       />
       <TextInput
         id="storage-access-key"
-        labelText="AccessKey"
+        labelText={t('storage.accessKey')}
         value={form.accessKey}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, accessKey: e.target.value })}
       />
       <PasswordInput
         id="storage-secret-key"
-        labelText="SecretKey"
-        placeholder={form.secretKeySet ? '已设置，留空保持不变' : '未设置'}
+        labelText={t('storage.secretKey')}
+        placeholder={form.secretKeySet ? t('placeholder.set') : t('placeholder.unset')}
         value={form.secretKey}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, secretKey: e.target.value })}
-        showPasswordLabel="显示密钥"
-        hidePasswordLabel="隐藏密钥"
+        showPasswordLabel={t('secret.show')}
+        hidePasswordLabel={t('secret.hide')}
       />
       <Toggle
         id="storage-use-ssl"
-        labelText="使用 HTTPS"
+        labelText={t('storage.useSsl')}
         toggled={form.useSsl}
         disabled={disabled || !s.loaded}
         onToggle={(checked) => setForm({ ...form, useSsl: checked })}
       />
       <Toggle
         id="storage-use-path-style"
-        labelText="Path-Style 访问（兼容 MinIO 等自托管）"
+        labelText={t('storage.usePathStyle')}
         toggled={form.usePathStyle}
         disabled={disabled || !s.loaded}
         onToggle={(checked) => setForm({ ...form, usePathStyle: checked })}
       />
       <TextInput
         id="storage-public-base-url"
-        labelText="公开访问地址（可选）"
+        labelText={t('storage.publicBaseUrl')}
         placeholder="https://cdn.example.com"
         value={form.publicBaseUrl}
         disabled={disabled || !s.loaded}
@@ -270,7 +270,7 @@ function StorageSection({ disabled }) {
       />
       {!disabled && (
         <Button size="md" disabled={s.saving || !s.loaded || !valid} onClick={s.save}>
-          保存配置
+          {t('saveButton')}
         </Button>
       )}
     </section>
@@ -295,7 +295,8 @@ const aiDefaults = {
 }
 
 function AiSection({ disabled }) {
-  const s = useSettings('/api/settings/ai', aiDefaults, 'AI 助手配置已保存')
+  const { t } = useTranslation('settings')
+  const s = useSettings('/api/settings/ai', aiDefaults, t('ai.savedNotice'))
   const { form, setForm } = s
   // Mirrors the server-side validation for enabled services so the save
   // button stays disabled on invalid input.
@@ -307,24 +308,22 @@ function AiSection({ disabled }) {
 
   return (
     <section className="settings-page__section">
-      <h2 className="settings-page__section-heading">AI 助手</h2>
-      <p className="settings-page__section-hint">
-        大模型接口配置（OpenAI 兼容）。密钥仅保存在后端，不会发送给浏览器；启用后由权限「AI 助手」控制谁可以使用。
-      </p>
+      <h2 className="settings-page__section-heading">{t('ai.heading')}</h2>
+      <p className="settings-page__section-hint">{t('ai.hint')}</p>
       {s.error && (
-        <InlineNotification kind="error" lowContrast title="操作失败" subtitle={s.error} />
+        <InlineNotification kind="error" lowContrast title={t('error.action')} subtitle={s.error} />
       )}
       {s.notice && <InlineNotification kind="success" lowContrast title={s.notice} />}
       <Toggle
         id="ai-enabled"
-        labelText="启用 AI 助手"
+        labelText={t('ai.enabledLabel')}
         toggled={form.enabled}
         disabled={disabled || !s.loaded}
         onToggle={(checked) => setForm({ ...form, enabled: checked })}
       />
       <TextInput
         id="ai-base-url"
-        labelText="API 地址 (Base URL)"
+        labelText={t('ai.baseUrl')}
         placeholder="https://api.openai.com/v1"
         value={form.baseUrl}
         disabled={disabled || !s.loaded}
@@ -332,7 +331,7 @@ function AiSection({ disabled }) {
       />
       <TextInput
         id="ai-model"
-        labelText="模型名称"
+        labelText={t('ai.model')}
         placeholder="gpt-4o-mini"
         value={form.model}
         disabled={disabled || !s.loaded}
@@ -340,17 +339,17 @@ function AiSection({ disabled }) {
       />
       <PasswordInput
         id="ai-api-key"
-        labelText="API 密钥"
-        placeholder={form.apiKeySet ? '已设置，留空保持不变' : '未设置'}
+        labelText={t('ai.apiKey')}
+        placeholder={form.apiKeySet ? t('placeholder.set') : t('placeholder.unset')}
         value={form.apiKey}
         disabled={disabled || !s.loaded}
         onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-        showPasswordLabel="显示密钥"
-        hidePasswordLabel="隐藏密钥"
+        showPasswordLabel={t('secret.show')}
+        hidePasswordLabel={t('secret.hide')}
       />
       {!disabled && (
         <Button size="md" disabled={s.saving || !s.loaded || !valid} onClick={s.save}>
-          保存配置
+          {t('saveButton')}
         </Button>
       )}
     </section>
@@ -358,21 +357,29 @@ function AiSection({ disabled }) {
 }
 
 export default function SettingsPage() {
+  const { t } = useTranslation('settings')
   const { can } = useAuth()
+  const navigate = useNavigate()
   const isAdmin = can('*')
 
   return (
     <div className="settings-page">
       <Grid fullWidth>
         <Column sm={4} md={8} lg={16}>
-          <Breadcrumb>
-            <BreadcrumbItem href="/">首页</BreadcrumbItem>
-            <BreadcrumbItem isCurrentPage>参数配置</BreadcrumbItem>
+          <Breadcrumb aria-label={t('aria.breadcrumb', { ns: 'common' })}>
+            <BreadcrumbItem
+              href="/"
+              onClick={(e) => {
+                e.preventDefault()
+                navigate('/')
+              }}
+            >
+              {t('breadcrumb.home')}
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
           </Breadcrumb>
-          <h1 className="settings-page__heading">参数配置</h1>
-          <p className="settings-page__subtitle">
-            邮件、对象存储与 AI 助手服务配置，仅系统管理员可查看和修改。
-          </p>
+          <h1 className="settings-page__heading">{t('title')}</h1>
+          <p className="settings-page__subtitle">{t('subtitle')}</p>
           <MailSection disabled={!isAdmin} />
           <StorageSection disabled={!isAdmin} />
           <AiSection disabled={!isAdmin} />

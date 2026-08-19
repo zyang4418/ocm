@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@carbon/react'
 import { Download } from '@carbon/icons-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiDownload } from '../auth/api.js'
 
@@ -13,14 +14,17 @@ import { apiDownload } from '../auth/api.js'
 export default function ExportButton({
   path,
   fallbackName = 'export.xlsx',
-  label = '导出',
+  label,
   size = 'sm',
   onError,
   disabled = false,
   className,
 }) {
+  const { t } = useTranslation()
   const { token } = useAuth()
   const [exporting, setExporting] = useState(false)
+
+  const displayLabel = label !== undefined ? label : t('action.export')
 
   const handleExport = async () => {
     try {
@@ -42,7 +46,7 @@ export default function ExportButton({
       onClick={handleExport}
       disabled={disabled || exporting}
     >
-      {exporting ? '导出中…' : label}
+      {exporting ? t('action.exporting') : displayLabel}
     </Button>
   )
 }

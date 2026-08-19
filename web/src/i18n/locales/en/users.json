@@ -1,0 +1,76 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Users" },
+  "title": "Users",
+  "subtitle": "Manage system user accounts, types, role grants, and passwords.",
+  "table": {
+    "title": "User list",
+    "description": "{{count}} accounts",
+    "actionsHeader": "Actions"
+  },
+  "searchPlaceholder": "Search users",
+  "addButton": "Add user",
+  "field": {
+    "id": "ID",
+    "username": "Username",
+    "displayName": "Display name",
+    "type": "Type",
+    "roles": "Roles",
+    "groups": "Groups",
+    "createdAt": "Created at",
+    "actions": "Actions"
+  },
+  "type": { "student": "Student", "teacher": "Teacher", "staff": "Staff" },
+  "modal": {
+    "create": "Add user",
+    "createSubmit": "Create",
+    "edit": "Edit user: {{name}}",
+    "editSubmit": "Save",
+    "password": "Reset password: {{name}}",
+    "passwordSubmit": "Reset password",
+    "grants": "Roles & permissions: {{name}}",
+    "grantsSubmit": "Save grants",
+    "delete": "Delete user",
+    "deleteSubmit": "Delete"
+  },
+  "deleteConfirm": "Are you sure you want to delete user \"{{displayName}}\" (@{{username}})? This action cannot be undone.",
+  "form": {
+    "username": "Username",
+    "password": "Password",
+    "passwordPlaceholder": "Set initial password",
+    "displayName": "Display name",
+    "type": "Type",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password"
+  },
+  "iconAction": { "password": "Reset password", "grants": "Roles & permissions" },
+  "readonly": "Read-only",
+  "grants": {
+    "roles": "Roles",
+    "rolesHint": "Check a role to set an optional expiry; leave blank for no expiry.",
+    "permissions": "Direct permissions",
+    "permissionsHint": "Grant individual permissions beyond roles, useful for temporary access.",
+    "groups": "Groups",
+    "groupsHint": "Group membership is managed in Groups; shown read-only here.",
+    "groupsEmpty": "Not a member of any group",
+    "builtin": "Built-in",
+    "expired": "Expired",
+    "expiryLabel": "Expires on",
+    "expiryPlaceholder": "No expiry",
+    "permOption": "{{name}} ({{code}})"
+  },
+  "empty": { "loading": "Loading…", "search": "No matching users", "none": "No users" },
+  "error": {
+    "load": "Failed to load",
+    "create": "Failed to create",
+    "save": "Failed to save",
+    "password": "Failed to reset",
+    "grants": "Failed to save grants",
+    "delete": "Failed to delete"
+  },
+  "validation": {
+    "createRequired": "Username, password, and display name are all required",
+    "displayNameRequired": "Display name is required",
+    "passwordRequired": "Please enter a new password",
+    "passwordMismatch": "The two passwords do not match"
+  }
+}

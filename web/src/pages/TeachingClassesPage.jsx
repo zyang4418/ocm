@@ -23,41 +23,32 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
+import { formatDate } from '../i18n/formatters.js'
 
-// 教学班 (teaching class): a named group of admin classes taught together (合班).
-// An offering is taught to exactly one teaching class; two offerings of the same
-// course/teacher/semester taught to different groups are two teaching classes.
-const headers = [
-  { key: 'id', header: 'ID' },
-  { key: 'name', header: '教学班名称' },
-  { key: 'members', header: '包含行政班' },
-  { key: 'note', header: '备注' },
-  { key: 'createdAt', header: '创建时间' },
-]
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
+// classLabel formats an admin class as "grade/name" (or just name when the
+// grade is empty). grade/name are backend data, so the format is locale-neutral.
 const classLabel = (c) => (c.grade ? `${c.grade}/${c.name}` : c.name)
 const emptyForm = { name: '', note: '', classIds: [] }
 
 export default function TeachingClassesPage() {
+  const { t, i18n } = useTranslation('teachingClasses')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('teaching_class:manage')
+
+  const headers = [
+    { key: 'id', header: t('field.id') },
+    { key: 'name', header: t('field.name') },
+    { key: 'members', header: t('field.members') },
+    { key: 'note', header: t('field.note') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
 
   const list = usePagedList({ path: '/api/teaching-classes', token })
   const { loading } = list
@@ -97,8 +88,8 @@ export default function TeachingClassesPage() {
   }, [token])
 
   const validate = (form) => {
-    if (!form.name.trim()) return '教学班名称为必填项'
-    if (form.classIds.length === 0) return '至少选择一个行政班'
+    if (!form.name.trim()) return t('validation.nameRequired')
+    if (form.classIds.length === 0) return t('validation.selectClass')
     return ''
   }
 
@@ -128,12 +119,12 @@ export default function TeachingClassesPage() {
     }
   }
 
-  const openEdit = (t) => {
-    setEditTarget(t)
+  const openEdit = (tc) => {
+    setEditTarget(tc)
     setEditForm({
-      name: t.name,
-      note: t.note,
-      classIds: (t.classes || []).map((c) => c.id),
+      name: tc.name,
+      note: tc.note,
+      classIds: (tc.classes || []).map((c) => c.id),
     })
     setEditError('')
   }
@@ -157,8 +148,8 @@ export default function TeachingClassesPage() {
     }
   }
 
-  const openDelete = (t) => {
-    setDeleteTarget(t)
+  const openDelete = (tc) => {
+    setDeleteTarget(tc)
     setDeleteError('')
   }
 
@@ -181,12 +172,19 @@ export default function TeachingClassesPage() {
   // object references match what MultiSelect holds.
   const selectionFor = (ids) => adminClasses.filter((a) => ids.includes(a.id))
 
-  const rows = list.items.map((t) => ({
-    id: String(t.id),
-    name: t.name,
-    members: (t.classes || []).map(classLabel).join('、') || '-',
-    note: t.note,
-    createdAt: t.createdAt,
+  // Members column joins admin-class labels with a locale-appropriate separator
+  // (zh: "、", en: ", ") via Intl.ListFormat narrow style.
+  const listFmt = new Intl.ListFormat(i18n.language, { style: 'narrow' })
+  const formatMembers = (classes) => {
+    const labels = (classes || []).map(classLabel)
+    return labels.length ? listFmt.format(labels) : '-'
+  }
+  const rows = list.items.map((tc) => ({
+    id: String(tc.id),
+    name: tc.name,
+    members: formatMembers(tc.classes),
+    note: tc.note,
+    createdAt: tc.createdAt,
   }))
 
   const colSpan = headers.length + (canManage ? 1 : 0)
@@ -194,12 +192,12 @@ export default function TeachingClassesPage() {
   const renderMemberSelect = (form, setForm) => (
     <MultiSelect
       id="tc-classes"
-      titleText="包含行政班"
+      titleText={t('form.classes')}
       items={adminClasses}
       itemToString={classLabel}
       selection={selectionFor(form.classIds)}
       onChange={({ selectedItems }) => setForm({ ...form, classIds: selectedItems.map((i) => i.id) })}
-      label="选择行政班"
+      label={t('classesPicker.label')}
       disabled={adminClasses.length === 0}
     />
   )
@@ -207,7 +205,7 @@ export default function TeachingClassesPage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -215,19 +213,17 @@ export default function TeachingClassesPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>教学班管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">教学班管理</h1>
-        <p className="courses-page__subtitle">
-          教学班由若干行政班合班而成，是开课的归属单位。同一课程、教师、学期面向不同群体开课时，通过不同教学班区分。
-        </p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
         {adminClasses.length === 0 && (
           <InlineNotification
             kind="info"
-            title="请先创建行政班"
-            subtitle="教学班需引用行政班作为成员，请先在「行政班管理」中创建。"
+            title={t('info.title')}
+            subtitle={t('info.subtitle')}
             lowContrast
             hideCloseButton
             className="courses-page__notice"
@@ -239,7 +235,7 @@ export default function TeachingClassesPage() {
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -249,10 +245,10 @@ export default function TeachingClassesPage() {
 
         <DataTable rows={rows} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="教学班列表" description={`共 ${list.total} 个教学班`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索教学班" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('searchPlaceholder')} />
                   <ExportButton
                     path="/api/teaching-classes/export"
                     fallbackName="teaching-classes.xlsx"
@@ -260,7 +256,7 @@ export default function TeachingClassesPage() {
                   />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
-                      添加教学班
+                      {t('addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -273,23 +269,23 @@ export default function TeachingClassesPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    {canManage && <TableHeader>操作</TableHeader>}
+                    {canManage && <TableHeader>{t('field.actions')}</TableHeader>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {list.q ? '未找到匹配的教学班' : '暂无教学班'}
+                        {list.q ? t('empty.search') : t('empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const t = list.items.find((x) => String(x.id) === String(row.id))
+                      const tc = list.items.find((x) => String(x.id) === String(row.id))
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
@@ -306,16 +302,16 @@ export default function TeachingClassesPage() {
                                   size="sm"
                                   hasIconOnly
                                   renderIcon={Edit}
-                                  iconDescription="编辑"
-                                  onClick={() => openEdit(t)}
+                                  iconDescription={t('action.edit', { ns: 'common' })}
+                                  onClick={() => openEdit(tc)}
                                 />
                                 <Button
                                   kind="ghost"
                                   size="sm"
                                   hasIconOnly
                                   renderIcon={TrashCan}
-                                  iconDescription="删除"
-                                  onClick={() => openDelete(t)}
+                                  iconDescription={t('action.delete', { ns: 'common' })}
+                                  onClick={() => openDelete(tc)}
                                 />
                               </div>
                             </TableCell>
@@ -341,9 +337,9 @@ export default function TeachingClassesPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="添加教学班"
-        primaryButtonText="创建"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -351,20 +347,20 @@ export default function TeachingClassesPage() {
         <div className="courses-page__form">
           <TextInput
             id="tc-name"
-            labelText="教学班名称"
-            placeholder="如 高数-A班（1+2）"
+            labelText={t('form.name')}
+            placeholder={t('placeholder.name')}
             value={createForm.name}
             onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           />
           {renderMemberSelect(createForm, setCreateForm)}
           <TextInput
             id="tc-note"
-            labelText="备注"
+            labelText={t('form.note')}
             value={createForm.note}
             onChange={(e) => setCreateForm({ ...createForm, note: e.target.value })}
           />
           {createError && (
-            <InlineNotification kind="error" title="创建失败" subtitle={createError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.create')} subtitle={createError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -372,9 +368,9 @@ export default function TeachingClassesPage() {
       {/* Edit */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`编辑教学班：${editTarget?.name ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.edit', { name: editTarget?.name ?? '' })}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleEdit}
         primaryButtonDisabled={editing}
@@ -382,19 +378,19 @@ export default function TeachingClassesPage() {
         <div className="courses-page__form">
           <TextInput
             id="tc-edit-name"
-            labelText="教学班名称"
+            labelText={t('form.name')}
             value={editForm.name}
             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
           />
           {renderMemberSelect(editForm, setEditForm)}
           <TextInput
             id="tc-edit-note"
-            labelText="备注"
+            labelText={t('form.note')}
             value={editForm.note}
             onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
           />
           {editError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={editError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={editError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -403,18 +399,18 @@ export default function TeachingClassesPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除教学班"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="courses-page__confirm-text">
-          确定要删除教学班「{deleteTarget?.name}」吗？若已有开课引用该教学班，需先移除引用。此操作不可撤销。
+          {t('deleteConfirm', { name: deleteTarget?.name })}
         </p>
         {deleteError && (
-          <InlineNotification kind="error" title="删除失败" subtitle={deleteError} lowContrast hideCloseButton />
+          <InlineNotification kind="error" title={t('error.delete')} subtitle={deleteError} lowContrast hideCloseButton />
         )}
       </Modal>
     </Grid>

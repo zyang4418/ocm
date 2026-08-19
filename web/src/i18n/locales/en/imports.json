@@ -1,0 +1,166 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Data import" },
+  "title": "Data import",
+  "subtitle": "Upload an xlsx file to import business data asynchronously. Pick an import type, then upload; after parsing you can preview and confirm.",
+  "upload": {
+    "typeLabel": "Import type",
+    "button": "Upload & import",
+    "uploading": "Uploading…",
+    "error": "Upload failed"
+  },
+  "schemaIntroTail": " headers (matched by column name, order-independent):",
+  "unnamed": "(unnamed)",
+  "split": {
+    "heading": "Academic-affairs schedule splitter",
+    "subtitle": "Upload the aggregated schedule exported by the academic-affairs office (classrooms / courses / admin classes / teachers / weeks), fill in the semester and the Monday of week 1, and the system splits it into 6 import jobs (classrooms / course catalog / admin classes / teaching classes / offerings / sessions), each entering preview. Confirm in dependency order: classrooms → catalog → admin classes → teaching classes → offerings → sessions (offerings and sessions reference the catalog and teaching classes; if not confirmed first, the preview reports “does not exist”, and re-validates after confirmation).",
+    "semester": "Semester",
+    "week1": "Week-1 Monday (must be a Monday)",
+    "button": "Split & create jobs",
+    "splitting": "Splitting…",
+    "error": "Split failed",
+    "successTitle": "Split done — {{count}} import jobs created",
+    "successSubtitle": "Classrooms {{classrooms}} · Courses {{catalogCourses}} · Admin classes {{adminClasses}} · Teaching classes {{teachingClasses}} · Offerings {{offerings}} · Sessions {{sessions}} (skipped empty admin {{skippedEmptyAdmin}} / parallel {{skippedParallel}} / no-teacher filled {{noTeacherFilled}})",
+    "warningsSummary": "{{count}} warning(s) (click to expand)",
+    "warningsMore": "…{{count}} more omitted"
+  },
+  "table": { "title": "Import jobs", "description": "{{count}} jobs", "searchPlaceholder": "Search import jobs" },
+  "field": {
+    "type": "Type",
+    "filename": "File",
+    "status": "Status",
+    "totalRows": "Total rows",
+    "succeededRows": "Succeeded",
+    "failedRows": "Failed",
+    "createdAt": "Created at",
+    "actions": "Actions"
+  },
+  "action": { "viewPreview": "View preview", "viewDetail": "View detail" },
+  "empty": { "loading": "Loading…", "search": "No matching import jobs", "none": "No import jobs yet" },
+  "error": { "load": "Failed to load", "action": "Action failed" },
+  "modal": {
+    "previewHeading": "Preview: confirm import of “{{label}}”",
+    "detailHeading": "Import detail: {{label}}",
+    "close": "Close",
+    "previewSummary": "Will import {{succeeded}} / failed {{failed}} / total {{total}} rows",
+    "detailSummary": "Succeeded {{succeeded}} / failed {{failed}} / total {{total}} rows",
+    "commit": "Confirm import",
+    "cancel": "Cancel import",
+    "loadingPreview": "Loading preview data…",
+    "loading": "Loading…",
+    "rowsCap": "Showing first {{shown}} of {{total}} rows",
+    "errorRow": "Row {{row}}: ",
+    "noErrors": "No errors"
+  },
+  "status": {
+    "pending": "Pending",
+    "processing": "Processing",
+    "preview": "Awaiting confirm",
+    "succeeded": "Done",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "types": {
+    "sessions": {
+      "label": "Schedule (sessions)",
+      "note": "Classrooms and offerings must be created first, referenced by name; deduplicated by classroom + date + period range, conflicting rows skipped. period_end is optional, defaulting to period_start (a multi-period block such as 3-4 is one session)."
+    },
+    "classrooms": {
+      "label": "Classrooms",
+      "note": "Upsert by classroom name: update if exists, otherwise insert. floor/campus are optional floor and campus fields."
+    },
+    "admin_classes": {
+      "label": "Admin classes",
+      "note": "Upsert by grade + class name."
+    },
+    "teaching_classes": {
+      "label": "Teaching classes",
+      "note": "Parent-child table flattened: one row per member admin class, grouped by name. Members of a teaching class referenced by an offering cannot be modified."
+    },
+    "catalog": {
+      "label": "Course catalog",
+      "note": "Upsert by course name. code has a unique index (blank stored as NULL, mutually non-conflicting); credits/total_hours/category/exam_type are optional academic-affairs attributes."
+    },
+    "offerings": {
+      "label": "Offerings",
+      "note": "Upsert by course + teaching class + semester; course and teaching class referenced by name, must be created first. course_seq..weekly_hours are optional academic-affairs offering metadata."
+    },
+    "regimes": {
+      "label": "Schedule regimes",
+      "note": "Parent-child table flattened: one row per period, grouped by regime_name; on commit the regime's periods are replaced as a whole."
+    },
+    "bookings": {
+      "label": "Classroom bookings",
+      "note": "Recovery mode: restored by the status in the file. pending/approved rows occupy the period and run conflict checks."
+    }
+  },
+  "columns": {
+    "sessions": {
+      "date": "Date",
+      "periodStart": "Start period",
+      "periodEnd": "End period",
+      "classroom": "Classroom",
+      "course": "Course",
+      "teachingClass": "Teaching class",
+      "semester": "Semester",
+      "note": "Note"
+    },
+    "classrooms": {
+      "name": "Classroom ID",
+      "building": "Building",
+      "capacity": "Seats",
+      "type": "Type",
+      "floor": "Floor",
+      "campus": "Campus",
+      "status": "Status",
+      "description": "Note"
+    },
+    "admin_classes": {
+      "grade": "Grade",
+      "name": "Class",
+      "note": "Note"
+    },
+    "teaching_classes": {
+      "name": "Teaching class",
+      "note": "Note",
+      "admin_classes": "Member admin classes"
+    },
+    "catalog": {
+      "name": "Course",
+      "code": "Code",
+      "credits": "Credits",
+      "totalHours": "Total hours",
+      "category": "Category",
+      "examType": "Exam type",
+      "description": "Description"
+    },
+    "offerings": {
+      "course": "Course",
+      "teachingClass": "Teaching class",
+      "semester": "Semester",
+      "teacher": "Teacher",
+      "courseSeq": "Course seq",
+      "teacherId": "Teacher ID",
+      "teacherTitle": "Teacher title",
+      "college": "College",
+      "maxStudents": "Capacity",
+      "requirement": "Category I",
+      "weeklyHours": "Weekly hours",
+      "note": "Note"
+    },
+    "regimes": {
+      "name": "Regime",
+      "effectiveMonth": "Effective month",
+      "effectiveDay": "Effective day",
+      "periods": "Periods"
+    },
+    "bookings": {
+      "classroom": "Classroom",
+      "username": "Booker",
+      "date": "Date",
+      "periodStart": "Start period",
+      "periodEnd": "End period",
+      "status": "Status",
+      "purpose": "Purpose"
+    }
+  }
+}

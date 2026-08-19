@@ -1,0 +1,80 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Admin classes" },
+  "title": "Admin classes",
+  "subtitle": "Maintain admin classes (grade + class name) — the base data for teaching-class merging and timetabling.",
+  "table": {
+    "title": "Admin class list",
+    "description": "{{count}} admin classes",
+    "actionsHeader": "Actions"
+  },
+  "searchPlaceholder": "Search admin classes",
+  "addButton": "Add admin class",
+  "field": {
+    "id": "ID",
+    "grade": "Grade",
+    "name": "Class name",
+    "note": "Note",
+    "createdAt": "Created at",
+    "actions": "Actions",
+    "members": "Members"
+  },
+  "picker": {
+    "userOption": "{{name}} ({{username}})"
+  },
+  "modal": {
+    "create": "Add admin class",
+    "createSubmit": "Create",
+    "edit": "Edit admin class: {{name}}",
+    "editSubmit": "Save",
+    "delete": "Delete admin class",
+    "deleteSubmit": "Delete",
+    "members": "Class members: {{name}}",
+    "membersSubmit": "Close",
+    "editMember": "Edit student record",
+    "editMemberSubmit": "Save",
+    "removeMember": "Remove student",
+    "removeMemberSubmit": "Remove"
+  },
+  "deleteConfirm": "Are you sure you want to delete admin class \"{{name}}\"? If it is referenced by a teaching class, remove the reference first. This action cannot be undone.",
+  "removeMemberConfirm": "Remove \"{{name}}\" from this admin class? Past attendance records are unaffected.",
+  "membersSubtitle": "Maintain student records (account ↔ admin class). The roster drives expected-attendance counts in class check-in; students can be added or removed here.",
+  "form": { "grade": "Grade", "name": "Class name", "note": "Note" },
+  "placeholder": { "grade": "e.g. 2024", "name": "e.g. CS244", "studentNo": "e.g. 2023001" },
+  "memberAdd": {
+    "title": "Add student",
+    "placeholder": "Search by name / username",
+    "studentNoLabel": "Student no. (optional)",
+    "button": "Add",
+    "buttonLoading": "Adding…"
+  },
+  "memberTable": {
+    "description": "{{count}} students",
+    "name": "Name",
+    "username": "Username",
+    "studentNo": "Student no.",
+    "actions": "Actions",
+    "edit": "Edit",
+    "remove": "Remove"
+  },
+  "memberEditForm": { "studentNo": "Student no.", "note": "Note" },
+  "empty": {
+    "loading": "Loading…",
+    "search": "No matching admin classes",
+    "none": "No admin classes",
+    "members": "No members yet. ",
+    "membersHint": "Search above to add students."
+  },
+  "error": {
+    "load": "Failed to load",
+    "create": "Failed to create",
+    "save": "Failed to save",
+    "delete": "Failed to delete",
+    "addMember": "Failed to add",
+    "removeMember": "Failed to remove",
+    "saveMember": "Failed to save"
+  },
+  "validation": {
+    "nameRequired": "Class name is required",
+    "selectStudent": "Please select a student"
+  }
+}

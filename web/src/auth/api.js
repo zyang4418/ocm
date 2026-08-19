@@ -1,3 +1,7 @@
+import i18n from '../i18n/index.js'
+
+const t = (key, options) => i18n.t(key, { ns: 'common', ...options })
+
 export async function apiFetch(path, { method = 'GET', body, token } = {}) {
   const headers = {}
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -11,12 +15,12 @@ export async function apiFetch(path, { method = 'GET', body, token } = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new Error('无法连接到服务器，请稍后重试')
+    throw new Error(t('error.network'))
   }
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    const err = new Error(data?.error || `请求失败（${res.status}）`)
+    const err = new Error(data?.error || t('error.requestFailed', { status: res.status }))
     err.status = res.status
     throw err
   }
@@ -40,12 +44,12 @@ export async function apiUpload(path, { file, token, fields = {} } = {}) {
   try {
     res = await fetch(path, { method: 'POST', headers, body: form })
   } catch {
-    throw new Error('无法连接到服务器，请稍后重试')
+    throw new Error(t('error.network'))
   }
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    const err = new Error(data?.error || `上传失败（${res.status}）`)
+    const err = new Error(data?.error || t('error.uploadFailed', { status: res.status }))
     err.status = res.status
     throw err
   }
@@ -67,13 +71,13 @@ export async function apiDownload(path, { token, fallbackName = 'export.xlsx', m
   try {
     res = await fetch(path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined })
   } catch {
-    throw new Error('无法连接到服务器，请稍后重试')
+    throw new Error(t('error.network'))
   }
 
   if (!res.ok) {
     // Export errors come back as JSON {error}, so try to read it.
     const data = await res.json().catch(() => null)
-    const err = new Error(data?.error || `导出失败（${res.status}）`)
+    const err = new Error(data?.error || t('error.exportFailed', { status: res.status }))
     err.status = res.status
     throw err
   }
@@ -113,11 +117,11 @@ export function apiStream(path, { body, token, onEvent }) {
       })
     } catch (err) {
       if (err.name === 'AbortError') throw err
-      throw new Error('无法连接到服务器，请稍后重试')
+      throw new Error(t('error.network'))
     }
     if (!res.ok) {
       const data = await res.json().catch(() => null)
-      const err = new Error(data?.error || `请求失败（${res.status}）`)
+      const err = new Error(data?.error || t('error.requestFailed', { status: res.status }))
       err.status = res.status
       throw err
     }

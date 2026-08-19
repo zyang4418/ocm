@@ -1,0 +1,76 @@
+{
+  "breadcrumb": { "home": "首页", "current": "听课评课" },
+  "title": "听课评课",
+  "subtitle": "记录课堂观察与评价，按模板打分、填写评语，提交后导出为 Word 听课记录表。",
+  "filter": {
+    "status": "状态",
+    "allStatuses": "全部状态",
+    "template": "模板",
+    "allTemplates": "全部模板"
+  },
+  "table": { "title": "评课记录", "description": "共 {{count}} 条记录", "searchPlaceholder": "搜索评课", "addButton": "新建评课" },
+  "field": {
+    "courseName": "课程",
+    "teacher": "教师",
+    "teachingClassName": "教学班",
+    "observeDate": "听课日期",
+    "sections": "节次",
+    "templateType": "模板",
+    "totalScore": "总分",
+    "status": "状态",
+    "actions": "操作"
+  },
+  "empty": { "loading": "加载中…", "search": "未找到匹配的评课", "none": "暂无评课记录" },
+  "error": { "action": "操作失败", "save": "保存失败" },
+  "modal": {
+    "createHeading": "新建评课",
+    "editHeading": "编辑评课",
+    "deleteHeading": "删除评课",
+    "deleteSubmit": "确认删除",
+    "deleteConfirm": "确定要删除「{{course}} · {{date}}」的评课记录吗？此操作不可恢复。"
+  },
+  "validation": {
+    "templateRequired": "请选择模板类型",
+    "courseRequired": "请选择课程",
+    "classroomRequired": "请选择听课地点",
+    "dateRequired": "请选择听课日期"
+  },
+  "section": {
+    "basic": "基础信息",
+    "indicators": "评分指标",
+    "conclusion": "评价结论",
+    "comments": "评语",
+    "studentFeedback": "学生评价"
+  },
+  "sectionFallback": {
+    "headerExtra": "表头信息",
+    "extra": "课堂诊断",
+    "postContent": "其它评价"
+  },
+  "form": {
+    "templateType": "模板类型",
+    "templatePlaceholder": "请选择模板",
+    "course": "课程",
+    "coursePlaceholder": "请选择课程",
+    "classroom": "听课地点",
+    "classroomPlaceholder": "请选择听课地点",
+    "observeDate": "听课日期",
+    "sectionsLegend": "节次",
+    "anonymous": "匿名评课（导出时隐藏听课人）",
+    "ratingLegend": "评分",
+    "scoreLabelFallback": "总评成绩",
+    "contentLabelFallback": "授课内容",
+    "contentPlaceholder": "{{label}}（{{max}} 字以内）",
+    "extraDetailLabel": "{{label}}说明",
+    "studentFeedbackHeader": "评价项",
+    "dash": "—"
+  },
+  "courseOption": "{{catalogName}}（{{teachingClass}} · {{teacher}}）",
+  "periodOption": "第 {{index}} 节（{{start}}-{{end}}）",
+  "sectionsLabel": "第 {{sections}} 节",
+  "templateType": {
+    "leader": "干部听课",
+    "supervisor": "督导听课",
+    "ideology": "思政课听课"
+  }
+}

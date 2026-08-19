@@ -1,0 +1,93 @@
+{
+  "breadcrumb": {
+    "home": "首页",
+    "overview": "概览"
+  },
+  "title": "概览",
+  "greeting": "{{name}}，欢迎回来。今天是 {{date}} 星期{{weekday}}。",
+  "kpi": {
+    "todaySessions": "今日课程",
+    "classroomTotal": "教室总数",
+    "pendingBookings": "待审批预约",
+    "openRepairs": "未结报修",
+    "myBookings": "我的预约"
+  },
+  "unit": {
+    "session": "节",
+    "classroom": "间",
+    "item": "项"
+  },
+  "panel": {
+    "todaySessions": "今日课程",
+    "pendingBookings": "待审批预约",
+    "openRepairs": "未结报修",
+    "myRecentBookings": "我的近期预约",
+    "recentActivity": "最近动态"
+  },
+  "viewAll": {
+    "fullTimetable": "完整课表",
+    "allBookings": "全部预约",
+    "allTickets": "全部工单",
+    "myBookings": "我的预约",
+    "allLogs": "全部日志"
+  },
+  "empty": {
+    "noSessions": "今日没有排课。",
+    "noPendingBookings": "没有待审批的预约。",
+    "noOpenRepairs": "没有未结的报修工单。",
+    "noLogs": "暂无操作记录。"
+  },
+  "more": "共 {{total}} 节，仅显示前 {{shown}} 节",
+  "quickStart": "快速开始",
+  "quickLinks": {
+    "aiAssistant": {
+      "title": "AI 助手",
+      "description": "问答查询教室与课表，生成预约方案"
+    },
+    "userManagement": {
+      "title": "用户管理",
+      "description": "维护组织成员与账号状态"
+    },
+    "roleManagement": {
+      "title": "角色管理",
+      "description": "配置角色与访问权限"
+    },
+    "parameters": {
+      "title": "参数配置",
+      "description": "调整系统级运行参数"
+    },
+    "auditLogs": {
+      "title": "审计日志",
+      "description": "查看关键操作记录"
+    }
+  },
+  "repairStatus": {
+    "open": "待处理",
+    "processing": "维修中",
+    "completed": "已维修",
+    "confirmed": "已确认"
+  },
+  "bookingStatus": {
+    "pending": "待审批",
+    "approved": "已通过",
+    "rejected": "已拒绝",
+    "cancelled": "已取消"
+  },
+  "periodLabel": {
+    "single": "第 {{period}} 节",
+    "range": "第 {{start}}–{{end}} 节"
+  },
+  "weekdays": ["日", "一", "二", "三", "四", "五", "六"],
+  "dateLabel": "{{month}} 月 {{day}} 日",
+  "systemActor": "系统",
+  "error": {
+    "title": "概览数据加载失败",
+    "retry": "重试"
+  },
+  "charts": {
+    "todayDistribution": "今日时段分布",
+    "futureLoadAll": "未来 14 天预约负载",
+    "futureLoadMine": "未来 14 天我的预约",
+    "sessionCount": "课程场次"
+  }
+}

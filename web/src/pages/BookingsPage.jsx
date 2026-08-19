@@ -25,18 +25,13 @@ import {
 } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
-
-const statusLabel = {
-  pending: '待审批',
-  approved: '已通过',
-  rejected: '已拒绝',
-  cancelled: '已取消',
-}
+import { formatDate } from '../i18n/formatters.js'
 
 const statusKind = {
   pending: 'blue',
@@ -45,47 +40,42 @@ const statusKind = {
   cancelled: 'gray',
 }
 
-const headers = [
-  { key: 'classroomName', header: '教室' },
-  { key: 'date', header: '日期' },
-  { key: 'period', header: '节次' },
-  { key: 'purpose', header: '用途' },
-  { key: 'status', header: '状态' },
-  { key: 'displayName', header: '预约人' },
-  { key: 'createdAt', header: '创建时间' },
-]
+// Booking status enum values shown in the status filter dropdown.
+const STATUS_FILTER_KEYS = ['pending', 'approved', 'rejected', 'cancelled']
 
 function pad(n) {
   return String(n).padStart(2, '0')
 }
 
+// fmt produces an ISO YYYY-MM-DD string for <input type="date"> values, which
+// are locale-independent (the display formatting is handled separately).
 function fmt(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function periodLabel(b) {
-  if (!b) return ''
-  if (b.periodStart === b.periodEnd) return `第 ${b.periodStart} 节`
-  return `第 ${b.periodStart}–${b.periodEnd} 节`
 }
 
 const emptyForm = { classroomId: '', date: '', periodStart: '', periodEnd: '', purpose: '' }
 
 export default function BookingsPage() {
+  const { t, i18n } = useTranslation('bookings')
   const { token, user: currentUser, can } = useAuth()
   const navigate = useNavigate()
   const canApprove = can('booking:approve')
+
+  const headers = [
+    { key: 'classroomName', header: t('field.classroom') },
+    { key: 'date', header: t('field.date') },
+    { key: 'period', header: t('field.period') },
+    { key: 'purpose', header: t('field.purpose') },
+    { key: 'status', header: t('field.status') },
+    { key: 'displayName', header: t('field.bookedBy') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
+
+  const periodLabel = (b) => {
+    if (!b) return ''
+    if (b.periodStart === b.periodEnd) return t('periodLabel.single', { period: b.periodStart })
+    return t('periodLabel.range', { start: b.periodStart, end: b.periodEnd })
+  }
 
   const [classrooms, setClassrooms] = useState([])
 
@@ -169,12 +159,12 @@ export default function BookingsPage() {
         if (cancelled) return
         setPeriods([])
         setBusy([])
-        setCreateError(err.status === 404 ? '该日期未配置作息制度，无法预约' : err.message)
+        setCreateError(err.status === 404 ? t('validation.noSchedule') : err.message)
       })
     return () => {
       cancelled = true
     }
-  }, [createForm.classroomId, createForm.date, token])
+  }, [createForm.classroomId, createForm.date, token, t])
 
   const openCreate = () => {
     setCreateForm(emptyForm)
@@ -185,11 +175,11 @@ export default function BookingsPage() {
   }
 
   const handleCreate = async () => {
-    if (!createForm.classroomId) return setCreateError('请选择教室')
-    if (!createForm.date) return setCreateError('请选择日期')
-    if (!createForm.periodStart || !createForm.periodEnd) return setCreateError('请选择节次')
-    if (Number(createForm.periodStart) > Number(createForm.periodEnd)) return setCreateError('起始节次不能大于结束节次')
-    if (!createForm.purpose.trim()) return setCreateError('用途为必填项')
+    if (!createForm.classroomId) return setCreateError(t('validation.selectClassroom'))
+    if (!createForm.date) return setCreateError(t('validation.selectDate'))
+    if (!createForm.periodStart || !createForm.periodEnd) return setCreateError(t('validation.selectPeriod'))
+    if (Number(createForm.periodStart) > Number(createForm.periodEnd)) return setCreateError(t('validation.periodOrder'))
+    if (!createForm.purpose.trim()) return setCreateError(t('validation.purposeRequired'))
     try {
       setCreating(true)
       setCreateError('')
@@ -255,6 +245,13 @@ export default function BookingsPage() {
 
   const colSpan = headers.length + 1
 
+  // The busy-periods hint joins numbers with a locale-appropriate separator
+  // (zh: "1、2、3", en: "1, 2, 3") via Intl.ListFormat narrow style.
+  const busyText =
+    busy.length > 0
+      ? t('form.busyPrefix') + new Intl.ListFormat(i18n.language, { style: 'narrow' }).format(busy.map(String))
+      : t('form.busyNone')
+
   // The export endpoint mirrors the list filters, so the downloaded file
   // reflects the currently-viewed (filtered) set of bookings.
   const exportParams = new URLSearchParams()
@@ -266,7 +263,7 @@ export default function BookingsPage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -274,19 +271,19 @@ export default function BookingsPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>教室预约</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">教室预约</h1>
-        <p className="courses-page__subtitle">按节次预约教室，提交后由管理员审批；与课表共享冲突检测，避免重复占用。</p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {error && (
           <InlineNotification
             kind="error"
-            title="操作失败"
+            title={t('error.action')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -297,33 +294,32 @@ export default function BookingsPage() {
         <div className="bookings-page__filters">
           <Select
             id="f-classroom"
-            labelText="教室"
+            labelText={t('filter.classroom')}
             value={filterClassroom}
             onChange={(e) => setFilterClassroom(e.target.value)}
             className="bookings-page__filter"
           >
-            <SelectItem value="" text="全部教室" />
+            <SelectItem value="" text={t('filter.allClassrooms')} />
             {classrooms.map((c) => (
               <SelectItem key={c.id} value={String(c.id)} text={c.name} />
             ))}
           </Select>
           <Select
             id="f-status"
-            labelText="状态"
+            labelText={t('filter.status')}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="bookings-page__filter"
           >
-            <SelectItem value="" text="全部状态" />
-            <SelectItem value="pending" text="待审批" />
-            <SelectItem value="approved" text="已通过" />
-            <SelectItem value="rejected" text="已拒绝" />
-            <SelectItem value="cancelled" text="已取消" />
+            <SelectItem value="" text={t('filter.allStatuses')} />
+            {STATUS_FILTER_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('status.' + k, { ns: 'common' })} />
+            ))}
           </Select>
           <TextInput
             id="f-from"
             type="date"
-            labelText="开始日期"
+            labelText={t('filter.from')}
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             className="bookings-page__filter"
@@ -331,7 +327,7 @@ export default function BookingsPage() {
           <TextInput
             id="f-to"
             type="date"
-            labelText="结束日期"
+            labelText={t('filter.to')}
             value={to}
             onChange={(e) => setTo(e.target.value)}
             className="bookings-page__filter"
@@ -349,17 +345,17 @@ export default function BookingsPage() {
             getRowProps,
             getToolbarProps,
           }) => (
-            <TableContainer title="预约列表" description={`共 ${list.total} 条预约`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索预约" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('searchPlaceholder')} />
                   <ExportButton
                     path={`/api/bookings/export?${exportParams.toString()}`}
                     fallbackName="bookings.xlsx"
                     onError={setActionError}
                   />
                   <Button renderIcon={Add} size="sm" onClick={openCreate}>
-                    新建预约
+                    {t('addButton')}
                   </Button>
                 </TableToolbarContent>
               </TableToolbar>
@@ -371,18 +367,18 @@ export default function BookingsPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {list.q ? '未找到匹配的预约' : '暂无预约'}
+                        {list.q ? t('empty.search') : t('empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -400,7 +396,7 @@ export default function BookingsPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {statusLabel[cell.value] ?? cell.value}
+                                    {t('status.' + cell.value, { ns: 'common', defaultValue: cell.value })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -419,7 +415,7 @@ export default function BookingsPage() {
                                   onClick={() => setCancelTarget(b)}
                                   disabled={actingId === b.id}
                                 >
-                                  取消
+                                  {t('action.cancel')}
                                 </Button>
                               )}
                               {canReview && (
@@ -430,7 +426,7 @@ export default function BookingsPage() {
                                     onClick={() => reviewBooking(b.id, 'approve')}
                                     disabled={actingId === b.id}
                                   >
-                                    通过
+                                    {t('action.approve')}
                                   </Button>
                                   <Button
                                     kind="ghost"
@@ -438,7 +434,7 @@ export default function BookingsPage() {
                                     onClick={() => reviewBooking(b.id, 'reject')}
                                     disabled={actingId === b.id}
                                   >
-                                    拒绝
+                                    {t('action.reject')}
                                   </Button>
                                 </>
                               )}
@@ -466,9 +462,9 @@ export default function BookingsPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="新建预约"
-        primaryButtonText="提交"
-        secondaryButtonText="取消"
+        modalHeading={t('form.create')}
+        primaryButtonText={t('form.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -476,11 +472,11 @@ export default function BookingsPage() {
         <div className="courses-page__form">
           <Select
             id="c-classroom"
-            labelText="教室"
+            labelText={t('form.classroom')}
             value={createForm.classroomId}
             onChange={(e) => setCreateForm({ ...createForm, classroomId: e.target.value })}
           >
-            <SelectItem value="" text="请选择教室" />
+            <SelectItem value="" text={t('form.selectClassroom')} />
             {classrooms
               .filter((c) => c.status === 'available')
               .map((c) => (
@@ -490,7 +486,7 @@ export default function BookingsPage() {
           <TextInput
             id="c-date"
             type="date"
-            labelText="日期"
+            labelText={t('form.date')}
             value={createForm.date}
             onChange={(e) => setCreateForm({ ...createForm, date: e.target.value })}
           />
@@ -498,7 +494,7 @@ export default function BookingsPage() {
             <>
               <Select
                 id="c-start"
-                labelText="起始节次"
+                labelText={t('form.periodStart')}
                 value={createForm.periodStart}
                 onChange={(e) => {
                   const start = e.target.value
@@ -510,35 +506,41 @@ export default function BookingsPage() {
                 }}
               >
                 {periods.map((p) => (
-                  <SelectItem key={p.periodIndex} value={String(p.periodIndex)} text={`第 ${p.periodIndex} 节（${p.startTime}-${p.endTime}）`} />
+                  <SelectItem
+                    key={p.periodIndex}
+                    value={String(p.periodIndex)}
+                    text={t('periodOption', { period: p.periodIndex, start: p.startTime, end: p.endTime })}
+                  />
                 ))}
               </Select>
               <Select
                 id="c-end"
-                labelText="结束节次"
+                labelText={t('form.periodEnd')}
                 value={createForm.periodEnd}
-                onChange={(e) => setCreateForm({ ...createForm, periodEnd: e.target.value })}
+                onChange={(e) => setCreateForm((f) => ({ ...f, periodEnd: e.target.value }))}
               >
                 {periods.map((p) => (
-                  <SelectItem key={p.periodIndex} value={String(p.periodIndex)} text={`第 ${p.periodIndex} 节（${p.startTime}-${p.endTime}）`} />
+                  <SelectItem
+                    key={p.periodIndex}
+                    value={String(p.periodIndex)}
+                    text={t('periodOption', { period: p.periodIndex, start: p.startTime, end: p.endTime })}
+                  />
                 ))}
               </Select>
-              <p className="bookings-page__busy">
-                {busy.length > 0 ? `当日已占用节次：${busy.join('、')}` : '当日暂无占用节次'}
-              </p>
+              <p className="bookings-page__busy">{busyText}</p>
             </>
           )}
           <TextInput
             id="c-purpose"
-            labelText="用途"
-            placeholder="如 社团活动、会议"
+            labelText={t('form.purpose')}
+            placeholder={t('form.purposePlaceholder')}
             value={createForm.purpose}
             onChange={(e) => setCreateForm({ ...createForm, purpose: e.target.value })}
           />
           {createError && (
             <InlineNotification
               kind="error"
-              title="提交失败"
+              title={t('error.submit')}
               subtitle={createError}
               lowContrast
               hideCloseButton
@@ -551,15 +553,19 @@ export default function BookingsPage() {
       <Modal
         danger
         open={Boolean(cancelTarget)}
-        modalHeading="取消预约"
-        primaryButtonText="确认取消"
-        secondaryButtonText="返回"
+        modalHeading={t('cancelModal.title')}
+        primaryButtonText={t('cancelModal.submit')}
+        secondaryButtonText={t('cancelModal.secondary')}
         onRequestClose={() => setCancelTarget(null)}
         onRequestSubmit={cancelBooking}
         primaryButtonDisabled={actingId === cancelTarget?.id}
       >
         <p className="courses-page__confirm-text">
-          确定要取消「{cancelTarget?.classroomName} · {cancelTarget?.date} · {periodLabel(cancelTarget)}」的预约吗？
+          {t('cancelModal.confirm', {
+            classroom: cancelTarget?.classroomName,
+            date: cancelTarget?.date,
+            period: periodLabel(cancelTarget),
+          })}
         </p>
       </Modal>
     </Grid>

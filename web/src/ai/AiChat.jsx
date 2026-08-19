@@ -1,57 +1,47 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { ChatContainer } from '@carbon/ai-chat'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiStream } from '../auth/api.js'
+import i18n from '../i18n/index.js'
 import { aiChatState } from './chatInstance.js'
 import renderAiCustomItem from './aiChatItems.jsx'
 
-// Carbon AI Chat only ships an English UI language pack (dayjs has zh locales,
-// the UI strings do not), so override the visible strings here.
-const zhStrings = {
-  input_placeholder: '例如：周一 5-7 节有哪些可容纳 50 人的空闲教室？',
-  input_ariaLabel: '向 AI 助手提问',
-  input_buttonLabel: '发送',
-  window_title: 'AI 助手',
-  window_ariaChatRegion: 'AI 助手对话',
-  launcher_isOpen: '打开 AI 助手',
-  launcher_isClosed: '收起 AI 助手',
-  launcher_desktopGreeting: '有什么可以帮您？',
-  launcher_mobileGreeting: '有什么可以帮您？',
-  messages_youSaid: '您',
-  messages_assistantSaid: 'AI 助手',
-  errors_communicating: '无法连接 AI 助手，请稍后重试',
-  errors_somethingWrong: '出错了，请稍后重试',
-  homeScreen_returnToAssistant: '返回对话',
-  homeScreen_returnToHome: '返回首页',
-  buttons_restart: '重新开始',
-  buttons_cancel: '取消',
-  buttons_retry: '重试',
-}
-
-const homescreen = {
-  isOn: true,
-  greeting: '按您的权限查询教室、空闲时段与课表；预约操作需在预览中点击确认后才会提交。',
-  starters: {
-    isOn: true,
-    buttons: [
-      { label: '周一 5-7 节有哪些可容纳 50 人的空闲教室？' },
-      { label: '查询 A 栋所有教室' },
-      { label: '明天 3-4 节 302 教室有没有课？' },
-      { label: '帮我预约一间周五下午的多媒体教室' },
-    ],
-  },
-}
+// Carbon AI Chat ships its own built-in English UI strings; we only override
+// them for zh-CN (see AiChat.strings below). English therefore falls back to
+// Carbon's defaults, per the i18n plan.
 
 // AiChat mounts Carbon AI Chat's float layout (bottom-right launcher + pop-over
 // window). It lives in AppShell so the conversation survives page navigation.
 // Streaming still goes through the existing SSE endpoint (apiStream); the
 // events are mapped onto the chat's chunk protocol below.
 export default function AiChat() {
+  const { t } = useTranslation('aiChat')
   const { token } = useAuth()
   const tokenRef = useRef(token)
   tokenRef.current = token
   // Conversation history sent to the backend ({role, content} pairs).
   const historyRef = useRef([])
+
+  // Carbon AI Chat UI strings. English (and any non-zh language) returns
+  // undefined so Carbon's built-in English strings are used; zh-CN overrides
+  // every visible string from the aiChat namespace.
+  const strings = useMemo(() => {
+    if (!i18n.language?.startsWith('zh')) return undefined
+    return t('strings', { returnObjects: true })
+  }, [i18n.language, t])
+
+  const homescreen = useMemo(
+    () => ({
+      isOn: true,
+      greeting: t('homescreen.greeting'),
+      starters: {
+        isOn: true,
+        buttons: t('homescreen.starters', { returnObjects: true }).map((label) => ({ label })),
+      },
+    }),
+    [t],
+  )
 
   // customSendMessage is invoked by the chat for every user message. It never
   // returns the response - chunks are pushed through instance.messaging. Text
@@ -119,11 +109,11 @@ export default function AiChat() {
         if (data.status === 'running') {
           tools = [...tools, { name: data.name, status: 'running' }]
         } else {
-          tools = tools.map((t) => (t.name === data.name && t.status === 'running' ? { ...t, status: data.status } : t))
+          tools = tools.map((tool) => (tool.name === data.name && tool.status === 'running' ? { ...tool, status: data.status } : tool))
         }
         chunk({
           response_type: 'user_defined',
-          user_defined: { user_defined_type: 'ai_tools', tools: tools.map((t) => ({ ...t })) },
+          user_defined: { user_defined_type: 'ai_tools', tools: tools.map((tool) => ({ ...tool })) },
           streaming_metadata: { id: 'tools' },
         })
       } else if (name === 'proposal') {
@@ -134,7 +124,7 @@ export default function AiChat() {
           streaming_metadata: { id: 'proposal' },
         })
       } else if (name === 'error') {
-        failed = data?.message || 'AI 助手暂时无法回答，请稍后重试'
+        failed = data?.message || i18n.t('error.fallback', { ns: 'aiChat' })
       }
       // 'done' needs no handling: the SSE stream ending triggers finalize.
     }
@@ -155,7 +145,7 @@ export default function AiChat() {
       signal?.removeEventListener('abort', onAbort)
       historyRef.current = [...historyRef.current, { role: 'user', content: text }]
       if (textAcc) historyRef.current.push({ role: 'assistant', content: textAcc })
-      if (aborted) tools = tools.map((t) => (t.status === 'running' ? { ...t, status: 'error' } : t))
+      if (aborted) tools = tools.map((tool) => (tool.status === 'running' ? { ...tool, status: 'error' } : tool))
       await finalize()
     }
   }, [])
@@ -190,10 +180,10 @@ export default function AiChat() {
       onBeforeRender={onBeforeRender}
       renderUserDefinedResponse={renderUserDefinedResponse}
       injectCarbonTheme="g10"
-      assistantName="AI 助手"
-      header={{ title: 'OCM', name: 'AI 助手', showRestartButton: true }}
+      assistantName={t('assistantName')}
+      header={{ title: 'OCM', name: t('assistantName'), showRestartButton: true }}
       homescreen={homescreen}
-      strings={zhStrings}
+      strings={strings}
     />
   )
 }

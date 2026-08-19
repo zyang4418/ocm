@@ -1,0 +1,93 @@
+{
+  "breadcrumb": {
+    "home": "Home",
+    "overview": "Overview"
+  },
+  "title": "Overview",
+  "greeting": "Welcome back, {{name}}. Today is {{date}}, {{weekday}}.",
+  "kpi": {
+    "todaySessions": "Today's sessions",
+    "classroomTotal": "Classrooms",
+    "pendingBookings": "Pending bookings",
+    "openRepairs": "Open repairs",
+    "myBookings": "My bookings"
+  },
+  "unit": {
+    "session": "sessions",
+    "classroom": "rooms",
+    "item": "items"
+  },
+  "panel": {
+    "todaySessions": "Today's sessions",
+    "pendingBookings": "Pending bookings",
+    "openRepairs": "Open repairs",
+    "myRecentBookings": "My recent bookings",
+    "recentActivity": "Recent activity"
+  },
+  "viewAll": {
+    "fullTimetable": "Full timetable",
+    "allBookings": "All bookings",
+    "allTickets": "All tickets",
+    "myBookings": "My bookings",
+    "allLogs": "All logs"
+  },
+  "empty": {
+    "noSessions": "No sessions scheduled today.",
+    "noPendingBookings": "No pending bookings.",
+    "noOpenRepairs": "No open repair tickets.",
+    "noLogs": "No recent activity."
+  },
+  "more": "{{total}} sessions total, showing first {{shown}}",
+  "quickStart": "Quick start",
+  "quickLinks": {
+    "aiAssistant": {
+      "title": "AI Assistant",
+      "description": "Ask about classrooms and timetables, generate booking plans"
+    },
+    "userManagement": {
+      "title": "User management",
+      "description": "Manage organization members and account status"
+    },
+    "roleManagement": {
+      "title": "Role management",
+      "description": "Configure roles and access permissions"
+    },
+    "parameters": {
+      "title": "Parameters",
+      "description": "Adjust system-level runtime parameters"
+    },
+    "auditLogs": {
+      "title": "Audit logs",
+      "description": "View key operation records"
+    }
+  },
+  "repairStatus": {
+    "open": "Open",
+    "processing": "In progress",
+    "completed": "Completed",
+    "confirmed": "Confirmed"
+  },
+  "bookingStatus": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "cancelled": "Cancelled"
+  },
+  "periodLabel": {
+    "single": "Period {{period}}",
+    "range": "Periods {{start}}–{{end}}"
+  },
+  "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  "dateLabel": "{{month}}/{{day}}",
+  "systemActor": "System",
+  "error": {
+    "title": "Failed to load dashboard data",
+    "retry": "Retry"
+  },
+  "charts": {
+    "todayDistribution": "Today's session distribution",
+    "futureLoadAll": "Next 14 days booking load",
+    "futureLoadMine": "My next 14 days bookings",
+    "sessionCount": "Sessions"
+  }
+}

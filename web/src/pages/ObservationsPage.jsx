@@ -30,12 +30,12 @@ import {
 } from '@carbon/react'
 import { Add, Download, Edit, TrashCan, CheckmarkOutline } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch, apiDownload } from '../auth/api.js'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
 
-const statusLabel = { draft: '草稿', submitted: '已提交' }
 const statusKind = { draft: 'gray', submitted: 'green' }
 
 // indicatorScoreGroups mirrors the backend: an explicit score_groups list wins,
@@ -50,11 +50,6 @@ function indicatorScoreGroups(ind) {
     }))
   }
   return [{ key: ind.key, lines: ind.lines || [] }]
-}
-
-function sectionsLabel(sections) {
-  if (!sections || !sections.length) return '—'
-  return `第 ${sections.slice().sort((a, b) => a - b).join('、')} 节`
 }
 
 function fmtScore(v) {
@@ -73,18 +68,19 @@ const emptyFormData = {
   studentFeedback: {},
 }
 
-const headers = [
-  { key: 'courseName', header: '课程' },
-  { key: 'teacher', header: '教师' },
-  { key: 'teachingClassName', header: '教学班' },
-  { key: 'observeDate', header: '听课日期' },
-  { key: 'sections', header: '节次' },
-  { key: 'templateType', header: '模板' },
-  { key: 'totalScore', header: '总分' },
-  { key: 'status', header: '状态' },
+const headers = (t) => [
+  { key: 'courseName', header: t('field.courseName') },
+  { key: 'teacher', header: t('field.teacher') },
+  { key: 'teachingClassName', header: t('field.teachingClassName') },
+  { key: 'observeDate', header: t('field.observeDate') },
+  { key: 'sections', header: t('field.sections') },
+  { key: 'templateType', header: t('field.templateType') },
+  { key: 'totalScore', header: t('field.totalScore') },
+  { key: 'status', header: t('field.status') },
 ]
 
 export default function ObservationsPage() {
+  const { t, i18n } = useTranslation('observations')
   const { token, user: currentUser, can } = useAuth()
   const navigate = useNavigate()
   const canWrite = can('observation:write')
@@ -157,6 +153,15 @@ export default function ObservationsPage() {
     return schema.templates?.find((t) => t.value === meta.templateType) || null
   }, [schema, meta.templateType])
 
+  const templateLabel = (value) => t('templateType.' + value, { defaultValue: value || '' })
+
+  const sectionsLabel = (sections) => {
+    if (!sections || !sections.length) return '—'
+    const sorted = sections.slice().sort((a, b) => a - b)
+    const listFmt = new Intl.ListFormat(i18n.language || 'zh-CN', { style: 'narrow' })
+    return t('sectionsLabel', { sections: listFmt.format(sorted.map(String)) })
+  }
+
   const openCreate = () => {
     setEditId(null)
     setMeta(emptyMeta)
@@ -214,10 +219,10 @@ export default function ObservationsPage() {
   })
 
   const handleSave = async () => {
-    if (!meta.templateType) return setFormError('请选择模板类型')
-    if (!meta.courseId) return setFormError('请选择课程')
-    if (!meta.classroomId) return setFormError('请选择听课地点')
-    if (!meta.observeDate) return setFormError('请选择听课日期')
+    if (!meta.templateType) return setFormError(t('validation.templateRequired'))
+    if (!meta.courseId) return setFormError(t('validation.courseRequired'))
+    if (!meta.classroomId) return setFormError(t('validation.classroomRequired'))
+    if (!meta.observeDate) return setFormError(t('validation.dateRequired'))
     try {
       setSaving(true)
       setFormError('')
@@ -310,17 +315,18 @@ export default function ObservationsPage() {
     teachingClassName: o.teachingClassName,
     observeDate: o.observeDate,
     sections: sectionsLabel(o.sections),
-    templateType: templateLabelOf(o.templateType),
+    templateType: templateLabel(o.templateType),
     totalScore: fmtScore(o.totalScore),
     status: o.status,
   }))
 
-  const colSpan = headers.length + 1
+  const tableHeaders = headers(t)
+  const colSpan = tableHeaders.length + 1
 
   return (
     <Grid fullWidth className="courses-page observations-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -328,19 +334,19 @@ export default function ObservationsPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>听课评课</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">听课评课</h1>
-        <p className="courses-page__subtitle">记录课堂观察与评价，按模板打分、填写评语，提交后导出为 Word 听课记录表。</p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {error && (
           <InlineNotification
             kind="error"
-            title="操作失败"
+            title={t('error.action')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -351,40 +357,40 @@ export default function ObservationsPage() {
         <div className="bookings-page__filters">
           <Select
             id="f-status"
-            labelText="状态"
+            labelText={t('filter.status')}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="bookings-page__filter"
           >
-            <SelectItem value="" text="全部状态" />
-            <SelectItem value="draft" text="草稿" />
-            <SelectItem value="submitted" text="已提交" />
+            <SelectItem value="" text={t('filter.allStatuses')} />
+            <SelectItem value="draft" text={t('status.draft', { ns: 'common' })} />
+            <SelectItem value="submitted" text={t('status.submitted', { ns: 'common' })} />
           </Select>
           <Select
             id="f-template"
-            labelText="模板"
+            labelText={t('filter.template')}
             value={filterTemplate}
             onChange={(e) => setFilterTemplate(e.target.value)}
             className="bookings-page__filter"
           >
-            <SelectItem value="" text="全部模板" />
-            {(schema?.templates || []).map((t) => (
-              <SelectItem key={t.value} value={t.value} text={t.label} />
+            <SelectItem value="" text={t('filter.allTemplates')} />
+            {(schema?.templates || []).map((tpl) => (
+              <SelectItem key={tpl.value} value={tpl.value} text={tpl.label} />
             ))}
           </Select>
         </div>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
-        <DataTable rows={rows} headers={headers}>
-          {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-            <TableContainer title="评课记录" description={`共 ${list.total} 条记录`}>
+        <DataTable rows={rows} headers={tableHeaders}>
+          {({ rows: tableRows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索评课" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('table.searchPlaceholder')} />
                   {canWrite && (
                     <Button renderIcon={Add} size="sm" onClick={openCreate}>
-                      新建评课
+                      {t('table.addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -392,22 +398,22 @@ export default function ObservationsPage() {
               <Table {...getTableProps()}>
                 <TableHead>
                   <TableRow>
-                    {tableHeaders.map((header) => (
+                    {renderedHeaders.map((header) => (
                       <TableHeader key={header.key} {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
-                    <TableHeader>操作</TableHeader>
+                    <TableHeader>{t('field.actions')}</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>{list.q ? '未找到匹配的评课' : '暂无评课记录'}</TableCell>
+                      <TableCell colSpan={colSpan}>{list.q ? t('empty.search') : t('empty.none')}</TableCell>
                     </TableRow>
                   ) : (
                     tableRows.map((row) => {
@@ -424,7 +430,7 @@ export default function ObservationsPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {statusLabel[cell.value] ?? cell.value}
+                                    {t('status.' + cell.value, { ns: 'common', defaultValue: cell.value })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -435,22 +441,22 @@ export default function ObservationsPage() {
                             <div className="courses-page__actions">
                               {canEdit && (
                                 <Button kind="ghost" size="sm" renderIcon={Edit} onClick={() => openEdit(o)} disabled={actingId === o.id}>
-                                  编辑
+                                  {t('action.edit', { ns: 'common' })}
                                 </Button>
                               )}
                               {canSubmit && (
                                 <Button kind="ghost" size="sm" renderIcon={CheckmarkOutline} onClick={() => submitObservation(o)} disabled={actingId === o.id}>
-                                  提交
+                                  {t('action.submit', { ns: 'common' })}
                                 </Button>
                               )}
                               {canExport && (
                                 <Button kind="ghost" size="sm" renderIcon={Download} onClick={() => exportObservation(o)} disabled={actingId === o.id}>
-                                  导出
+                                  {t('action.export', { ns: 'common' })}
                                 </Button>
                               )}
                               {canDelete && (
                                 <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => setDeleteTarget(o)} disabled={actingId === o.id}>
-                                  删除
+                                  {t('action.delete', { ns: 'common' })}
                                 </Button>
                               )}
                               {!canEdit && !canSubmit && !canExport && !canDelete && (
@@ -480,9 +486,9 @@ export default function ObservationsPage() {
       <Modal
         open={formOpen}
         size="lg"
-        modalHeading={editId ? '编辑评课' : '新建评课'}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={editId ? t('modal.editHeading') : t('modal.createHeading')}
+        primaryButtonText={t('action.save', { ns: 'common' })}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setFormOpen(false)}
         onRequestSubmit={handleSave}
         primaryButtonDisabled={saving}
@@ -491,43 +497,43 @@ export default function ObservationsPage() {
         <div className="courses-page__form observations-page__form">
           {/* 基础信息 */}
           <div className="observations-page__section">
-            <h3 className="observations-page__section-title">基础信息</h3>
+            <h3 className="observations-page__section-title">{t('section.basic')}</h3>
             <Select
               id="o-template"
-              labelText="模板类型"
+              labelText={t('form.templateType')}
               value={meta.templateType}
               onChange={(e) => {
                 setMeta({ ...meta, templateType: e.target.value })
                 setFormData(emptyFormData)
               }}
             >
-              <SelectItem value="" text="请选择模板" />
-              {(schema?.templates || []).map((t) => (
-                <SelectItem key={t.value} value={t.value} text={t.label} />
+              <SelectItem value="" text={t('form.templatePlaceholder')} />
+              {(schema?.templates || []).map((tpl) => (
+                <SelectItem key={tpl.value} value={tpl.value} text={tpl.label} />
               ))}
             </Select>
             <Select
               id="o-course"
-              labelText="课程"
+              labelText={t('form.course')}
               value={meta.courseId}
               onChange={(e) => setMeta({ ...meta, courseId: e.target.value })}
             >
-              <SelectItem value="" text="请选择课程" />
+              <SelectItem value="" text={t('form.coursePlaceholder')} />
               {offerings.map((o) => (
                 <SelectItem
                   key={o.id}
                   value={String(o.id)}
-                  text={`${o.catalogName}（${o.teachingClassName} · ${o.teacher}）`}
+                  text={t('courseOption', { catalogName: o.catalogName, teachingClass: o.teachingClassName, teacher: o.teacher })}
                 />
               ))}
             </Select>
             <Select
               id="o-classroom"
-              labelText="听课地点"
+              labelText={t('form.classroom')}
               value={meta.classroomId}
               onChange={(e) => setMeta({ ...meta, classroomId: e.target.value })}
             >
-              <SelectItem value="" text="请选择听课地点" />
+              <SelectItem value="" text={t('form.classroomPlaceholder')} />
               {classrooms.map((c) => (
                 <SelectItem
                   key={c.id}
@@ -539,18 +545,18 @@ export default function ObservationsPage() {
             <TextInput
               id="o-date"
               type="date"
-              labelText="听课日期"
+              labelText={t('form.observeDate')}
               value={meta.observeDate}
               onChange={(e) => setMeta({ ...meta, observeDate: e.target.value })}
             />
             {periods.length > 0 && (
               <fieldset className="observations-page__sections">
-                <legend className="observations-page__legend">节次</legend>
+                <legend className="observations-page__legend">{t('form.sectionsLegend')}</legend>
                 {periods.map((p) => (
                   <Checkbox
                     key={p.periodIndex}
                     id={`o-sec-${p.periodIndex}`}
-                    labelText={`第 ${p.periodIndex} 节（${p.startTime}-${p.endTime}）`}
+                    labelText={t('periodOption', { index: p.periodIndex, start: p.startTime, end: p.endTime })}
                     checked={meta.sections.includes(p.periodIndex)}
                     onChange={(_, { checked }) => toggleSection(p.periodIndex, checked)}
                   />
@@ -559,7 +565,7 @@ export default function ObservationsPage() {
             )}
             <Checkbox
               id="o-anon"
-              labelText="匿名评课（导出时隐藏听课人）"
+              labelText={t('form.anonymous')}
               checked={meta.isAnonymous}
               onChange={(_, { checked }) => setMeta({ ...meta, isAnonymous: checked })}
             />
@@ -570,7 +576,7 @@ export default function ObservationsPage() {
               {/* 评分指标 */}
               {selectedTemplate.indicators?.length > 0 && (
                 <div className="observations-page__section">
-                  <h3 className="observations-page__section-title">评分指标</h3>
+                  <h3 className="observations-page__section-title">{t('section.indicators')}</h3>
                   {selectedTemplate.indicators.map((ind) =>
                     indicatorScoreGroups(ind).map((g) => (
                       <div key={g.key} className="observations-page__indicator">
@@ -584,7 +590,7 @@ export default function ObservationsPage() {
                         ))}
                         <RadioButtonGroup
                           name={`ind-${g.key}`}
-                          legendText="评分"
+                          legendText={t('form.ratingLegend')}
                           orientation="horizontal"
                           valueSelected={formData.indicatorScores[g.key] || ''}
                           onChange={(v) => setIndicatorScore(g.key, v)}
@@ -602,7 +608,7 @@ export default function ObservationsPage() {
               {/* header extras（radio，如年龄层次/班级规模） */}
               {selectedTemplate.header_extras?.length > 0 && (
                 <div className="observations-page__section">
-                  <h3 className="observations-page__section-title">{selectedTemplate.header_extra_section_title || '表头信息'}</h3>
+                  <h3 className="observations-page__section-title">{selectedTemplate.header_extra_section_title || t('sectionFallback.headerExtra')}</h3>
                   {selectedTemplate.header_extras.map((ex) => (
                     <RadioButtonGroup
                       key={ex.key}
@@ -622,10 +628,10 @@ export default function ObservationsPage() {
 
               {/* 总分 + 授课内容 */}
               <div className="observations-page__section">
-                <h3 className="observations-page__section-title">评价结论</h3>
+                <h3 className="observations-page__section-title">{t('section.conclusion')}</h3>
                 <NumberInput
                   id="o-score"
-                  label={selectedTemplate.score_label || '总评成绩'}
+                  label={selectedTemplate.score_label || t('form.scoreLabelFallback')}
                   min={0}
                   max={100}
                   value={formData.totalScore}
@@ -634,8 +640,8 @@ export default function ObservationsPage() {
                 />
                 <TextArea
                   id="o-content"
-                  labelText={selectedTemplate.content_label || '授课内容'}
-                  placeholder={`${selectedTemplate.content_label || '授课内容'}（${selectedTemplate.content_limit?.max_length || ''} 字以内）`}
+                  labelText={selectedTemplate.content_label || t('form.contentLabelFallback')}
+                  placeholder={t('form.contentPlaceholder', { label: selectedTemplate.content_label || t('form.contentLabelFallback'), max: selectedTemplate.content_limit?.max_length || '' })}
                   value={formData.contentOutline}
                   onChange={(e) => setFormData((f) => ({ ...f, contentOutline: e.target.value }))}
                   maxLength={selectedTemplate.content_limit?.max_length || undefined}
@@ -646,7 +652,7 @@ export default function ObservationsPage() {
               {/* 评语 */}
               {selectedTemplate.comment_fields?.length > 0 && (
                 <div className="observations-page__section">
-                  <h3 className="observations-page__section-title">评语</h3>
+                  <h3 className="observations-page__section-title">{t('section.comments')}</h3>
                   {selectedTemplate.comment_fields.map((cf) => (
                     <TextArea
                       key={cf.key}
@@ -665,7 +671,7 @@ export default function ObservationsPage() {
               {/* extras（radio_with_detail） */}
               {selectedTemplate.extras?.length > 0 && (
                 <div className="observations-page__section">
-                  <h3 className="observations-page__section-title">{selectedTemplate.extra_section_title || '课堂诊断'}</h3>
+                  <h3 className="observations-page__section-title">{selectedTemplate.extra_section_title || t('sectionFallback.extra')}</h3>
                   {selectedTemplate.extras.map((ex) => {
                     const detailVisible =
                       ex.detail_required_when === undefined ||
@@ -687,7 +693,7 @@ export default function ObservationsPage() {
                         {ex.detail_key && detailVisible && (
                           <TextArea
                             id={`exd-${ex.detail_key}`}
-                            labelText={`${ex.label}说明`}
+                            labelText={t('form.extraDetailLabel', { label: ex.label })}
                             placeholder={ex.detail_placeholder}
                             value={formData.extraDetails[ex.detail_key] || ''}
                             onChange={(e) => setExtraDetail(ex.detail_key, e.target.value)}
@@ -705,7 +711,7 @@ export default function ObservationsPage() {
               {selectedTemplate.post_content_comment_fields?.length > 0 && (
                 <div className="observations-page__section">
                   <h3 className="observations-page__section-title">
-                    {selectedTemplate.post_content_comment_title || '其它评价'}
+                    {selectedTemplate.post_content_comment_title || t('sectionFallback.postContent')}
                   </h3>
                   {selectedTemplate.post_content_comment_fields.map((cf) => (
                     <TextArea
@@ -725,12 +731,12 @@ export default function ObservationsPage() {
               {/* 学生反馈矩阵 */}
               {selectedTemplate.student_feedback && (
                 <div className="observations-page__section">
-                  <h3 className="observations-page__section-title">学生评价</h3>
+                  <h3 className="observations-page__section-title">{t('section.studentFeedback')}</h3>
                   <div className="observations-page__matrix">
                     <table className="observations-page__matrix-table">
                       <thead>
                         <tr>
-                          <th>评价项</th>
+                          <th>{t('form.studentFeedbackHeader')}</th>
                           {(selectedTemplate.student_feedback.columns || []).map((col) => (
                             <th key={col}>{col}</th>
                           ))}
@@ -749,7 +755,7 @@ export default function ObservationsPage() {
                                   value={formData.studentFeedback[q.key]?.[col] || ''}
                                   onChange={(e) => setStudentAnswer(q.key, col, e.target.value)}
                                 >
-                                  <SelectItem value="" text="—" />
+                                  <SelectItem value="" text={t('form.dash')} />
                                   {(q.options || []).map((opt) => (
                                     <SelectItem key={opt.value} value={opt.value} text={opt.label} />
                                   ))}
@@ -767,7 +773,7 @@ export default function ObservationsPage() {
           )}
 
           {formError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={formError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={formError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -776,27 +782,17 @@ export default function ObservationsPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除评课"
-        primaryButtonText="确认删除"
-        secondaryButtonText="返回"
+        modalHeading={t('modal.deleteHeading')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.back', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={deleteObservation}
         primaryButtonDisabled={actingId === deleteTarget?.id}
       >
         <p className="courses-page__confirm-text">
-          确定要删除「{deleteTarget?.courseName} · {deleteTarget?.observeDate}」的评课记录吗？此操作不可恢复。
+          {t('modal.deleteConfirm', { course: deleteTarget?.courseName, date: deleteTarget?.observeDate })}
         </p>
       </Modal>
     </Grid>
-  )
-}
-
-function templateLabelOf(value) {
-  return (
-    {
-      leader: '干部听课',
-      supervisor: '督导听课',
-      ideology: '思政课听课',
-    }[value] || value
   )
 }

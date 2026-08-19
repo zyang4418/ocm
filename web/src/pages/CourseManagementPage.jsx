@@ -29,38 +29,37 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
 
-// ---- Offerings (课程/开课) ----
-const offeringHeaders = [
-  { key: 'id', header: 'ID' },
-  { key: 'catalogName', header: '课程' },
-  { key: 'catalogCode', header: '课程代码' },
-  { key: 'teachingClassName', header: '教学班' },
-  { key: 'classNames', header: '行政班' },
-  { key: 'teacher', header: '教师' },
-  { key: 'semester', header: '学期' },
-]
-
-// ---- Catalog (课程库) ----
-const catalogHeaders = [
-  { key: 'id', header: 'ID' },
-  { key: 'name', header: '课程名称' },
-  { key: 'code', header: '课程代码' },
-  { key: 'description', header: '描述' },
-]
-
 const emptyOffering = { catalogId: '', teachingClassId: '', teacher: '', semester: '', note: '' }
 const emptyCatalog = { name: '', code: '', description: '' }
 
 export default function CourseManagementPage() {
+  const { t, i18n } = useTranslation('courses')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('course:manage')
+
+  const offeringHeaders = [
+    { key: 'id', header: t('offeringField.id') },
+    { key: 'catalogName', header: t('offeringField.catalogName') },
+    { key: 'catalogCode', header: t('offeringField.catalogCode') },
+    { key: 'teachingClassName', header: t('offeringField.teachingClassName') },
+    { key: 'classNames', header: t('offeringField.classNames') },
+    { key: 'teacher', header: t('offeringField.teacher') },
+    { key: 'semester', header: t('offeringField.semester') },
+  ]
+  const catalogHeaders = [
+    { key: 'id', header: t('catalogField.id') },
+    { key: 'name', header: t('catalogField.name') },
+    { key: 'code', header: t('catalogField.code') },
+    { key: 'description', header: t('catalogField.description') },
+  ]
 
   const offerings = usePagedList({ path: '/api/offerings', token })
   const catalogList = usePagedList({ path: '/api/courses', token })
@@ -117,7 +116,7 @@ export default function CourseManagementPage() {
   // ---- offering handlers ----
   const submitOffering = async () => {
     if (!offForm.catalogId || !offForm.teachingClassId || !offForm.teacher.trim() || !offForm.semester.trim()) {
-      setOffError('课程、教学班、教师、学期为必填项')
+      setOffError(t('validation.offeringRequired'))
       return
     }
     const body = {
@@ -161,7 +160,7 @@ export default function CourseManagementPage() {
   // ---- catalog handlers ----
   const submitCatalog = async () => {
     if (!catForm.name.trim()) {
-      setCatError('课程名称为必填项')
+      setCatError(t('validation.catalogNameRequired'))
       return
     }
     const body = {
@@ -226,7 +225,7 @@ export default function CourseManagementPage() {
             size="sm"
             hasIconOnly
             renderIcon={Edit}
-            iconDescription="编辑"
+            iconDescription={t('action.edit', { ns: 'common' })}
             onClick={() => (kind === 'offering' ? openEditOffering(row) : openEditCatalog(row))}
           />
           <Button
@@ -234,20 +233,27 @@ export default function CourseManagementPage() {
             size="sm"
             hasIconOnly
             renderIcon={TrashCan}
-            iconDescription="删除"
+            iconDescription={t('action.delete', { ns: 'common' })}
             onClick={() => setDelTarget({ kind, row })}
           />
         </div>
       </TableCell>
     )
 
+  // classNames column joins admin-class names with a locale-appropriate
+  // separator (zh: "、", en: ", ") via Intl.ListFormat narrow style.
+  const listFmt = new Intl.ListFormat(i18n.language, { style: 'narrow' })
+
   const renderTable = (list, headers, kind) => (
     <DataTable rows={list.items} headers={headers}>
       {({ rows, headers: th, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-        <TableContainer title={kind === 'offering' ? '课程列表' : '课程库'} description={`共 ${list.total} 项`}>
+        <TableContainer
+          title={kind === 'offering' ? t('table.offering.title') : t('table.catalog.title')}
+          description={t(`table.${kind}.description`, { count: list.total })}
+        >
           <TableToolbar {...getToolbarProps()}>
             <TableToolbarContent>
-              <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索" />
+              <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('searchPlaceholder')} />
               <ExportButton
                 path={kind === 'offering' ? '/api/offerings/export' : '/api/courses/export'}
                 fallbackName={kind === 'offering' ? 'offerings.xlsx' : 'catalog.xlsx'}
@@ -271,7 +277,7 @@ export default function CourseManagementPage() {
                     }
                   }}
                 >
-                  {kind === 'offering' ? '添加课程' : '添加课程库'}
+                  {kind === 'offering' ? t('addButton.offering') : t('addButton.catalog')}
                 </Button>
               )}
             </TableToolbarContent>
@@ -284,18 +290,18 @@ export default function CourseManagementPage() {
                     {h.header}
                   </TableHeader>
                 ))}
-                {canManage && <TableHeader>操作</TableHeader>}
+                {canManage && <TableHeader>{t('field.actions')}</TableHeader>}
               </TableRow>
             </TableHead>
             <TableBody>
               {list.loading ? (
                 <TableRow>
-                  <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>加载中…</TableCell>
+                  <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>{t('empty.loading')}</TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>
-                    {list.q ? '未找到匹配的数据' : '暂无数据'}
+                    {list.q ? t('empty.noResults', { ns: 'common' }) : t('empty.noData', { ns: 'common' })}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -307,7 +313,9 @@ export default function CourseManagementPage() {
                         if (cell.info.header === 'classNames') {
                           return (
                             <TableCell key={cell.id}>
-                              {Array.isArray(cell.value) && cell.value.length ? cell.value.join('、') : '-'}
+                              {Array.isArray(cell.value) && cell.value.length
+                                ? listFmt.format(cell.value)
+                                : '-'}
                             </TableCell>
                           )
                         }
@@ -328,7 +336,7 @@ export default function CourseManagementPage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -336,16 +344,16 @@ export default function CourseManagementPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>课程管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">课程管理</h1>
-        <p className="courses-page__subtitle">维护课程库与各班级开课信息，为排课与课表提供数据基础。</p>
+        <h1 className="courses-page__heading">{t('title')}</h1>
+        <p className="courses-page__subtitle">{t('subtitle')}</p>
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -356,9 +364,9 @@ export default function CourseManagementPage() {
 
       <Column sm={4} md={8} lg={16}>
         <Tabs>
-          <TabList aria-label="课程管理">
-            <Tab>课程列表</Tab>
-            <Tab>课程库</Tab>
+          <TabList aria-label={t('tabs.ariaLabel')}>
+            <Tab>{t('tabs.offerings')}</Tab>
+            <Tab>{t('tabs.catalog')}</Tab>
           </TabList>
           <TabPanels>
             <TabPanel>
@@ -388,9 +396,9 @@ export default function CourseManagementPage() {
       {/* Offering create/edit modal */}
       <Modal
         open={offCreateOpen}
-        modalHeading={offEditTarget ? `编辑课程：${offEditTarget.catalogName}` : '添加课程'}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={offEditTarget ? t('modal.edit', { name: offEditTarget.catalogName }) : t('modal.offeringCreate')}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => {
           setOffCreateOpen(false)
           setOffEditTarget(null)
@@ -401,47 +409,51 @@ export default function CourseManagementPage() {
         <div className="courses-page__form">
           <Select
             id="off-catalog"
-            labelText="课程（课程库）"
+            labelText={t('offeringForm.catalog')}
             value={offForm.catalogId}
             onChange={(e) => setOffForm({ ...offForm, catalogId: e.target.value })}
           >
-            <SelectItem value="" text="请选择课程" />
+            <SelectItem value="" text={t('offeringForm.selectCatalog')} />
             {catalogOptions.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)} text={`${c.name}${c.code ? `（${c.code}）` : ''}`} />
+              <SelectItem
+                key={c.id}
+                value={String(c.id)}
+                text={c.code ? t('offeringForm.courseOption', { name: c.name, code: c.code }) : c.name}
+              />
             ))}
           </Select>
           <Select
             id="off-teaching-class"
-            labelText="教学班"
+            labelText={t('offeringForm.teachingClass')}
             value={offForm.teachingClassId}
             onChange={(e) => setOffForm({ ...offForm, teachingClassId: e.target.value })}
           >
-            <SelectItem value="" text="请选择教学班" />
-            {teachingClasses.map((t) => (
-              <SelectItem key={t.id} value={String(t.id)} text={t.name} />
+            <SelectItem value="" text={t('offeringForm.selectTeachingClass')} />
+            {teachingClasses.map((tc) => (
+              <SelectItem key={tc.id} value={String(tc.id)} text={tc.name} />
             ))}
           </Select>
           <TextInput
             id="off-teacher"
-            labelText="教师"
+            labelText={t('offeringForm.teacher')}
             value={offForm.teacher}
             onChange={(e) => setOffForm({ ...offForm, teacher: e.target.value })}
           />
           <TextInput
             id="off-semester"
-            labelText="学期"
-            placeholder="如 2026秋"
+            labelText={t('offeringForm.semester')}
+            placeholder={t('offeringForm.semesterPlaceholder')}
             value={offForm.semester}
             onChange={(e) => setOffForm({ ...offForm, semester: e.target.value })}
           />
           <TextInput
             id="off-note"
-            labelText="备注"
+            labelText={t('offeringForm.note')}
             value={offForm.note}
             onChange={(e) => setOffForm({ ...offForm, note: e.target.value })}
           />
           {offError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={offError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={offError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -449,9 +461,9 @@ export default function CourseManagementPage() {
       {/* Catalog create/edit modal */}
       <Modal
         open={catCreateOpen}
-        modalHeading={catEditTarget ? `编辑课程：${catEditTarget.name}` : '添加课程库'}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={catEditTarget ? t('modal.edit', { name: catEditTarget.name }) : t('modal.catalogCreate')}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => {
           setCatCreateOpen(false)
           setCatEditTarget(null)
@@ -462,25 +474,25 @@ export default function CourseManagementPage() {
         <div className="courses-page__form">
           <TextInput
             id="cat-name"
-            labelText="课程名称"
+            labelText={t('catalogForm.name')}
             value={catForm.name}
             onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
           />
           <TextInput
             id="cat-code"
-            labelText="课程代码"
-            placeholder="如 MATH101"
+            labelText={t('catalogForm.code')}
+            placeholder={t('catalogForm.codePlaceholder')}
             value={catForm.code}
             onChange={(e) => setCatForm({ ...catForm, code: e.target.value })}
           />
           <TextInput
             id="cat-desc"
-            labelText="描述"
+            labelText={t('catalogForm.description')}
             value={catForm.description}
             onChange={(e) => setCatForm({ ...catForm, description: e.target.value })}
           />
           {catError && (
-            <InlineNotification kind="error" title="保存失败" subtitle={catError} lowContrast hideCloseButton />
+            <InlineNotification kind="error" title={t('error.save')} subtitle={catError} lowContrast hideCloseButton />
           )}
         </div>
       </Modal>
@@ -489,19 +501,20 @@ export default function CourseManagementPage() {
       <Modal
         danger
         open={Boolean(delTarget)}
-        modalHeading="删除"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDelTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="courses-page__confirm-text">
-          确定要删除{delTarget?.kind === 'offering' ? '课程' : '课程库'}「
-          {delTarget?.kind === 'offering' ? delTarget?.row?.catalogName : delTarget?.row?.name}」吗？此操作不可撤销。
+          {t(`deleteConfirm.${delTarget?.kind ?? 'offering'}`, {
+            name: delTarget?.kind === 'offering' ? delTarget?.row?.catalogName : delTarget?.row?.name,
+          })}
         </p>
         {delError && (
-          <InlineNotification kind="error" title="删除失败" subtitle={delError} lowContrast hideCloseButton />
+          <InlineNotification kind="error" title={t('error.delete')} subtitle={delError} lowContrast hideCloseButton />
         )}
       </Modal>
     </Grid>

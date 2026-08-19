@@ -1,0 +1,76 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Observations" },
+  "title": "Classroom observations",
+  "subtitle": "Record classroom observations and evaluations; score by template, write comments, then export a Word observation report after submission.",
+  "filter": {
+    "status": "Status",
+    "allStatuses": "All statuses",
+    "template": "Template",
+    "allTemplates": "All templates"
+  },
+  "table": { "title": "Observations", "description": "{{count}} records", "searchPlaceholder": "Search observations", "addButton": "New observation" },
+  "field": {
+    "courseName": "Course",
+    "teacher": "Teacher",
+    "teachingClassName": "Teaching class",
+    "observeDate": "Date",
+    "sections": "Periods",
+    "templateType": "Template",
+    "totalScore": "Score",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "empty": { "loading": "Loading…", "search": "No matching observations", "none": "No observation records" },
+  "error": { "action": "Action failed", "save": "Save failed" },
+  "modal": {
+    "createHeading": "New observation",
+    "editHeading": "Edit observation",
+    "deleteHeading": "Delete observation",
+    "deleteSubmit": "Confirm delete",
+    "deleteConfirm": "Delete the observation for “{{course}} · {{date}}”? This cannot be undone."
+  },
+  "validation": {
+    "templateRequired": "Please select a template",
+    "courseRequired": "Please select a course",
+    "classroomRequired": "Please select an observation location",
+    "dateRequired": "Please select an observation date"
+  },
+  "section": {
+    "basic": "Basic info",
+    "indicators": "Indicators",
+    "conclusion": "Conclusion",
+    "comments": "Comments",
+    "studentFeedback": "Student feedback"
+  },
+  "sectionFallback": {
+    "headerExtra": "Header info",
+    "extra": "Classroom diagnosis",
+    "postContent": "Other comments"
+  },
+  "form": {
+    "templateType": "Template type",
+    "templatePlaceholder": "Select a template",
+    "course": "Course",
+    "coursePlaceholder": "Select a course",
+    "classroom": "Observation location",
+    "classroomPlaceholder": "Select a location",
+    "observeDate": "Date",
+    "sectionsLegend": "Periods",
+    "anonymous": "Anonymous (hides observer on export)",
+    "ratingLegend": "Score",
+    "scoreLabelFallback": "Overall score",
+    "contentLabelFallback": "Taught content",
+    "contentPlaceholder": "{{label}} (within {{max}} chars)",
+    "extraDetailLabel": "{{label}} — note",
+    "studentFeedbackHeader": "Item",
+    "dash": "—"
+  },
+  "courseOption": "{{catalogName}} ({{teachingClass}} · {{teacher}})",
+  "periodOption": "Period {{index}} ({{start}}-{{end}})",
+  "sectionsLabel": "Period {{sections}}",
+  "templateType": {
+    "leader": "Leader observation",
+    "supervisor": "Supervisor observation",
+    "ideology": "Ideology-class observation"
+  }
+}

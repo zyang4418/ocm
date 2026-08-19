@@ -1,0 +1,37 @@
+{
+  "breadcrumb": { "home": "首页", "current": "作息设置" },
+  "title": "作息设置",
+  "subtitle": "配置冬/夏令时作息及其切换日期，自定义每天节次数与各节次时间。",
+  "addButton": "添加作息",
+  "effective": "· 每年 {{month}} 月 {{day}} 日起生效",
+  "periodLabel": { "single": "第 {{period}} 节" },
+  "action": { "edit": "编辑", "editPeriods": "编辑节次" },
+  "empty": { "loading": "加载中…", "none": "暂无作息配置，请先添加。", "noPeriods": "尚未配置节次" },
+  "modal": {
+    "regimeCreate": "添加作息",
+    "regimeEdit": "编辑作息",
+    "regimeSubmit": "保存",
+    "periodsTitle": "编辑节次：{{name}}",
+    "periodsSubmit": "保存节次",
+    "delete": "删除作息",
+    "deleteSubmit": "删除"
+  },
+  "deleteConfirm": "确定要删除作息「{{name}}」及其所有节次吗？此操作不可撤销。",
+  "regimeForm": {
+    "name": "名称",
+    "namePlaceholder": "如 冬令时 / 夏令时",
+    "month": "生效月份",
+    "day": "生效日"
+  },
+  "periodsHint": "每天节次数 = 下方行数，可增删行调整。",
+  "periodForm": {
+    "period": "节次",
+    "start": "开始",
+    "end": "结束",
+    "addPeriod": "添加节次",
+    "removePeriod": "删除该节"
+  },
+  "error": { "load": "加载失败", "save": "保存失败", "delete": "删除失败" },
+  "validation": { "nameRequired": "名称为必填项" },
+  "months": ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+}

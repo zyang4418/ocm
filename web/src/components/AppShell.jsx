@@ -7,6 +7,8 @@ import {
   HeaderMenuButton,
   HeaderName,
   HeaderSideNavItems,
+  OverflowMenu,
+  OverflowMenuItem,
   SideNav,
   SideNavItems,
   SideNavLink,
@@ -23,11 +25,14 @@ import {
   Logout,
   Notification,
   Settings,
+  Translate,
   UserAvatar,
   UserMultiple,
 } from '@carbon/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
+import useLanguage from '../i18n/useLanguage.js'
 
 // The AI assistant chat widget is a large dependency chain (lit + Carbon web
 // components), so it is only fetched when a user with ai:chat permission is
@@ -38,6 +43,8 @@ const AiChat = lazy(() => import('../ai/AiChat.jsx'))
 // content area) shared by all authenticated pages. It persists across route
 // changes via a React Router layout route so the header never remounts.
 export default function AppShell({ children }) {
+  const { t } = useTranslation()
+  const { language, setLanguage, languages } = useLanguage()
   const { user, logout, can } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -75,29 +82,46 @@ export default function AppShell({ children }) {
 
         return (
           <>
-            <Header aria-label="OCM 管理平台">
+            <Header aria-label={t('app.title')}>
               <SkipToContent />
               <HeaderMenuButton
-                aria-label={isSideNavExpanded ? '收起导航菜单' : '展开导航菜单'}
+                aria-label={isSideNavExpanded ? t('aria.navToggleClose') : t('aria.navToggleOpen')}
                 onClick={onClickSideNavExpand}
                 isActive={isSideNavExpanded}
                 isCollapsible
               />
               <HeaderName href="/" prefix="" onClick={go('/')}>
-                OCM 管理平台
+                {t('app.title')}
               </HeaderName>
               <HeaderGlobalBar>
-                <HeaderGlobalAction aria-label="通知" tooltipAlignment="end">
+                <HeaderGlobalAction aria-label={t('aria.notification')} tooltipAlignment="end">
                   <Notification size={20} />
                 </HeaderGlobalAction>
+                <OverflowMenu
+                  renderIcon={Translate}
+                  aria-label={t('aria.languageSwitcher')}
+                  iconDescription={t('aria.languageSwitcher')}
+                  align="bottom-end"
+                  flipped
+                  className="app-shell__lang-switcher"
+                >
+                  {languages.map((lng) => (
+                    <OverflowMenuItem
+                      key={lng}
+                      itemText={t(`language.${lng}`)}
+                      isDelete={false}
+                      onClick={() => setLanguage(lng)}
+                    />
+                  ))}
+                </OverflowMenu>
                 <HeaderGlobalAction
-                  aria-label={`当前用户：${user?.displayName ?? ''}`}
+                  aria-label={t('aria.currentUser', { name: user?.displayName ?? '' })}
                   tooltipAlignment="end"
                 >
                   <UserAvatar size={20} />
                 </HeaderGlobalAction>
                 <HeaderGlobalAction
-                  aria-label="退出登录"
+                  aria-label={t('aria.logout')}
                   tooltipAlignment="end"
                   onClick={logout}
                 >
@@ -105,7 +129,7 @@ export default function AppShell({ children }) {
                 </HeaderGlobalAction>
               </HeaderGlobalBar>
               <SideNav
-                aria-label="侧边导航"
+                aria-label={t('aria.sideNav')}
                 expanded={isSideNavExpanded}
                 isPersistent={false}
                 onOverlayClick={onClickSideNavExpand}
@@ -117,12 +141,12 @@ export default function AppShell({ children }) {
                     isActive={isActive('/')}
                     onClick={go('/')}
                   >
-                    概览
+                    {t('nav.overview')}
                   </SideNavLink>
                   <SideNavMenu
                     key={`cls-${inClassrooms}`}
                     renderIcon={Building}
-                    title="教室管理"
+                    title={t('nav.classroomManagement')}
                     defaultExpanded={inClassrooms}
                   >
                     <SideNavMenuItem
@@ -130,14 +154,14 @@ export default function AppShell({ children }) {
                       isActive={isActive('/classrooms')}
                       onClick={go('/classrooms')}
                     >
-                      教室列表
+                      {t('nav.classroomList')}
                     </SideNavMenuItem>
                     <SideNavMenuItem
                       href="/bookings"
                       isActive={isActive('/bookings')}
                       onClick={go('/bookings')}
                     >
-                      教室预约
+                      {t('nav.classroomBooking')}
                     </SideNavMenuItem>
                     {(can('repair:create') || can('repair:assign')) && (
                       <SideNavMenuItem
@@ -145,14 +169,14 @@ export default function AppShell({ children }) {
                         isActive={isActive('/repairs')}
                         onClick={go('/repairs')}
                       >
-                        教室报修
+                        {t('nav.classroomRepair')}
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>
                   <SideNavMenu
                     key={`course-${inCourses}`}
                     renderIcon={Education}
-                    title="教学管理"
+                    title={t('nav.teachingManagement')}
                     defaultExpanded={inCourses}
                   >
                     <SideNavMenuItem
@@ -160,21 +184,21 @@ export default function AppShell({ children }) {
                       isActive={isActive('/courses')}
                       onClick={go('/courses')}
                     >
-                      课程管理
+                      {t('nav.courseManagement')}
                     </SideNavMenuItem>
                     <SideNavMenuItem
                       href="/timetable"
                       isActive={isActive('/timetable')}
                       onClick={go('/timetable')}
                     >
-                      教室课表
+                      {t('nav.timetable')}
                     </SideNavMenuItem>
                     <SideNavMenuItem
                       href="/schedule-config"
                       isActive={isActive('/schedule-config')}
                       onClick={go('/schedule-config')}
                     >
-                      作息设置
+                      {t('nav.scheduleConfig')}
                     </SideNavMenuItem>
                     {can('course:manage') && (
                       <SideNavMenuItem
@@ -182,7 +206,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/imports')}
                         onClick={go('/imports')}
                       >
-                        数据导入
+                        {t('nav.dataImport')}
                       </SideNavMenuItem>
                     )}
                     {can('attendance:read') && (
@@ -191,7 +215,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/attendance')}
                         onClick={go('/attendance')}
                       >
-                        课堂签到
+                        {t('nav.attendance')}
                       </SideNavMenuItem>
                     )}
                     {can('attendance:read') && (
@@ -200,7 +224,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/attendance/report')}
                         onClick={go('/attendance/report')}
                       >
-                        考勤报表
+                        {t('nav.attendanceReport')}
                       </SideNavMenuItem>
                     )}
                     {can('observation:read') && (
@@ -209,14 +233,14 @@ export default function AppShell({ children }) {
                         isActive={isActive('/observations')}
                         onClick={go('/observations')}
                       >
-                        听课评课
+                        {t('nav.observations')}
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>
                   <SideNavMenu
                     key={`org-${inOrg}`}
                     renderIcon={UserMultiple}
-                    title="组织与权限"
+                    title={t('nav.orgManagement')}
                     defaultExpanded={inOrg}
                   >
                     {can('user:read') && (
@@ -225,7 +249,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/users')}
                         onClick={go('/users')}
                       >
-                        用户管理
+                        {t('nav.userManagement')}
                       </SideNavMenuItem>
                     )}
                     <SideNavMenuItem
@@ -233,14 +257,14 @@ export default function AppShell({ children }) {
                       isActive={isActive('/admin-classes')}
                       onClick={go('/admin-classes')}
                     >
-                      行政班管理
+                      {t('nav.adminClasses')}
                     </SideNavMenuItem>
                     <SideNavMenuItem
                       href="/teaching-classes"
                       isActive={isActive('/teaching-classes')}
                       onClick={go('/teaching-classes')}
                     >
-                      教学班管理
+                      {t('nav.teachingClasses')}
                     </SideNavMenuItem>
                     {can('role:manage') && (
                       <SideNavMenuItem
@@ -248,7 +272,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/roles')}
                         onClick={go('/roles')}
                       >
-                        角色管理
+                        {t('nav.roleManagement')}
                       </SideNavMenuItem>
                     )}
                     {can('group:manage') && (
@@ -257,7 +281,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/groups')}
                         onClick={go('/groups')}
                       >
-                        用户组管理
+                        {t('nav.groupManagement')}
                       </SideNavMenuItem>
                     )}
                   </SideNavMenu>
@@ -265,7 +289,7 @@ export default function AppShell({ children }) {
                     <SideNavMenu
                       key={`settings-${inSettings}`}
                       renderIcon={Settings}
-                      title="系统设置"
+                      title={t('nav.systemSettings')}
                       defaultExpanded={inSettings}
                     >
                       {can('*') && (
@@ -274,7 +298,7 @@ export default function AppShell({ children }) {
                           isActive={isActive('/settings')}
                           onClick={go('/settings')}
                         >
-                          参数配置
+                          {t('nav.parameters')}
                         </SideNavMenuItem>
                       )}
                       <SideNavMenuItem
@@ -282,7 +306,7 @@ export default function AppShell({ children }) {
                         isActive={isActive('/logs')}
                         onClick={go('/logs')}
                       >
-                        审计日志
+                        {t('nav.auditLogs')}
                       </SideNavMenuItem>
                     </SideNavMenu>
                   )}

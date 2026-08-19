@@ -8,6 +8,7 @@ import '@fontsource/ibm-plex-sans/600.css'
 import '@fontsource/ibm-plex-sans/700.css'
 import '@carbon/styles/css/styles.css'
 import './app.scss'
+import './i18n'
 import App from './App.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(

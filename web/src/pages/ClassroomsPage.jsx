@@ -25,58 +25,33 @@ import {
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
 import ListPagination from '../components/ListPagination.jsx'
 import usePagedList from '../hooks/usePagedList.js'
+import { formatDate } from '../i18n/formatters.js'
 
-const headers = [
-  { key: 'id', header: 'ID' },
-  { key: 'name', header: '教室编号' },
-  { key: 'building', header: '楼栋' },
-  { key: 'capacity', header: '座位数' },
-  { key: 'type', header: '类型' },
-  { key: 'floor', header: '楼层' },
-  { key: 'campus', header: '校区' },
-  { key: 'status', header: '状态' },
-  { key: 'createdAt', header: '创建时间' },
+// Enum value lists (not translatable text — the labels come from i18n).
+const TYPE_KEYS = [
+  'standard',
+  'multimedia',
+  'computer',
+  'lab',
+  'lecture_hall',
+  'stadium',
+  'drawing',
+  'language',
+  'studio',
+  'special',
 ]
-
-const typeLabel = {
-  standard: '普通教室',
-  multimedia: '多媒体教室',
-  computer: '机房',
-  lab: '实验室',
-  lecture_hall: '报告厅',
-  stadium: '体育场',
-  drawing: '制图教室',
-  language: '听力教室',
-  studio: '画室',
-  special: '专用教室',
-}
-
-const statusLabel = {
-  available: '可用',
-  maintenance: '维修中',
-  disabled: '停用',
-}
+const STATUS_KEYS = ['available', 'maintenance', 'disabled']
 
 const statusKind = {
   available: 'green',
   maintenance: 'blue',
   disabled: 'red',
-}
-
-function formatDate(value) {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 const emptyForm = {
@@ -91,9 +66,22 @@ const emptyForm = {
 }
 
 export default function ClassroomsPage() {
+  const { t } = useTranslation('classrooms')
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('classroom:manage')
+
+  const headers = [
+    { key: 'id', header: t('field.id') },
+    { key: 'name', header: t('field.name') },
+    { key: 'building', header: t('field.building') },
+    { key: 'capacity', header: t('field.capacity') },
+    { key: 'type', header: t('field.type') },
+    { key: 'floor', header: t('field.floor') },
+    { key: 'campus', header: t('field.campus') },
+    { key: 'status', header: t('field.status') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
 
   const list = usePagedList({ path: '/api/classrooms', token })
   const { loading } = list
@@ -116,8 +104,8 @@ export default function ClassroomsPage() {
   const [deleting, setDeleting] = useState(false)
 
   const validate = (form) => {
-    if (!form.name.trim()) return '教室编号为必填项'
-    if (!form.capacity || Number(form.capacity) <= 0) return '座位数必须大于 0'
+    if (!form.name.trim()) return t('validation.nameRequired')
+    if (!form.capacity || Number(form.capacity) <= 0) return t('validation.capacityPositive')
     return ''
   }
 
@@ -218,7 +206,7 @@ export default function ClassroomsPage() {
   return (
     <Grid fullWidth className="classrooms-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -226,21 +214,19 @@ export default function ClassroomsPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>教室管理</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.current')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="classrooms-page__heading">教室管理</h1>
-        <p className="classrooms-page__subtitle">
-          维护教室基础信息，为后续预约与报修提供数据基础。
-        </p>
+        <h1 className="classrooms-page__heading">{t('title')}</h1>
+        <p className="classrooms-page__subtitle">{t('subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -257,10 +243,10 @@ export default function ClassroomsPage() {
             getRowProps,
             getToolbarProps,
           }) => (
-            <TableContainer title="教室列表" description={`共 ${list.total} 间教室`}>
+            <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
-                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder="搜索教室" />
+                  <TableToolbarSearch value={list.q} onChange={(e, v) => list.setQ(v ?? '')} placeholder={t('searchPlaceholder')} />
                   <ExportButton
                     path="/api/classrooms/export"
                     fallbackName="classrooms.xlsx"
@@ -268,7 +254,7 @@ export default function ClassroomsPage() {
                   />
                   {canManage && (
                     <Button renderIcon={Add} size="sm" onClick={() => setCreateOpen(true)}>
-                      添加教室
+                      {t('addButton')}
                     </Button>
                   )}
                 </TableToolbarContent>
@@ -281,18 +267,18 @@ export default function ClassroomsPage() {
                         {header.header}
                       </TableHeader>
                     ))}
-                    {canManage && <TableHeader>操作</TableHeader>}
+                    {canManage && <TableHeader>{t('field.actions')}</TableHeader>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={colSpan}>加载中…</TableCell>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>
-                        {list.q ? '未找到匹配的教室' : '暂无教室'}
+                        {list.q ? t('empty.search') : t('empty.none')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -304,7 +290,7 @@ export default function ClassroomsPage() {
                             if (cell.info.header === 'type') {
                               return (
                                 <TableCell key={cell.id}>
-                                  {typeLabel[cell.value] ?? cell.value}
+                                  {t('type.' + cell.value, { defaultValue: cell.value })}
                                 </TableCell>
                               )
                             }
@@ -312,7 +298,7 @@ export default function ClassroomsPage() {
                               return (
                                 <TableCell key={cell.id}>
                                   <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {statusLabel[cell.value] ?? cell.value}
+                                    {t('status.' + cell.value, { ns: 'common', defaultValue: cell.value })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -330,7 +316,7 @@ export default function ClassroomsPage() {
                                   size="sm"
                                   hasIconOnly
                                   renderIcon={Edit}
-                                  iconDescription="编辑"
+                                  iconDescription={t('action.edit', { ns: 'common' })}
                                   onClick={() => openEdit(c)}
                                 />
                                 <Button
@@ -338,7 +324,7 @@ export default function ClassroomsPage() {
                                   size="sm"
                                   hasIconOnly
                                   renderIcon={TrashCan}
-                                  iconDescription="删除"
+                                  iconDescription={t('action.delete', { ns: 'common' })}
                                   onClick={() => openDelete(c)}
                                 />
                               </div>
@@ -365,9 +351,9 @@ export default function ClassroomsPage() {
       {/* Create */}
       <Modal
         open={createOpen}
-        modalHeading="添加教室"
-        primaryButtonText="创建"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.create')}
+        primaryButtonText={t('modal.createSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCreateOpen(false)}
         onRequestSubmit={handleCreate}
         primaryButtonDisabled={creating}
@@ -375,77 +361,70 @@ export default function ClassroomsPage() {
         <div className="classrooms-page__form">
           <TextInput
             id="create-name"
-            labelText="教室编号"
-            placeholder="如 A301"
+            labelText={t('field.name')}
+            placeholder={t('placeholder.name')}
             value={createForm.name}
             onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           />
           <TextInput
             id="create-building"
-            labelText="楼栋"
-            placeholder="如 第一教学楼"
+            labelText={t('field.building')}
+            placeholder={t('placeholder.building')}
             value={createForm.building}
             onChange={(e) => setCreateForm({ ...createForm, building: e.target.value })}
           />
           <TextInput
             id="create-capacity"
             type="number"
-            labelText="座位数"
+            labelText={t('field.capacity')}
             min="1"
             value={createForm.capacity}
             onChange={(e) => setCreateForm({ ...createForm, capacity: e.target.value })}
           />
           <Select
             id="create-type"
-            labelText="类型"
+            labelText={t('field.type')}
             value={createForm.type}
             onChange={(e) => setCreateForm({ ...createForm, type: e.target.value })}
           >
-            <SelectItem value="standard" text="普通教室" />
-            <SelectItem value="multimedia" text="多媒体教室" />
-            <SelectItem value="computer" text="机房" />
-            <SelectItem value="lab" text="实验室" />
-            <SelectItem value="lecture_hall" text="报告厅" />
-            <SelectItem value="stadium" text="体育场" />
-            <SelectItem value="drawing" text="制图教室" />
-            <SelectItem value="language" text="听力教室" />
-            <SelectItem value="studio" text="画室" />
-            <SelectItem value="special" text="专用教室" />
+            {TYPE_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('type.' + k)} />
+            ))}
           </Select>
           <TextInput
             id="create-floor"
-            labelText="楼层"
-            placeholder="如 3"
+            labelText={t('field.floor')}
+            placeholder={t('placeholder.floor')}
             value={createForm.floor}
             onChange={(e) => setCreateForm({ ...createForm, floor: e.target.value })}
           />
           <TextInput
             id="create-campus"
-            labelText="校区"
-            placeholder="如 校本部"
+            labelText={t('field.campus')}
+            placeholder={t('placeholder.campus')}
             value={createForm.campus}
             onChange={(e) => setCreateForm({ ...createForm, campus: e.target.value })}
           />
           <Select
             id="create-status"
-            labelText="状态"
+            labelText={t('field.status')}
             value={createForm.status}
             onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
           >
-            <SelectItem value="available" text="可用" />
-            <SelectItem value="maintenance" text="维修中" />
-            <SelectItem value="disabled" text="停用" />
+            {STATUS_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('status.' + k, { ns: 'common' })} />
+            ))}
           </Select>
           <TextInput
             id="create-description"
-            labelText="备注"
+            labelText={t('field.description')}
             value={createForm.description}
             onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
           />
           {createError && (
             <InlineNotification
               kind="error"
-              title="创建失败"
+              title={t('error.create')}
               subtitle={createError}
               lowContrast
               hideCloseButton
@@ -457,9 +436,9 @@ export default function ClassroomsPage() {
       {/* Edit */}
       <Modal
         open={Boolean(editTarget)}
-        modalHeading={`编辑教室：${editTarget?.name ?? ''}`}
-        primaryButtonText="保存"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.edit', { name: editTarget?.name ?? '' })}
+        primaryButtonText={t('modal.editSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setEditTarget(null)}
         onRequestSubmit={handleEdit}
         primaryButtonDisabled={editing}
@@ -467,73 +446,66 @@ export default function ClassroomsPage() {
         <div className="classrooms-page__form">
           <TextInput
             id="edit-name"
-            labelText="教室编号"
+            labelText={t('field.name')}
             value={editForm.name}
             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
           />
           <TextInput
             id="edit-building"
-            labelText="楼栋"
+            labelText={t('field.building')}
             value={editForm.building}
             onChange={(e) => setEditForm({ ...editForm, building: e.target.value })}
           />
           <TextInput
             id="edit-capacity"
             type="number"
-            labelText="座位数"
+            labelText={t('field.capacity')}
             min="1"
             value={editForm.capacity}
             onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })}
           />
           <Select
             id="edit-type"
-            labelText="类型"
+            labelText={t('field.type')}
             value={editForm.type}
             onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
           >
-            <SelectItem value="standard" text="普通教室" />
-            <SelectItem value="multimedia" text="多媒体教室" />
-            <SelectItem value="computer" text="机房" />
-            <SelectItem value="lab" text="实验室" />
-            <SelectItem value="lecture_hall" text="报告厅" />
-            <SelectItem value="stadium" text="体育场" />
-            <SelectItem value="drawing" text="制图教室" />
-            <SelectItem value="language" text="听力教室" />
-            <SelectItem value="studio" text="画室" />
-            <SelectItem value="special" text="专用教室" />
+            {TYPE_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('type.' + k)} />
+            ))}
           </Select>
           <TextInput
             id="edit-floor"
-            labelText="楼层"
+            labelText={t('field.floor')}
             value={editForm.floor}
             onChange={(e) => setEditForm({ ...editForm, floor: e.target.value })}
           />
           <TextInput
             id="edit-campus"
-            labelText="校区"
+            labelText={t('field.campus')}
             value={editForm.campus}
             onChange={(e) => setEditForm({ ...editForm, campus: e.target.value })}
           />
           <Select
             id="edit-status"
-            labelText="状态"
+            labelText={t('field.status')}
             value={editForm.status}
             onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
           >
-            <SelectItem value="available" text="可用" />
-            <SelectItem value="maintenance" text="维修中" />
-            <SelectItem value="disabled" text="停用" />
+            {STATUS_KEYS.map((k) => (
+              <SelectItem key={k} value={k} text={t('status.' + k, { ns: 'common' })} />
+            ))}
           </Select>
           <TextInput
             id="edit-description"
-            labelText="备注"
+            labelText={t('field.description')}
             value={editForm.description}
             onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
           />
           {editError && (
             <InlineNotification
               kind="error"
-              title="保存失败"
+              title={t('error.save')}
               subtitle={editError}
               lowContrast
               hideCloseButton
@@ -546,20 +518,20 @@ export default function ClassroomsPage() {
       <Modal
         danger
         open={Boolean(deleteTarget)}
-        modalHeading="删除教室"
-        primaryButtonText="删除"
-        secondaryButtonText="取消"
+        modalHeading={t('modal.delete')}
+        primaryButtonText={t('modal.deleteSubmit')}
+        secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setDeleteTarget(null)}
         onRequestSubmit={handleDelete}
         primaryButtonDisabled={deleting}
       >
         <p className="classrooms-page__confirm-text">
-          确定要删除教室「{deleteTarget?.name}」吗？此操作不可撤销。
+          {t('deleteConfirm', { name: deleteTarget?.name })}
         </p>
         {deleteError && (
           <InlineNotification
             kind="error"
-            title="删除失败"
+            title={t('error.delete')}
             subtitle={deleteError}
             lowContrast
             hideCloseButton

@@ -1,0 +1,37 @@
+{
+  "breadcrumb": { "home": "Home", "current": "Timetable" },
+  "title": "Timetable",
+  "subtitle": "View each classroom's weekly timetable; supports adding, moving, and deleting sessions.",
+  "filter": {
+    "classroom": "Classroom",
+    "selectClassroom": "Select a classroom",
+    "classroomOption": "{{name}} ({{building}})"
+  },
+  "weekNav": { "prev": "Previous week", "next": "Next week" },
+  "export": { "label": "Export timetable", "filename": "classroom-timetable.xlsx" },
+  "empty": { "selectClassroom": "Select a classroom first.", "loading": "Loading…", "none": "No data." },
+  "corner": "Period",
+  "periodLabel": { "single": "Period {{period}}" },
+  "modal": {
+    "edit": "Move session",
+    "create": "Add session",
+    "submit": "Save",
+    "remove": "Delete session"
+  },
+  "form": {
+    "offering": "Course",
+    "selectOffering": "Select a course",
+    "offeringOption": "{{catalogName}} · {{teachingClassName}} · {{semester}}",
+    "classroom": "Classroom",
+    "date": "Date",
+    "periodStart": "Start period",
+    "periodEnd": "End period (last period for multi-period sessions; leave blank for single)",
+    "note": "Note"
+  },
+  "error": { "load": "Failed to load", "save": "Failed to save" },
+  "validation": {
+    "selectOffering": "Please select a course",
+    "periodRange": "Invalid period range: start must be ≥ 1 and not greater than end"
+  },
+  "dayNames": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+}

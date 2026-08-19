@@ -1,0 +1,44 @@
+{
+  "breadcrumb": { "home": "首页", "current": "用户组管理" },
+  "title": "用户组管理",
+  "subtitle": "将用户组织成组并整体授予角色，成员权限 = 个人授权 ∪ 所在组授权。",
+  "table": {
+    "title": "用户组列表",
+    "description": "共 {{count}} 个用户组",
+    "actionsHeader": "操作"
+  },
+  "addButton": "新建用户组",
+  "field": {
+    "id": "ID",
+    "name": "组名",
+    "description": "描述",
+    "memberCount": "成员数",
+    "createdAt": "创建时间",
+    "actions": "操作"
+  },
+  "modal": {
+    "create": "新建用户组",
+    "createSubmit": "创建",
+    "edit": "编辑用户组：{{name}}",
+    "editSubmit": "保存",
+    "delete": "删除用户组",
+    "deleteSubmit": "删除"
+  },
+  "deleteConfirm": "确定要删除用户组「{{name}}」吗？组内成员的组级授权将一并撤销。",
+  "form": { "name": "组名", "description": "描述", "members": "成员", "roles": "角色" },
+  "placeholder": { "name": "如 办公室助理组" },
+  "picker": {
+    "members": "选择成员…",
+    "roles": "选择角色…",
+    "userOption": "{{name}}（@{{username}}）",
+    "roleOption": "{{name}}（{{code}}）"
+  },
+  "empty": { "loading": "加载中…", "none": "暂无用户组" },
+  "error": {
+    "load": "加载失败",
+    "create": "创建失败",
+    "save": "保存失败",
+    "delete": "删除失败"
+  },
+  "validation": { "nameRequired": "组名为必填项" }
+}

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
-  Button,
   Column,
   ComboBox,
   DataTable,
@@ -19,16 +18,18 @@ import {
   TableToolbarContent,
 } from '@carbon/react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { apiFetch } from '../auth/api.js'
 import ExportButton from '../components/ExportButton.jsx'
-import { STATUS_LABEL, StatusTag, formatDateTime } from './attendanceUi.jsx'
+import { STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi.jsx'
 
 // L2 整学期考勤报表: pick one offering → per-student × per-checkin matrix
 // with per-status subtotals, downloadable as a two-sheet xlsx.
 const TOTAL_KEYS = ['present', 'late', 'absent', 'leave']
 
 export default function AttendanceReportPage() {
+  const { t } = useTranslation('attendance')
   const { token } = useAuth()
   const navigate = useNavigate()
 
@@ -44,7 +45,7 @@ export default function AttendanceReportPage() {
       setOfferings(
         ((data && data.items) || []).map((o) => ({
           id: String(o.id),
-          text: `${o.catalogName} · ${o.teachingClassName} · ${o.semester}`,
+          text: t('list.offeringOption', { catalogName: o.catalogName, teachingClassName: o.teachingClassName, semester: o.semester }),
         }))
       )
     } catch {
@@ -74,15 +75,15 @@ export default function AttendanceReportPage() {
   }
 
   const baseHeaders = [
-    { key: 'displayName', header: '姓名' },
-    { key: 'studentNo', header: '学号' },
-    { key: 'adminClass', header: '行政班' },
+    { key: 'displayName', header: t('report.field.name') },
+    { key: 'studentNo', header: t('report.field.studentNo') },
+    { key: 'adminClass', header: t('report.field.adminClass') },
   ]
   const checkins = summary?.checkins ?? []
   const headers = [
     ...baseHeaders,
     ...checkins.map((c) => ({ key: `c${c.id}`, header: c.startsAt.slice(0, 10) })),
-    { key: 'totals', header: '出勤 / 迟到 / 缺勤 / 请假' },
+    { key: 'totals', header: t('report.field.totals') },
   ]
 
   const buildRow = (r) => {
@@ -98,7 +99,7 @@ export default function AttendanceReportPage() {
   return (
     <Grid fullWidth className="courses-page">
       <Column sm={4} md={8} lg={16}>
-        <Breadcrumb noTrailingSlash aria-label="面包屑导航">
+        <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
             onClick={(e) => {
@@ -106,7 +107,7 @@ export default function AttendanceReportPage() {
               navigate('/')
             }}
           >
-            首页
+            {t('breadcrumb.home')}
           </BreadcrumbItem>
           <BreadcrumbItem
             href="/attendance"
@@ -115,21 +116,19 @@ export default function AttendanceReportPage() {
               navigate('/attendance')
             }}
           >
-            课堂签到
+            {t('breadcrumb.attendance')}
           </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>考勤报表</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{t('breadcrumb.report')}</BreadcrumbItem>
         </Breadcrumb>
-        <h1 className="courses-page__heading">考勤报表</h1>
-        <p className="courses-page__subtitle">
-          选择一门开课，一次性查看整学期所有签到情况（仅统计关联了该开课/课次的签到）。
-        </p>
+        <h1 className="courses-page__heading">{t('report.title')}</h1>
+        <p className="courses-page__subtitle">{t('report.subtitle')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
         {error && (
           <InlineNotification
             kind="error"
-            title="加载失败"
+            title={t('report.error.load')}
             subtitle={error}
             lowContrast
             hideCloseButton
@@ -138,8 +137,8 @@ export default function AttendanceReportPage() {
         )}
         <ComboBox
           id="report-offering"
-          titleText="开课"
-          placeholder="搜索并选择开课"
+          titleText={t('report.offering')}
+          placeholder={t('report.offeringPlaceholder')}
           items={offerings}
           itemToString={(item) => (item ? item.text : '')}
           selectedItem={pickOffering}
@@ -153,14 +152,16 @@ export default function AttendanceReportPage() {
         {summary && (
           <>
             <p className="courses-page__subtitle">
-              {summary.courseName} · {summary.teachingClassName} · {summary.semester} · 教师 {summary.teacher || '-'} ·
-              共 {checkins.length} 次签到 · {summary.rows.length} 名学生
+              {summary.courseName} · {summary.teachingClassName} · {summary.semester} ·{' '}
+              {t('report.summaryTeacher', { teacher: summary.teacher || '-' })} ·{' '}
+              {t('report.summaryCheckins', { count: checkins.length })} ·{' '}
+              {t('report.summaryStudents', { count: summary.rows.length })}
             </p>
             {checkins.length === 0 && (
               <InlineNotification
                 kind="warning"
-                title="该开课暂无签到"
-                subtitle="发起签到时选择本开课（或其课次）后才会出现在报表中。"
+                title={t('report.warning.noCheckinsTitle')}
+                subtitle={t('report.warning.noCheckinsSubtitle')}
                 lowContrast
                 hideCloseButton
                 className="courses-page__notice"
@@ -169,8 +170,8 @@ export default function AttendanceReportPage() {
             {summary.rows.every((r) => !r.inRoster) && (
               <InlineNotification
                 kind="warning"
-                title="应到名单为空"
-                subtitle="该开课的教学班尚未配置学生档案（行政班成员），无法统计缺勤。"
+                title={t('report.warning.emptyRosterTitle')}
+                subtitle={t('report.warning.emptyRosterSubtitle')}
                 lowContrast
                 hideCloseButton
                 className="courses-page__notice"
@@ -182,7 +183,7 @@ export default function AttendanceReportPage() {
         {summary && checkins.length > 0 && (
           <DataTable rows={rows} headers={headers}>
             {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
-              <TableContainer title="整学期签到明细" description="行为学生、列为签到，末列为四态小计">
+              <TableContainer title={t('report.table.title')} description={t('report.table.description')}>
                 <TableToolbar {...getToolbarProps()}>
                   <TableToolbarContent>
                     <ExportButton
@@ -205,11 +206,11 @@ export default function AttendanceReportPage() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={headers.length}>加载中…</TableCell>
+                        <TableCell colSpan={headers.length}>{t('report.empty.loading')}</TableCell>
                       </TableRow>
                     ) : tableRows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={headers.length}>暂无学生数据</TableCell>
+                        <TableCell colSpan={headers.length}>{t('report.empty.none')}</TableCell>
                       </TableRow>
                     ) : (
                       tableRows.map((row) => {
@@ -240,20 +241,20 @@ export default function AttendanceReportPage() {
             )}
           </DataTable>
         )}
-        {loading && <p>加载中…</p>}
+        {loading && <p>{t('report.empty.loading')}</p>}
         {!summary && !loading && !error && (
-          <p className="courses-page__subtitle">请选择开课查看整学期考勤。</p>
+          <p className="courses-page__subtitle">{t('report.noSelection')}</p>
         )}
         {/* Legend for the matrix */}
         {summary && checkins.length > 0 && (
           <p className="courses-page__subtitle">
-            图例:{' '}
-            {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            {t('report.legend')}{' '}
+            {STATUS_KEYS.map((value) => (
               <span key={value} className="attendance-report__legend">
-                <StatusTag status={value} /> {label}
+                <StatusTag status={value} /> {t('status.' + value, { ns: 'common' })}
               </span>
             ))}{' '}
-            · 最近一次签到开始于 {formatDateTime(checkins[0].startsAt)}
+            {t('report.lastStarted', { time: formatDateTime(checkins[0].startsAt) })}
           </p>
         )}
       </Column>
