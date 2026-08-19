@@ -12,7 +12,7 @@
   "unnamed": "(unnamed)",
   "split": {
     "heading": "Academic-affairs schedule splitter",
-    "subtitle": "Upload the aggregated schedule exported by the academic-affairs office (classrooms / courses / admin classes / teachers / weeks), fill in the semester and the Monday of week 1, and the system splits it into 6 import jobs (classrooms / course catalog / admin classes / teaching classes / offerings / sessions), each entering preview. Confirm in dependency order: classrooms → catalog → admin classes → teaching classes → offerings → sessions (offerings and sessions reference the catalog and teaching classes; if not confirmed first, the preview reports “does not exist”, and re-validates after confirmation).",
+    "subtitle": "Upload the aggregated schedule exported by the academic-affairs office (classrooms / courses / admin classes / teachers / weeks), fill in the semester and the Monday of week 1, and the system splits it into 6 import jobs (classrooms / course catalog / admin classes / teaching classes / offerings / sessions) and opens a step-by-step wizard to preview and confirm in dependency order: classrooms → catalog → admin classes → teaching classes → offerings → sessions. Offerings and sessions reference the catalog and teaching classes; the wizard refreshes each step's preview on entry, so before its prerequisites are committed the preview reports “does not exist”, and re-validates after — no re-split needed.",
     "semester": "Semester",
     "week1": "Week-1 Monday (must be a Monday)",
     "button": "Split & create jobs",
@@ -50,6 +50,28 @@
     "rowsCap": "Showing first {{shown}} of {{total}} rows",
     "errorRow": "Row {{row}}: ",
     "noErrors": "No errors"
+  },
+  "detail": {
+    "heading": "Import detail: {{label}}"
+  },
+  "wizard": {
+    "heading": "Academic-affairs split · step-by-step",
+    "stepLabel": "Step {{n}}/{{total}}: {{label}}",
+    "loading": "Loading preview…",
+    "refresh": "Refresh preview",
+    "exit": "Exit wizard",
+    "skip": "Skip this step",
+    "next": "Next step",
+    "finish": "Finish",
+    "retry": "Retry commit",
+    "timeout": "Processing timed out; check the job status in the list.",
+    "skippedTag": "skipped",
+    "skippedNote": "Skipped: not committed, can be handled individually in the job list. Downstream steps may fail because the dependency is missing.",
+    "failedNote": "Commit failed; you can retry or skip.",
+    "doneTitle": "All 6 steps done",
+    "doneSubtitle": "Review each job's final result in the Data import list.",
+    "viewJobs": "View job list",
+    "splitAgain": "Split again"
   },
   "status": {
     "pending": "Pending",

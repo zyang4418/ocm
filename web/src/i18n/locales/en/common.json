@@ -47,6 +47,7 @@
     "timetable": "Timetable",
     "scheduleConfig": "Schedule config",
     "dataImport": "Data import",
+    "jwcSplit": "Schedule split",
     "attendance": "Attendance",
     "attendanceReport": "Attendance report",
     "observations": "Observations",

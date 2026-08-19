@@ -209,6 +209,15 @@ export default function AppShell({ children }) {
                         {t('nav.dataImport')}
                       </SideNavMenuItem>
                     )}
+                    {can('course:manage') && (
+                      <SideNavMenuItem
+                        href="/imports/split"
+                        isActive={isActive('/imports/split')}
+                        onClick={go('/imports/split')}
+                      >
+                        {t('nav.jwcSplit')}
+                      </SideNavMenuItem>
+                    )}
                     {can('attendance:read') && (
                       <SideNavMenuItem
                         href="/attendance"

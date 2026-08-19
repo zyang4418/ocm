@@ -12,6 +12,8 @@ import CourseManagementPage from './pages/CourseManagementPage.jsx'
 import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
 import TimetablePage from './pages/TimetablePage.jsx'
 import ImportsPage from './pages/ImportsPage.jsx'
+import ImportDetailPage from './pages/ImportDetailPage.jsx'
+import SplitPage from './pages/SplitPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import RolesPage from './pages/RolesPage.jsx'
 import GroupsPage from './pages/GroupsPage.jsx'
@@ -65,6 +67,8 @@ export default function App() {
             <Route path="/schedule-config" element={<ScheduleConfigPage />} />
             <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/imports" element={<ImportsPage />} />
+            <Route path="/imports/split" element={<SplitPage />} />
+            <Route path="/imports/:id" element={<ImportDetailPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/groups" element={<GroupsPage />} />

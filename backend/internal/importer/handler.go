@@ -58,8 +58,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	mux.Handle("POST /api/imports/{type}", authOnly(h.upload))
 	mux.Handle("GET /api/imports", authOnly(h.list))
 	mux.Handle("GET /api/imports/{id}", authOnly(h.get))
+	mux.Handle("GET /api/imports/{id}/rows", authOnly(h.rows))
 	mux.Handle("POST /api/imports/{id}/commit", authOnly(h.commitJob))
 	mux.Handle("POST /api/imports/{id}/cancel", authOnly(h.cancelJob))
+	mux.Handle("POST /api/imports/{id}/reanalyze", authOnly(h.reanalyze))
 }
 
 // RecoverStale is called once at startup: jobs left "processing" by a crashed
@@ -109,13 +111,16 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, jobs, total, p)
 }
 
+// get returns a job's metadata (status, row counts, error report) without the
+// payload or preview rows. The wizard polls this while a job processes; preview
+// rows are served page-by-page by the rows endpoint below. Cheap to call.
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid job id")
 		return
 	}
-	job, err := h.store.GetJob(r.Context(), id)
+	job, err := h.store.GetJobMeta(r.Context(), id)
 	if errors.Is(err, ErrJobNotFound) {
 		httpx.RespondError(w, http.StatusNotFound, "import job not found")
 		return
@@ -125,6 +130,42 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.RespondJSON(w, http.StatusOK, job)
+}
+
+// rows returns one page of a job's preview rows (the dry-run table shown before
+// commit). Paginated so a tens-of-thousands-row sessions preview is not shipped
+// in full: GET /api/imports/{id}/rows?page=1&pageSize=100. page is 1-based;
+// pageSize is clamped to [1, 500]. Returns {rows, total, page, pageSize}.
+func (h *Handler) rows(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "invalid job id")
+		return
+	}
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("pageSize"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 500 {
+		pageSize = 100
+	}
+	rows, total, err := h.store.GetJobRows(r.Context(), id, pageSize, (page-1)*pageSize)
+	if errors.Is(err, ErrJobNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "import job not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load preview rows", err)
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, map[string]any{
+		"rows":     rows,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
@@ -339,6 +380,89 @@ func (h *Handler) processJob(id int64) {
 	}
 }
 
+// reanalyze re-runs the dry-run Analyze for a previewed job and stores the
+// refreshed preview, returning 202 while it processes in the background. The
+// split wizard calls it when stepping onto a dependent table (teaching_classes
+// / offerings / sessions) so the preview reflects the current DB — where the
+// prerequisites have just been committed — instead of the stale "课程不存在"
+// snapshot taken at split time. Only preview-state jobs can be reanalyzed; a
+// job already processing is a 409 so the client can poll and retry.
+func (h *Handler) reanalyze(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "invalid job id")
+		return
+	}
+	job, err := h.store.GetJob(r.Context(), id)
+	if errors.Is(err, ErrJobNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "import job not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load import job", err)
+		return
+	}
+	_, perm, ok := h.registry.Lookup(job.Type)
+	if !ok {
+		httpx.RespondError(w, http.StatusNotFound, "未知的导入类型")
+		return
+	}
+	if !h.checkPerm(w, r, perm) {
+		return
+	}
+	if job.Status != StatusPreview {
+		httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
+		return
+	}
+	if err := h.store.MarkProcessing(r.Context(), id, StatusPreview); err != nil {
+		if errors.Is(err, ErrJobStateConflict) {
+			httpx.RespondError(w, http.StatusConflict, "该任务正在处理中")
+			return
+		}
+		httpx.Error500(w, r, "could not start reanalyze", err)
+		return
+	}
+	go h.runReanalyze(id)
+	httpx.RespondJSON(w, http.StatusAccepted, map[string]any{"id": job.ID, "status": StatusProcessing})
+}
+
+// runReanalyze is the async body of reanalyze. It mirrors processJob: take the
+// concurrency slot, re-run Analyze, SavePreview (which transitions back to the
+// preview state with refreshed rows/counts). A system error marks the job
+// failed, consistent with processJob; per-row failures still land in preview.
+func (h *Handler) runReanalyze(id int64) {
+	h.sem <- struct{}{}
+	defer func() {
+		if r := recover(); r != nil {
+			logging.L.Error("importer: panic reanalyzing job", "job_id", id, "err", fmt.Sprint(r))
+			h.finishFail(context.Background(), id, "重新分析时发生内部错误")
+		}
+		<-h.sem
+	}()
+
+	ctx := context.Background()
+	job, err := h.store.GetJob(ctx, id)
+	if err != nil {
+		logging.L.Error("importer: load job for reanalyze", "job_id", id, "err", err)
+		h.finishFail(ctx, id, "加载任务失败："+err.Error())
+		return
+	}
+	imp, _, ok := h.registry.Lookup(job.Type)
+	if !ok {
+		h.finishFail(ctx, id, "未知的导入类型："+job.Type)
+		return
+	}
+	result, err := imp.Analyze(ctx, job.Payload)
+	if err != nil {
+		h.finishFail(ctx, id, "重新分析失败："+err.Error())
+		return
+	}
+	if err := h.store.SavePreview(ctx, id, result); err != nil {
+		logging.L.Error("importer: save reanalyzed preview", "job_id", id, "err", err)
+		h.finishFail(ctx, id, "保存预览失败："+err.Error())
+	}
+}
+
 // runCommit performs the actual write for a job the user confirmed. It
 // re-validates from the stored payload (not the preview rows) because database
 // state may have changed since the preview.
@@ -395,9 +519,12 @@ func (h *Handler) runCommit(id int64) {
 		StatusCode: code, Summary: summary})
 }
 
-// commitJob transitions a previewed job into processing and kicks off the
-// asynchronous write. The status and permission checks are synchronous so a
-// stale or unauthorized job is rejected before any work starts.
+// commitJob transitions a previewed (or previously failed) job into processing
+// and kicks off the asynchronous write. A failed job may be retried without
+// re-splitting because runCommit re-validates from the raw payload, so retrying
+// after the root cause (e.g. a prerequisite that has since been committed) is
+// fixed succeeds. The status and permission checks are synchronous so a stale
+// or unauthorized job is rejected before any work starts.
 func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -421,11 +548,11 @@ func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 	if !h.checkPerm(w, r, perm) {
 		return
 	}
-	if job.Status != StatusPreview {
-		httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
+	if job.Status != StatusPreview && job.Status != StatusFailed {
+		httpx.RespondError(w, http.StatusConflict, "该任务不在待确认/可重试状态")
 		return
 	}
-	if err := h.store.MarkProcessing(r.Context(), id, StatusPreview); err != nil {
+	if err := h.store.MarkProcessing(r.Context(), id, job.Status); err != nil {
 		if errors.Is(err, ErrJobStateConflict) {
 			httpx.RespondError(w, http.StatusConflict, "该任务不在待确认状态")
 			return
