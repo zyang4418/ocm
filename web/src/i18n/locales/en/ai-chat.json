@@ -1,0 +1,70 @@
+{
+  "assistantName": "AI assistant",
+  "strings": {
+    "input_placeholder": "e.g. Which free classrooms seat 50+ during Mon periods 5–7?",
+    "input_ariaLabel": "Ask the AI assistant",
+    "input_buttonLabel": "Send",
+    "window_title": "AI assistant",
+    "window_ariaChatRegion": "AI assistant conversation",
+    "launcher_isOpen": "Open AI assistant",
+    "launcher_isClosed": "Collapse AI assistant",
+    "launcher_desktopGreeting": "How can I help?",
+    "launcher_mobileGreeting": "How can I help?",
+    "messages_youSaid": "You",
+    "messages_assistantSaid": "AI assistant",
+    "errors_communicating": "Can't reach the AI assistant, please try again",
+    "errors_somethingWrong": "Something went wrong, please try again",
+    "homeScreen_returnToAssistant": "Back to chat",
+    "homeScreen_returnToHome": "Back to home",
+    "buttons_restart": "Restart",
+    "buttons_cancel": "Cancel",
+    "buttons_retry": "Retry"
+  },
+  "homescreen": {
+    "greeting": "Query classrooms, free slots, and timetables within your permissions; booking actions are only submitted after you confirm in the preview.",
+    "starters": [
+      "Which free classrooms seat 50+ during Mon periods 5–7?",
+      "List all classrooms in building A",
+      "Is room 302 booked tomorrow periods 3–4?",
+      "Book a multimedia classroom for Friday afternoon"
+    ]
+  },
+  "tools": {
+    "list_classrooms": "List classrooms",
+    "query_availability": "Check availability",
+    "query_timetable": "Query timetable",
+    "propose_booking": "Propose booking"
+  },
+  "tool": {
+    "running": "{{label}}…",
+    "ok": "{{label}} done",
+    "error": "{{label}} failed"
+  },
+  "error": {
+    "fallback": "The AI assistant can't answer right now, please try again",
+    "bookingConflict": "That classroom is already booked for this slot, please choose another"
+  },
+  "conflict": {
+    "title": "{{count}} conflict(s) in this slot",
+    "sessionKind": "Class",
+    "bookingKind": "Booking",
+    "item": "{{kind}}: periods {{start}}-{{end}}{{course}}{{name}}",
+    "nameWrap": " ({{name}})",
+    "join": "; "
+  },
+  "proposal": {
+    "title": "Booking preview",
+    "dismissed": "Booking proposal dismissed.",
+    "confirming": "Submitting…",
+    "confirm": "Confirm booking",
+    "successTitle": "Booking submitted, awaiting admin approval",
+    "successLink": "View bookings",
+    "failedTitle": "Booking submission failed",
+    "field": {
+      "classroom": "Classroom: {{value}}",
+      "date": "Date: {{value}}",
+      "period": "Period: {{value}}",
+      "purpose": "Purpose: {{value}}"
+    }
+  }
+}

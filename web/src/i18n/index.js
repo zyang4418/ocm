@@ -40,6 +40,8 @@ import logsZh from './locales/zh-CN/logs.json'
 import logsEn from './locales/en/logs.json'
 import settingsZh from './locales/zh-CN/settings.json'
 import settingsEn from './locales/en/settings.json'
+import aiChatZh from './locales/zh-CN/ai-chat.json'
+import aiChatEn from './locales/en/ai-chat.json'
 
 // Static namespaces.
 const resources = {
@@ -63,6 +65,7 @@ const resources = {
     repairs: repairsZh,
     logs: logsZh,
     settings: settingsZh,
+    aiChat: aiChatZh,
   },
   en: {
     common: commonEn,
@@ -84,6 +87,7 @@ const resources = {
     repairs: repairsEn,
     logs: logsEn,
     settings: settingsEn,
+    aiChat: aiChatEn,
   },
 }
 
@@ -98,7 +102,7 @@ i18n
     fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: SUPPORTED_LANGUAGES,
     lng: localStorage.getItem('ocm.lang') || undefined,
-    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable', 'attendance', 'imports', 'observations', 'repairs', 'logs', 'settings'],
+    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable', 'attendance', 'imports', 'observations', 'repairs', 'logs', 'settings', 'aiChat'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes
