@@ -144,3 +144,5 @@ export type Permission =
   | 'observation:read'
   | 'observation:write'
   | 'observation:manage'
+  | 'signage:read'
+  | 'signage:manage'

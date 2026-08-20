@@ -44,6 +44,13 @@ const (
 	ObservationRead   = "observation:read"
 	ObservationWrite  = "observation:write"
 	ObservationManage = "observation:manage"
+	// SignageRead/Manage govern 班牌 (classroom display panel). Read sees the
+	// device list and releases; Manage generates activation QR codes, edits
+	// signage config, unbinds devices, and publishes APK releases. Registered
+	// into the catalog by downstream forks via RegisterPermissions, or usable
+	// directly as constants by handlers.
+	SignageRead   = "signage:read"
+	SignageManage = "signage:manage"
 )
 
 // Wildcard is the special permission that grants everything. It is only held

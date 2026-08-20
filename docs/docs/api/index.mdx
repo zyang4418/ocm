@@ -55,7 +55,8 @@ title: API 概述
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| POST | `/api/auth/login` | 公开 | 用户名密码 → `{token, user}` |
+| GET | `/api/auth/sm2/public-key` | 公开 | 返回 `{public_key,fingerprint}`；`public_key` 为 128 字符 `X||Y` Hex，`fingerprint` 默认是其完整 64 字符大写 SHA-256；客户端兼容旧版 16 字符前缀 |
+| POST | `/api/auth/login` | 公开 | Web 使用 `{username,password,password_encoding:"sm2-c1c3c2-base64"}`，其中 `password` 为 SM2 C1C3C2 Base64 密文；未带或不支持 `password_encoding` 的请求会被拒绝 → `{token, user}` |
 | GET | `/api/auth/me` | 登录 | 水合当前用户 |
 | POST | `/api/auth/wx-bind` | 公开 | 首次绑定(openid 须未绑) |
 | POST | `/api/auth/wx-login` | 公开 | 静默登录(openid 已绑) |

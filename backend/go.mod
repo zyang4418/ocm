@@ -8,6 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.6
+	github.com/tjfoc/gmsm v1.4.1
 	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/crypto v0.54.0
 )

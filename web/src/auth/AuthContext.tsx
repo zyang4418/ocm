@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiFetch } from './api'
 import type { CurrentUser, LoginResponse, Permission } from '../types/api'
+import { clearPublicKeyCache, encryptPassword } from './sm2.js'
 
 const TOKEN_KEY = 'ocm.token'
 
@@ -47,10 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token])
 
   const login = useCallback(async (username: string, password: string) => {
-    const data = await apiFetch<LoginResponse>('/api/auth/login', {
-      method: 'POST',
-      body: { username, password },
-    })
+    const encryptedPassword = await encryptPassword(password)
+    let data: LoginResponse
+    try {
+      data = await apiFetch<LoginResponse>('/api/auth/login', {
+        method: 'POST',
+        body: {
+          username,
+          password: encryptedPassword,
+          password_encoding: 'sm2-c1c3c2-base64',
+        },
+      })
+    } catch (error) {
+      clearPublicKeyCache()
+      throw error
+    }
     localStorage.setItem(TOKEN_KEY, data.token)
     setToken(data.token)
     setUser(data.user)

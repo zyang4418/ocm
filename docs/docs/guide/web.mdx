@@ -61,7 +61,8 @@ npm run dev          # http://localhost:5173
 
 ## 鉴权
 
-- 登录:`POST /api/auth/login` `{username, password}` → 后端返回 `{token, user}`,存入 `localStorage`(键 `ocm.token`)。
+- Web 登录先取 `GET /api/auth/sm2/public-key`,校验公钥指纹后以 SM2 C1C3C2 Base64 密文提交 `POST /api/auth/login`:`{username,password,password_encoding:"sm2-c1c3c2-base64"}`。服务端默认返回完整 64 字符 SHA-256 指纹,客户端兼容旧 16 字符前缀。生产构建必须配置匹配的 `VITE_SM2_PUBLIC_KEY_FINGERPRINT`;登录请求失败会丢弃缓存公钥并重新获取。
+- 后端只接受 `password_encoding:"sm2-c1c3c2-base64"` 的登录请求，未带或不支持该字段的请求会被拒绝。SM2 是应用层传输加密，服务端仍会在校验密码前解密；HTTPS/TLS 仍是部署前提。
 - 启动水合:若 `localStorage` 有 token,调 `GET /api/auth/me` 取回 `user`;401 弃 token,5xx/网络错误**保留** token 以便刷新重试。
 - **无 refresh token**;会话中遇 401 **不自动登出**,页面直接显示错误文案。
 - token 按**每次请求**附 `Authorization: Bearer <token>`(`api.js`),无全局拦截器。
@@ -92,7 +93,7 @@ npm run dev          # http://localhost:5173
 
 ## Docker
 
-- **`Dockerfile`**(生产,多阶段):`node:24-alpine` 跑 `npm run build`,`nginx:stable-alpine` 运行;`:80`;`/api/` 代理到 `http://backend:8080`,`location /` 用 `try_files $uri $uri/ /index.html` 做 SPA fallback。构建期注入 `VITE_ICP_NUMBER`/`VITE_DOCS_URL`。
+- **`Dockerfile`**(生产,多阶段):`node:24-alpine` 跑 `npm run build`,`nginx:stable-alpine` 运行;`:80`;`/api/` 代理到 `http://backend:8080`,`location /` 用 `try_files $uri $uri/ /index.html` 做 SPA fallback。构建期注入 `VITE_ICP_NUMBER`/`VITE_DOCS_URL`/`VITE_SM2_PUBLIC_KEY_FINGERPRINT`。
 - **`Dockerfile.dev`**:`node:24-alpine`,`:5173`,`npm run dev -- --host 0.0.0.0`;源码由 compose 挂载。
 
 ## 环境变量
@@ -102,6 +103,7 @@ npm run dev          # http://localhost:5173
 | `VITE_API_PROXY_TARGET` | `vite.config.js`(Node `process.env`,**非** `import.meta.env`) | dev 下 `/api` 代理目标 | `http://localhost:8080` |
 | `VITE_ICP_NUMBER` | `import.meta.env`(构建期内联) | 登录页底部备案号(链 `beian.miit.gov.cn`) | 空(不显示) |
 | `VITE_DOCS_URL` | `import.meta.env`(构建期内联) | 外部文档站地址;设了才在登录页显示「Docs」链接 | 空(隐藏) |
+| `VITE_SM2_PUBLIC_KEY_FINGERPRINT` | `import.meta.env`(构建期内联) | Web 登录公钥 pin;推荐完整 64 位 SHA-256,兼容 16 位前缀 | 生产必填 |
 | `API_ORIGIN` | EdgeOne 边缘函数 `context.env` | 边缘函数反代的后端 origin | 无(未设返回 502) |
 
 注意区分:`VITE_API_PROXY_TARGET` 是 **Node 侧**变量(在 `vite.config.js` 里用 `process.env`);`VITE_ICP_NUMBER`/`VITE_DOCS_URL` 是**客户端**变量(用 `import.meta.env`,由 `vite build` 内联进 bundle);`API_ORIGIN` 是 EdgeOne 服务端变量。

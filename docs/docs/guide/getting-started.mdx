@@ -26,7 +26,7 @@ docker compose up -d            # mysql + backend(air 热更)+ web(vite)
 | 后端 API | http://localhost:8080 | `/api/...`;`/healthz`、`/readyz` |
 | MySQL | localhost:3306 | 库 `ocm` / 用户 `ocm` / 密码 `ocm`(dev) |
 
-dev compose 用开发默认值:`JWT_SECRET` 空(后端用开发兜底密钥)、`ADMIN_PASSWORD` 空(后端用 `admin123`)。所以**不建 `.env` 也能跑开发栈**;但小程序登录需要 `WX_APP_ID`/`WX_APP_SECRET`(见下)。
+dev compose 用开发默认值:`JWT_SECRET` 空(后端用开发兜底密钥)、`ADMIN_PASSWORD` 空(后端用 `admin123`)。但 Web 登录现在要求 SM2 密钥对，启动前必须在 `.env` 配置 `SM2_PRIVATE_KEY`/`SM2_PUBLIC_KEY`；生产 Web 构建还必须配置 `SM2_PUBLIC_KEY_FINGERPRINT`。小程序登录另需 `WX_APP_ID`/`WX_APP_SECRET`(见下)。
 
 **默认账号**:首次启动 `users` 表为空时种入管理员,用户名 `admin`,密码 = `ADMIN_PASSWORD`(开发默认 `admin123`)。用它在 http://localhost:5173 登录 Web 端。
 
@@ -39,11 +39,13 @@ compose 自动加载仓库根 `.env`。关键项:
 | `JWT_SECRET` | 可空(兜底) | **必填** | HS256 签名密钥 |
 | `ADMIN_PASSWORD` | 可空(`admin123`) | **必填** | 种入 admin 的密码 |
 | `WX_APP_ID` / `WX_APP_SECRET` | 仅小程序需要 | 仅小程序需要 | code2Session;web-only 可留空(wx 端点会 502 直到配置) |
+| `SM2_PRIVATE_KEY` / `SM2_PUBLIC_KEY` | **必填** | **必填** | Web 登录密码加密使用的 SM2 密钥对；公钥支持 64 字节 `X||Y` 或带 `04` 前缀格式 |
+| `SM2_PUBLIC_KEY_FINGERPRINT` | 可空 | **必填** | Web 构建期固定的公钥 SHA-256 指纹，推荐完整 64 位值，兼容 16 位前缀 |
 | `MYSQL_ROOT_PASSWORD` / `DB_PASSWORD` | dev 固定 | **必填** | MySQL 密码 |
 | `ICP_NUMBER` | 可空 | 可空 | 登录页底部备案号(构建期注入) |
 | `DOCS_URL` | 可空 | 可空 | 登录页文档链接(设了才显示) |
 
-生产用 `docker-compose.prod.yml`,对 `DB_PASSWORD`/`MYSQL_ROOT_PASSWORD`/`JWT_SECRET`/`ADMIN_PASSWORD` 做 fail-fast(缺则拒启)。
+生产用 `docker-compose.prod.yml`,对数据库、JWT、管理员密码、SM2 密钥对和公钥指纹做 fail-fast(缺则拒启)。生产 Web 必须通过 HTTPS 访问；仓库内 Nginx 只提供 HTTP，TLS 需要由外层反向代理终止。
 
 ## 各端单独跑
 
@@ -54,7 +56,7 @@ cd backend
 APP_ENV=development go run .     # 或 air 热更
 ```
 
-需 MySQL 可达(`DB_HOST` 等默认指向 localhost:3306,dev 凭据 ocm/ocm)。`APP_ENV=development` 允许 `DB_HOST` 缺省回落 localhost;生产模式拒绝。
+需 MySQL 可达(`DB_HOST` 等默认指向 localhost:3306,dev 凭据 ocm/ocm)，并配置 `SM2_PRIVATE_KEY`/`SM2_PUBLIC_KEY`。`APP_ENV=development` 允许 `DB_HOST` 缺省回落 localhost;生产模式拒绝。
 
 ### Web 控制台
 

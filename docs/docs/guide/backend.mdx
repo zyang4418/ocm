@@ -107,12 +107,14 @@ authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore, iamSto
 | `JWT_SECRET` | 开发兜底串 | HS256 密钥;生产必填 |
 | `ADMIN_PASSWORD` | `admin123` | 首次启动(users 表空)种入 admin 账号的密码;生产必填 |
 | `WX_APP_ID` / `WX_APP_SECRET` | 空 | 小程序 code2Session;两者都设才启用 wx 登录,web-only 可留空 |
+| `SM2_PRIVATE_KEY` / `SM2_PUBLIC_KEY` | 无 | Web 登录 SM2 密钥对;后端启动必填 |
+| `SM2_PUBLIC_KEY_FINGERPRINT` | 空 | Web 构建期公钥 pin;推荐完整 64 位 SHA-256,兼容 16 位前缀 |
 
 ## Docker
 
 - **`Dockerfile`**(生产,多阶段):`golang:1.26-alpine` 构建(`CGO_ENABLED=0`,`-ldflags="-s -w"`)→ `alpine:3.20` 运行,non-root `appuser`,`EXPOSE 8080`。
 - **`Dockerfile.dev`**:`golang:1.26-alpine`,装 `air`,`EXPOSE 8080`,`CMD ["air"]`;源码由 compose 挂载热更。
-- compose:`docker-compose.yml`(dev,backend 用 `Dockerfile.dev` + `command: air`,`APP_ENV=development`)、`docker-compose.prod.yml`(prod,backend 用 `Dockerfile`,对 `DB_PASSWORD`/`JWT_SECRET`/`ADMIN_PASSWORD`/`MYSQL_ROOT_PASSWORD` 用 `${VAR:?...}` fail-fast)。
+- compose:`docker-compose.yml`(dev,backend 用 `Dockerfile.dev` + `command: air`,`APP_ENV=development`)、`docker-compose.prod.yml`(prod,backend 用 `Dockerfile`,对数据库、JWT、管理员密码和 SM2 密钥用 `${VAR:?...}` fail-fast)。
 
 ## 并发与冲突(要点)
 

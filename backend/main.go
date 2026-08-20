@@ -53,6 +53,11 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	sm2Service, err := auth.NewSM2Service(os.Getenv("SM2_PRIVATE_KEY"), os.Getenv("SM2_PUBLIC_KEY"))
+	if err != nil {
+		logging.L.Error("sm2 initialization failed", "err", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -142,7 +147,7 @@ func main() {
 		logging.L.Error("storage migration", "err", err)
 		os.Exit(1)
 	}
-	auth.NewHandler(authStore, tokenService, wxService, iamStore, systemlogStore).RegisterRoutes(mux)
+	auth.NewHandler(authStore, tokenService, wxService, iamStore, systemlogStore, sm2Service).RegisterRoutes(mux)
 
 	userStore := user.NewStore(database)
 	if err := userStore.Migrate(ctx); err != nil {

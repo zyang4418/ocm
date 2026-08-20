@@ -16,26 +16,46 @@ import (
 
 // Handler exposes the /api/auth endpoints.
 type Handler struct {
-	store  *Store
-	tokens *TokenService
-	wx     *WxService
-	iam    *iam.Store
-	logs   *systemlog.Store
+	store        *Store
+	tokens       *TokenService
+	wx           *WxService
+	iam          *iam.Store
+	logs         *systemlog.Store
+	sm2          *SM2Service
+	authenticate func(context.Context, string, string) (User, error)
 }
 
-func NewHandler(store *Store, tokens *TokenService, wx *WxService, iamStore *iam.Store, logStore *systemlog.Store) *Handler {
-	return &Handler{store: store, tokens: tokens, wx: wx, iam: iamStore, logs: logStore}
+func NewHandler(store *Store, tokens *TokenService, wx *WxService, iamStore *iam.Store, logStore *systemlog.Store, sm2Service *SM2Service) *Handler {
+	h := &Handler{store: store, tokens: tokens, wx: wx, iam: iamStore, logs: logStore, sm2: sm2Service}
+	if store != nil {
+		h.authenticate = store.Authenticate
+	}
+	return h
 }
 
 // record writes an audit row for auth endpoints, which sit outside the
 // audit middleware (they authenticate with credentials, not a JWT Subject).
 func (h *Handler) record(r *http.Request, e systemlog.Entry) {
+	if h.logs == nil {
+		return
+	}
 	e.ClientIP = httpx.ClientIP(r)
 	h.logs.Record(r.Context(), e)
 }
 
+func (h *Handler) authenticateCredentials(ctx context.Context, username, password string) (User, error) {
+	if h.authenticate != nil {
+		return h.authenticate(ctx, username, password)
+	}
+	if h.store == nil {
+		return User{}, errors.New("auth store is not initialized")
+	}
+	return h.store.Authenticate(ctx, username, password)
+}
+
 // RegisterRoutes mounts the auth endpoints on mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/auth/sm2/public-key", h.sm2PublicKey)
 	mux.HandleFunc("POST /api/auth/login", h.login)
 	mux.Handle("GET /api/auth/me", Middleware(h.tokens)(http.HandlerFunc(h.me)))
 	// Mini-program login lifecycle. wx-bind/wx-login are public: the caller is
@@ -46,9 +66,22 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/auth/wx-unbind", Middleware(h.tokens)(http.HandlerFunc(h.wxUnbind)))
 }
 
+func (h *Handler) sm2PublicKey(w http.ResponseWriter, r *http.Request) {
+	if h.sm2 == nil {
+		httpx.RespondError(w, http.StatusServiceUnavailable, "SM2 service is not configured")
+		return
+	}
+	pubKey, fp := h.sm2.PublicKey()
+	httpx.RespondJSON(w, http.StatusOK, map[string]string{
+		"public_key":  pubKey,
+		"fingerprint": fp,
+	})
+}
+
 type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username         string `json:"username"`
+	Password         string `json:"password"`
+	PasswordEncoding string `json:"password_encoding,omitempty"`
 }
 
 // userView is the identity shape returned by every endpoint that hands the
@@ -95,6 +128,7 @@ func (h *Handler) enrichUser(ctx context.Context, u User) (userView, error) {
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<10)
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
@@ -106,7 +140,31 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.store.Authenticate(r.Context(), req.Username, req.Password)
+	var password string
+	switch req.PasswordEncoding {
+	case "sm2-c1c3c2-base64":
+		if h.sm2 == nil {
+			httpx.Error500(w, r, "sm2 service not initialized", errors.New("sm2 is nil"))
+			return
+		}
+		decrypted, err := h.sm2.Decrypt(req.Password)
+		if err != nil {
+			h.record(r, systemlog.Entry{
+				ActorName: req.Username, Method: http.MethodPost, Path: "/api/auth/login",
+				StatusCode: http.StatusUnauthorized, Summary: "登录失败：SM2密文解密失败"})
+			httpx.RespondError(w, http.StatusUnauthorized, "用户名或密码错误")
+			return
+		}
+		password = decrypted
+	case "":
+		httpx.RespondError(w, http.StatusBadRequest, "password_encoding is required")
+		return
+	default:
+		httpx.RespondError(w, http.StatusBadRequest, "unsupported password_encoding")
+		return
+	}
+
+	user, err := h.authenticateCredentials(r.Context(), req.Username, password)
 	if errors.Is(err, ErrInvalidCredentials) {
 		h.record(r, systemlog.Entry{
 			ActorName: req.Username, Method: http.MethodPost, Path: "/api/auth/login",

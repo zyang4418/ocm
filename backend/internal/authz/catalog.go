@@ -17,7 +17,44 @@ type Permission struct {
 // Catalog is the full list of permissions, sorted by category then code so
 // the JSON output is stable. The wildcard "*" is intentionally absent: it
 // can only ever come from the seeded admin role, never from API input.
+//
+// Catalog is initialized with the upstream permissions and extended at init
+// time via RegisterPermissions (called by downstream forks in their main.go
+// before routes are registered). It is not mutated after startup.
 var Catalog = sortedCatalog()
+
+// extraPerms holds permissions registered by downstream forks via
+// RegisterPermissions. It is appended to Catalog in sortedCatalog, so the
+// final catalog is upstream + downstream, all sorted.
+var extraPerms []Permission
+
+// RegisterPermissions adds custom permissions to the catalog. Downstream
+// forks call this in main.go before routes are registered (before the IAM
+// handler serves the permission list or validates role grants). It is
+// idempotent: registering the same Code twice is a no-op (the later entry is
+// ignored). The wildcard is reserved for the seeded admin role and is ignored.
+// Not safe for concurrent use — call once at startup, not per-request.
+func RegisterPermissions(perms ...Permission) {
+	pending := make(map[string]struct{}, len(perms))
+	for _, p := range perms {
+		if p.Code == "" || p.Code == Wildcard {
+			continue
+		}
+		if _, ok := pending[p.Code]; ok {
+			continue
+		}
+		// Skip duplicates: if the code already exists in upstream or in
+		// extraPerms, skip silently (downstream may call RegisterPermissions
+		// unconditionally without checking).
+		if permissionExists(p.Code) {
+			continue
+		}
+		extraPerms = append(extraPerms, p)
+		pending[p.Code] = struct{}{}
+	}
+	// Re-sort Catalog so the merged list stays stable for API output.
+	Catalog = sortedCatalog()
+}
 
 func sortedCatalog() []Permission {
 	perms := []Permission{
@@ -75,24 +112,39 @@ func sortedCatalog() []Permission {
 			Description: "创建、编辑、提交、删除自己的听课评课记录"},
 		{Code: ObservationManage, Name: "评课管理", Category: "observation", CategoryName: "听课评课",
 			Description: "查看全部听课评课记录并导出任意已提交的评课表"},
+		{Code: SignageRead, Name: "查看班牌", Category: "signage", CategoryName: "班牌",
+			Description: "查看班牌设备列表与版本发布"},
+		{Code: SignageManage, Name: "班牌管理", Category: "signage", CategoryName: "班牌",
+			Description: "生成绑定二维码、配置班牌显示、解绑设备、发布 APK 版本"},
 	}
-	sort.Slice(perms, func(i, j int) bool {
-		if perms[i].Category != perms[j].Category {
-			return perms[i].Category < perms[j].Category
+	// Merge upstream permissions with any registered by downstream forks.
+	merged := make([]Permission, 0, len(perms)+len(extraPerms))
+	merged = append(merged, perms...)
+	merged = append(merged, extraPerms...)
+	sort.Slice(merged, func(i, j int) bool {
+		if merged[i].Category != merged[j].Category {
+			return merged[i].Category < merged[j].Category
 		}
-		return perms[i].Code < perms[j].Code
+		return merged[i].Code < merged[j].Code
 	})
-	return perms
+	return merged
 }
 
-// PermissionExists reports whether code is a known catalog permission. The
-// wildcard "*" is not part of the catalog, so this returns false for it and
-// role/user permission validation naturally rejects the wildcard.
-func PermissionExists(code string) bool {
+// permissionExists reports whether code is in the catalog or extraPerms.
+// Used internally by RegisterPermissions (dedup) and PermissionExists (API
+// validation).
+func permissionExists(code string) bool {
 	for _, p := range Catalog {
 		if p.Code == code {
 			return true
 		}
 	}
 	return false
+}
+
+// PermissionExists reports whether code is a known catalog permission. The
+// wildcard "*" is not part of the catalog, so this returns false for it and
+// role/user permission validation naturally rejects the wildcard.
+func PermissionExists(code string) bool {
+	return permissionExists(code)
 }
