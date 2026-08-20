@@ -712,8 +712,11 @@ export interface components {
             teachingClassName?: string;
         };
         "attendance.RecordUpdateInput": {
-            /** @example present */
-            status?: string;
+            /**
+             * @example present
+             * @enum {string}
+             */
+            status?: "present" | "late" | "absent" | "leave";
         };
         "attendance.ScanRequest": {
             /** @example 123456 */

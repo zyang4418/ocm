@@ -795,6 +795,12 @@ const docTemplate = `{
             "properties": {
                 "status": {
                     "type": "string",
+                    "enum": [
+                        "present",
+                        "late",
+                        "absent",
+                        "leave"
+                    ],
                     "example": "present"
                 }
             }

@@ -29,13 +29,13 @@ func serve(t *testing.T, h http.Handler, method, target string, acceptGzip bool)
 
 func TestShouldGzip(t *testing.T) {
 	cases := map[string]bool{
-		"application/json":                         true,
-		"application/json; charset=utf-8":           true,
-		"APPLICATION/JSON":                          true,
-		"text/event-stream; charset=utf-8":         false,
+		"application/json":                 true,
+		"application/json; charset=utf-8":  true,
+		"APPLICATION/JSON":                 true,
+		"text/event-stream; charset=utf-8": false,
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": false,
-		"text/plain; charset=utf-8":                 false,
-		"":  false,
+		"text/plain; charset=utf-8":                                         false,
+		"":                                                                  false,
 	}
 	for ct, want := range cases {
 		if got := shouldGzip(ct); got != want {

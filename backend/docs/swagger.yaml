@@ -111,6 +111,11 @@ definitions:
   attendance.RecordUpdateInput:
     properties:
       status:
+        enum:
+        - present
+        - late
+        - absent
+        - leave
         example: present
         type: string
     type: object

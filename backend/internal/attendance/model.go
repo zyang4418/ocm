@@ -92,7 +92,7 @@ type ScanRequest struct {
 // RecordUpdateInput is the correction body (PUT /api/checkins/{id}/records/{userId}).
 // Like ScanRequest, it documents the inline body the handler decodes.
 type RecordUpdateInput struct {
-	Status string `json:"status" example:"present" Enums(present,late,absent,leave)`
+	Status string `json:"status" example:"present" enums:"present,late,absent,leave"`
 }
 
 // CheckinRecordView is one student row of a checkin's record list. Rows come
