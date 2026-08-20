@@ -40,8 +40,17 @@ import logsZh from './locales/zh-CN/logs.json'
 import logsEn from './locales/en/logs.json'
 import settingsZh from './locales/zh-CN/settings.json'
 import settingsEn from './locales/en/settings.json'
-import aiChatZh from './locales/zh-CN/ai-chat.json'
-import aiChatEn from './locales/en/ai-chat.json'
+import aiChatZh from './locales/zh-CN/aiChat.json'
+import aiChatEn from './locales/en/aiChat.json'
+
+export type Language = 'zh-CN' | 'en'
+
+const NAMESPACES = [
+  'common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups',
+  'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig',
+  'timetable', 'attendance', 'imports', 'observations', 'repairs', 'logs',
+  'settings', 'aiChat',
+] as const
 
 // Static namespaces.
 const resources = {
@@ -91,8 +100,8 @@ const resources = {
   },
 }
 
-const SUPPORTED_LANGUAGES = ['zh-CN', 'en']
-const FALLBACK_LANGUAGE = 'zh-CN'
+const SUPPORTED_LANGUAGES: Language[] = ['zh-CN', 'en']
+const FALLBACK_LANGUAGE: Language = 'zh-CN'
 
 i18n
   .use(LanguageDetector)
@@ -102,7 +111,7 @@ i18n
     fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: SUPPORTED_LANGUAGES,
     lng: localStorage.getItem('ocm.lang') || undefined,
-    ns: ['common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups', 'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig', 'timetable', 'attendance', 'imports', 'observations', 'repairs', 'logs', 'settings', 'aiChat'],
+    ns: [...NAMESPACES],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes

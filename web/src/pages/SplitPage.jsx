@@ -3,9 +3,9 @@ import { Breadcrumb, BreadcrumbItem, Button, Column, Grid, InlineNotification, T
 import { Upload } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiUpload } from '../auth/api.js'
-import SplitWizard from '../components/SplitWizard.jsx'
+import { useAuth } from '../auth/AuthContext'
+import { apiUpload } from '../auth/api'
+import SplitWizard from '../components/SplitWizard'
 
 // SplitPage (/imports/split) is the 教务处课表拆分 entry: upload the aggregated
 // schedule + semester + week-1 Monday, the backend splits it into 6 import jobs,

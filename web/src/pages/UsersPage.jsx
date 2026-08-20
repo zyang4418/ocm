@@ -31,12 +31,12 @@ import {
 import { Add, Edit, Password as PasswordIcon, TrashCan, UserSettings } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import usePagedList from '../hooks/usePagedList.js'
-import ListPagination from '../components/ListPagination.jsx'
-import { formatDate } from '../i18n/formatters.js'
-import { datePickerLocale } from '../i18n/carbonLocale.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import usePagedList from '../hooks/usePagedList'
+import ListPagination from '../components/ListPagination'
+import { formatDate } from '../i18n/formatters'
+import { datePickerLocale } from '../i18n/carbonLocale'
 
 // User type enum values (not translatable text — labels come from i18n).
 const TYPE_KEYS = ['student', 'teacher', 'staff']

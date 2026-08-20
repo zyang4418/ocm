@@ -1,10 +1,19 @@
 import { Pagination } from '@carbon/react'
-import { paginationProps } from '../i18n/carbonLocale.js'
+import { paginationProps } from '../i18n/carbonLocale'
+
+export interface ListPaginationProps {
+  page: number
+  pageSize: number
+  totalItems: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
+  className?: string
+}
 
 // ListPagination renders the pager for a server-paginated list. The displayed
 // page is clamped to the last existing page (a delete can leave page pointing
 // past the end). Carbon's onChange is routed to separate page-change /
-// page-size-change callbacks — usePagedList resets to page 1 when the page
+// page-size-change callbacks - usePagedList resets to page 1 when the page
 // size changes, so the two must not be conflated.
 export default function ListPagination({
   page,
@@ -13,7 +22,7 @@ export default function ListPagination({
   onPageChange,
   onPageSizeChange,
   className,
-}) {
+}: ListPaginationProps) {
   const lastPage = Math.max(1, Math.ceil(totalItems / pageSize))
   const shown = Math.min(page, lastPage)
   return (

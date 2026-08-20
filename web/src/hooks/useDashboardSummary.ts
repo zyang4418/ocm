@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '../auth/api.js'
+import { apiFetch } from '../auth/api'
 
 // useDashboardSummary fetches the console homepage payload
 // (GET /api/dashboard/summary?date=<local today>). The backend prunes sections
 // the caller lacks permission for, so `data` field presence drives module
 // visibility on the page. reload() refetches (retry button after an error).
-export default function useDashboardSummary(token) {
+//
+// `data` stays untyped until the dashboard endpoints join the OpenAPI contract
+// (Phase 2d annotates the backend); DashboardPage narrows it when it migrates.
+export default function useDashboardSummary(token: string | null | undefined) {
   const today = new Date()
   const date = [
     today.getFullYear(),
@@ -13,7 +16,7 @@ export default function useDashboardSummary(token) {
     String(today.getDate()).padStart(2, '0'),
   ].join('-')
 
-  const [data, setData] = useState(null)
+  const [data, setData] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
@@ -26,7 +29,7 @@ export default function useDashboardSummary(token) {
       .then((d) => {
         if (!cancelled) setData(d)
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         if (!cancelled) setError(err.message)
       })
       .finally(() => {

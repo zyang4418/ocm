@@ -23,10 +23,10 @@ import {
 } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { openAiChat } from '../ai/chatInstance.js'
-import useDashboardSummary from '../hooks/useDashboardSummary.js'
-import { formatDateTime } from '../i18n/formatters.js'
+import { useAuth } from '../auth/AuthContext'
+import { openAiChat } from '../ai/chatInstance'
+import useDashboardSummary from '../hooks/useDashboardSummary'
+import { formatDateTime } from '../i18n/formatters'
 
 // The @carbon/charts band is code-split: the d3/charts bundle (~600KB) loads
 // only when the homepage actually renders charts, keeping every other route's

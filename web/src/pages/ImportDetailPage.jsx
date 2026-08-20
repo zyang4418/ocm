@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Breadcrumb, BreadcrumbItem, Button, Column, Grid, InlineNotification, Tag } from '@carbon/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ImportPreviewTable from '../components/ImportPreviewTable.jsx'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ImportPreviewTable from '../components/ImportPreviewTable'
 
 const statusKind = {
   pending: 'blue',

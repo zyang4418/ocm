@@ -1,10 +1,12 @@
-import i18n from './index.js'
+import i18n from './index'
 
 // Carbon React does not ship a global locale context. This module provides
 // helpers that map the active language to Carbon props and translateWithId
 // callbacks.
 
-const CARBON_MESSAGE_IDS = {
+type CarbonMessage = string | ((count: number) => string)
+
+const CARBON_MESSAGE_IDS: Record<string, { 'zh-CN': CarbonMessage; en: CarbonMessage }> = {
   'carbon.table.toolbar.search.label': {
     'zh-CN': '筛选表',
     en: 'Filter table',
@@ -47,10 +49,10 @@ const CARBON_MESSAGE_IDS = {
   },
 }
 
-export function carbonTranslateWithId(messageId, args) {
+export function carbonTranslateWithId(messageId: string, args?: { count?: number }): string {
   const entry = CARBON_MESSAGE_IDS[messageId]
   if (!entry) return messageId
-  const value = entry[i18n.language] ?? entry['zh-CN']
+  const value = entry[i18n.language as 'zh-CN' | 'en'] ?? entry['zh-CN']
   return typeof value === 'function' ? value(args?.count ?? 0) : value
 }
 
@@ -58,10 +60,10 @@ export function paginationProps() {
   const lng = i18n.language || 'zh-CN'
   if (lng === 'en') {
     return {
-      itemRangeText: (min, max, total) => `${min}–${max} of ${total} items`,
+      itemRangeText: (min: number, max: number, total: number) => `${min}–${max} of ${total} items`,
       itemsPerPageText: 'Items per page',
-      pageRangeText: (current, total) => `of ${total} pages`,
-      pageText: (page) => `page ${page}`,
+      pageRangeText: (current: number, total: number) => `of ${total} pages`,
+      pageText: (page: number) => `page ${page}`,
       pageNumberText: 'Page Number',
       pageSizeText: 'Items per page',
       backwardText: 'Previous page',
@@ -69,10 +71,10 @@ export function paginationProps() {
     }
   }
   return {
-    itemRangeText: (min, max, total) => `${min}–${max} / 共 ${total} 条`,
+    itemRangeText: (min: number, max: number, total: number) => `${min}–${max} / 共 ${total} 条`,
     itemsPerPageText: '每页条数',
-    pageRangeText: (current, total) => `共 ${total} 页`,
-    pageText: (page) => `第 ${page} 页`,
+    pageRangeText: (current: number, total: number) => `共 ${total} 页`,
+    pageText: (page: number) => `第 ${page} 页`,
     pageNumberText: '页码',
     pageSizeText: '每页条数',
     backwardText: '上一页',
@@ -80,7 +82,7 @@ export function paginationProps() {
   }
 }
 
-export function datePickerLocale() {
+export function datePickerLocale(): string {
   const lng = i18n.language || 'zh-CN'
   // Carbon DatePicker wraps flatpickr. Flatpickr uses 'zh' for Simplified
   // Chinese and defaults to English when no locale is passed.

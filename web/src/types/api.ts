@@ -43,6 +43,73 @@ export class ApiError extends Error {
   }
 }
 
+// ---- Auth identity ----
+
+// auth.userView (internal/auth/handler.go): base account fields plus the
+// resolved RBAC state, returned by /api/auth/login and /api/auth/me. Permissions
+// stays string[] - the backend may emit strings outside the catalog (e.g. '*').
+export interface RoleBrief {
+  id: number
+  code: string
+  name: string
+}
+
+export interface GroupBrief {
+  id: number
+  name: string
+}
+
+export interface CurrentUser {
+  id: number
+  username: string
+  displayName: string
+  type: string
+  roles: RoleBrief[]
+  groups: GroupBrief[]
+  permissions: string[]
+}
+
+export interface LoginResponse {
+  token: string
+  user: CurrentUser
+}
+
+// ---- Import jobs ----
+
+// importer.Job metadata (internal/importer/model.go) as served by
+// GET /api/imports - payload/rows/errorReport travel on dedicated endpoints.
+export interface ImportJob {
+  id: number
+  type: string
+  status: string
+  filename: string
+  totalRows: number
+  succeededRows: number
+  failedRows: number
+  userId: number
+  createdAt: string
+  startedAt?: string
+  finishedAt?: string
+}
+
+export interface ImportRowError {
+  row: number
+  error: string
+}
+
+// /api/imports/jwc_split summary counts.
+export interface SplitStats {
+  classrooms: number
+  catalogCourses: number
+  adminClasses: number
+  teachingClasses: number
+  offerings: number
+  sessions: number
+  skippedEmptyAdmin: number
+  skippedParallel: number
+  noTeacherFilled: number
+}
+
 // ---- Permissions ----
 
 // Mirror of backend authz.Catalog (internal/authz/authz.go) plus the '*' wildcard
