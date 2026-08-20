@@ -19,11 +19,13 @@ var (
 
 const jobColumns = `id, type, status, filename, payload, total_rows, succeeded_rows, failed_rows, error_report, user_id, created_at, started_at, finished_at`
 
-// jobMetaColumns excludes payload (the base64 xlsx, up to 5MB) and preview (the
-// full dry-run rows, potentially tens of thousands) so GET /api/imports/{id}
-// — polled by the wizard while a job processes — stays small. Preview rows are
-// served page-by-page by GetJobRows.
-const jobMetaColumns = `id, type, status, filename, total_rows, succeeded_rows, failed_rows, error_report, user_id, created_at, started_at, finished_at`
+// jobMetaColumns excludes payload (the base64 xlsx, up to 5MB), the preview blob
+// (the full dry-run rows, potentially tens of thousands), and error_report (a
+// per-row error JSON that can reach several MB for a sessions job whose rows
+// all fail) so GET /api/imports/{id} — polled by the wizard while a job
+// processes — stays small. Preview rows are served page-by-page by GetJobRows;
+// the error report is served on demand by GetJobErrors.
+const jobMetaColumns = `id, type, status, filename, total_rows, succeeded_rows, failed_rows, user_id, created_at, started_at, finished_at`
 
 // Store manages import job records in the import_jobs table.
 type Store struct {
@@ -176,7 +178,7 @@ func (s *Store) GetJobMeta(ctx context.Context, id int64) (Job, error) {
 	err := s.db.QueryRowContext(ctx,
 		`SELECT `+jobMetaColumns+` FROM import_jobs WHERE id = ?`, id,
 	).Scan(
-		&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.ErrorReport, &j.UserID, &j.CreatedAt, &started, &finished,
+		&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.UserID, &j.CreatedAt, &started, &finished,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Job{}, ErrJobNotFound
@@ -240,6 +242,34 @@ func (s *Store) GetJobRows(ctx context.Context, id int64, limit, offset int) ([]
 	return page, total, nil
 }
 
+// GetJobErrors returns a job's per-row error report. error_report is a JSON
+// array of RowError and can reach several MB for a large sessions job whose
+// rows all fail, so it is excluded from the polled list and meta queries
+// (PageJobs, GetJobMeta) and served here on demand by GET
+// /api/imports/{id}/errors. Returns an empty slice (not nil) when the job has
+// no errors or a malformed report.
+func (s *Store) GetJobErrors(ctx context.Context, id int64) ([]RowError, error) {
+	var report sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT error_report FROM import_jobs WHERE id = ?`, id).Scan(&report)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrJobNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get import job errors: %w", err)
+	}
+	if !report.Valid || report.String == "" || report.String == "null" {
+		return []RowError{}, nil
+	}
+	var errs []RowError
+	if err := json.Unmarshal([]byte(report.String), &errs); err != nil {
+		return []RowError{}, nil
+	}
+	if errs == nil {
+		errs = []RowError{}
+	}
+	return errs, nil
+}
+
 // ListJobs returns the most recent jobs (newest first), excluding the payload
 // column to keep responses small.
 func (s *Store) ListJobs(ctx context.Context, limit int) ([]Job, error) {
@@ -288,7 +318,7 @@ func (s *Store) PageJobs(ctx context.Context, q string, p dbutil.Pagination) ([]
 		args = append(args, pat, pat)
 	}
 	query, queryArgs := p.AppendLimit(
-		`SELECT id, type, status, filename, total_rows, succeeded_rows, failed_rows, error_report, user_id, created_at, started_at, finished_at FROM import_jobs`+
+		`SELECT id, type, status, filename, total_rows, succeeded_rows, failed_rows, user_id, created_at, started_at, finished_at FROM import_jobs`+
 			where+` ORDER BY created_at DESC, id DESC`, args)
 	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
@@ -301,7 +331,7 @@ func (s *Store) PageJobs(ctx context.Context, q string, p dbutil.Pagination) ([]
 		var j Job
 		var started, finished sql.NullTime
 		if err := rows.Scan(
-			&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.ErrorReport, &j.UserID, &j.CreatedAt, &started, &finished,
+			&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.UserID, &j.CreatedAt, &started, &finished,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan import job: %w", err)
 		}

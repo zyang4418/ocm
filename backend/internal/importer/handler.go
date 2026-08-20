@@ -59,6 +59,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	mux.Handle("GET /api/imports", authOnly(h.list))
 	mux.Handle("GET /api/imports/{id}", authOnly(h.get))
 	mux.Handle("GET /api/imports/{id}/rows", authOnly(h.rows))
+	mux.Handle("GET /api/imports/{id}/errors", authOnly(h.jobErrors))
 	mux.Handle("POST /api/imports/{id}/commit", authOnly(h.commitJob))
 	mux.Handle("POST /api/imports/{id}/cancel", authOnly(h.cancelJob))
 	mux.Handle("POST /api/imports/{id}/reanalyze", authOnly(h.reanalyze))
@@ -111,9 +112,11 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, jobs, total, p)
 }
 
-// get returns a job's metadata (status, row counts, error report) without the
-// payload or preview rows. The wizard polls this while a job processes; preview
-// rows are served page-by-page by the rows endpoint below. Cheap to call.
+// get returns a job's metadata (status, row counts) without the payload, preview
+// rows, or error report — any of which can be large. The wizard polls this while
+// a job processes, so it stays small. Preview rows are served page-by-page by the
+// rows endpoint below; the per-row error report is served on demand by the
+// errors endpoint below. Cheap to call.
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -166,6 +169,29 @@ func (h *Handler) rows(w http.ResponseWriter, r *http.Request) {
 		"page":     page,
 		"pageSize": pageSize,
 	})
+}
+
+// jobErrors returns a job's per-row error report on demand. error_report can
+// reach several MB for a large sessions job whose rows all fail, so it is
+// excluded from the polled list (PageJobs) and meta (GetJobMeta) responses to
+// keep those small; the preview table fetches it once via this endpoint instead
+// of receiving it on every meta poll.
+func (h *Handler) jobErrors(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "invalid job id")
+		return
+	}
+	errs, err := h.store.GetJobErrors(r.Context(), id)
+	if errors.Is(err, ErrJobNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "import job not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load import errors", err)
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, map[string]any{"errors": errs})
 }
 
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {

@@ -65,26 +65,23 @@ export function formatCell(value) {
 
 // ImportPreviewTable renders the dry-run rows for one job, fetching pages from
 // the server (GET /api/imports/{id}/rows) so a multi-thousand-row preview is
-// not shipped in full. `job` is the job metadata (status / counts /
-// errorReport) and does NOT carry rows; the per-row error list comes from
-// job.errorReport. `t` is the 'imports'-namespace translator from the host.
+// not shipped in full. `job` is the job metadata (status / counts) and carries
+// neither rows nor the per-row error report; rows are fetched page-by-page
+// below, and the error list is fetched on demand from
+// GET /api/imports/{id}/errors (it can be several MB for a sessions job whose
+// rows all fail, so it is not piggybacked on the polled job meta). `t` is the
+// 'imports'-namespace translator from the host.
 export default function ImportPreviewTable({ job, token, t }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(100)
   const [rows, setRows] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState([])
+  const [errorsLoaded, setErrorsLoaded] = useState(false)
 
   const columns = (IMPORT_TYPES[job?.type]?.columns || [])
     .map((key) => ({ key, header: t('columns.' + job?.type + '.' + key, { defaultValue: key }) }))
-
-  let errorList = []
-  try {
-    const parsed = JSON.parse(job?.errorReport || '[]')
-    if (Array.isArray(parsed)) errorList = parsed
-  } catch {
-    // keep errorList empty on a malformed report
-  }
 
   useEffect(() => {
     if (!job?.id) return undefined
@@ -120,6 +117,28 @@ export default function ImportPreviewTable({ job, token, t }) {
     // does not refetch rows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.id, job?.status, job?.succeededRows, job?.startedAt, page, pageSize])
+
+  // Fetch the per-row error report on demand. error_report can be several MB
+  // for a sessions job whose rows all fail, so the polled job meta no longer
+  // carries it; fetch it here, refetched only when the preview "version"
+  // changes (same primitives as the rows effect) — never on each meta poll.
+  useEffect(() => {
+    if (!job?.id) return undefined
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await apiFetch(`/api/imports/${job.id}/errors`, { token })
+        if (cancelled) return
+        setErrors(Array.isArray(data?.errors) ? data.errors : [])
+      } catch {
+        if (!cancelled) setErrors([])
+      } finally {
+        if (!cancelled) setErrorsLoaded(true)
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.id, job?.status, job?.succeededRows, job?.startedAt])
 
   const lastPage = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, lastPage)
@@ -162,13 +181,13 @@ export default function ImportPreviewTable({ job, token, t }) {
       )}
 
       <ul className="imports-page__errors">
-        {errorList.map((e, i) => (
+        {errors.map((e, i) => (
           <li key={i}>
             {e.row > 0 ? t('modal.errorRow', { row: e.row }) : ''}
             {e.error}
           </li>
         ))}
-        {errorList.length === 0 && <li>{t('modal.noErrors')}</li>}
+        {errorsLoaded && errors.length === 0 && <li>{t('modal.noErrors')}</li>}
       </ul>
     </>
   )
