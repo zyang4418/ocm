@@ -16,12 +16,22 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiStream } from '../auth/api'
 import i18n from '../i18n/index'
+import { useTheme, type ThemeName } from '../theme/ThemeContext'
 import { aiChatState } from './chatInstance'
 import renderAiCustomItem, { type AiTool } from './aiChatItems'
 
 // Carbon AI Chat ships its own built-in English UI strings; we only override
 // them for zh-CN (see AiChat.strings below). English therefore falls back to
 // Carbon's defaults, per the i18n plan.
+
+// The chat widget injects its own copy of Carbon's styles, so the app theme
+// has to be forwarded through injectCarbonTheme rather than CSS classes.
+const CARBON_THEMES: Record<ThemeName, CarbonTheme> = {
+  white: CarbonTheme.WHITE,
+  g10: CarbonTheme.G10,
+  g90: CarbonTheme.G90,
+  g100: CarbonTheme.G100,
+}
 
 // AiChat mounts Carbon AI Chat's float layout (bottom-right launcher + pop-over
 // window). It lives in AppShell so the conversation survives page navigation.
@@ -30,6 +40,7 @@ import renderAiCustomItem, { type AiTool } from './aiChatItems'
 export default function AiChat() {
   const { t } = useTranslation('aiChat')
   const { token } = useAuth()
+  const { theme } = useTheme()
   const tokenRef = useRef(token)
   tokenRef.current = token
   // Conversation history sent to the backend ({role, content} pairs).
@@ -201,7 +212,7 @@ export default function AiChat() {
       messaging={messaging}
       onBeforeRender={onBeforeRender}
       renderUserDefinedResponse={renderUserDefinedResponse}
-      injectCarbonTheme={CarbonTheme.G10}
+      injectCarbonTheme={CARBON_THEMES[theme]}
       assistantName={t('assistantName')}
       header={{ title: 'OCM', name: t('assistantName'), showRestartButton: true }}
       homescreen={homescreen}

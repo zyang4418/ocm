@@ -11,7 +11,7 @@ Go 后端(`module ocm-backend`,Go 1.26)。`net/http` ServeMux(Go 1.22+ 方法路
 1. 注册 `/healthz`(**先于开库**;反映进程存活,不查 DB)。
 2. 在 goroutine 里起 HTTP 服务(端口 `PORT`,默认 8080)——端口立即绑定。
 3. 开 MySQL(`openDB` → `db.ConfigFromEnv` + `db.New`,带 60s 连接超时 + `pingWithRetry` 每 2s 重试)。
-4. 依次跑各 store 的 `Migrate(ctx)`:auth → **iam** → user → classroom → **repair** → schedule → course → booking → importer。iam 紧随 auth 之后:先把老库 `users.role` 拷贝进 `user_roles`(`admin`→admin 角色、`user`→teacher 角色),再 DROP 该列;新装库无 role 列(用 `information_schema` 探测)自动跳过。
+4. 依次跑各 store 的 `Migrate(ctx)`:auth → **iam** → user → classroom → **repair** → schedule → course → booking → importer。iam 紧随 auth 之后:种子系统角色(admin/teacher/student),并给 bootstrap admin 账号(种子 `admin` 用户,且其无任何角色授权时)授予 admin 角色(持有 `*` 通配符)。
 5. 组装一次鉴权中间件 `authenticate`,各 handler 用 `RegisterRoutes(mux, authenticate)` 注册路由。
 6. 构建 importer `Registry`(job 类型 → 权限 → importer),调 `RecoverStale`(恢复崩溃的 processing / 重排队 pending)。
 7. 注册 `/readyz`(**开库后**;ping DB,3s 超时,不可达返回 503)。
@@ -71,7 +71,7 @@ authenticate := auth.Middleware(tokenService)(user.LoadSubject(userStore, iamSto
 
 驱动 `github.com/go-sql-driver/mysql`,MySQL 8。
 
-- **无独立迁移目录/工具**:每个 store 有幂等 `Migrate(ctx)`,启动时调用。用 `CREATE TABLE IF NOT EXISTS` + **幂等 ALTER**:`ALTER TABLE ADD COLUMN/INDEX`,若报错则断言为 MySQL 1060(重复列)或 1061(重复键)并忽略,其他错误致命。1062(重复行)由 `dbutil.IsDuplicateEntry` 在插入路径处理。共享 helper 在 `internal/dbutil`。
+- **无独立迁移目录/工具**:每个 store 有幂等 `Migrate(ctx)`,启动时调用。每个表用一条 `CREATE TABLE IF NOT EXISTS` 完整建表(索引/唯一键含在建表语句中);开发阶段无旧库升级路径,不做增量 ALTER,改表结构直接删库重建。1062(重复行)由 `dbutil.IsDuplicateEntry` 在插入路径处理。共享 helper 在 `internal/dbutil`。
 - 主要表:`users`、`roles`/`role_permissions`、`user_roles`/`user_permissions`、`user_groups`/`user_group_members`/`group_roles`、`classrooms`、`schedule_regimes`/`schedule_periods`、`course_catalog`/`course_offerings`/`course_sessions`、`admin_classes`、`teaching_classes`/`teaching_class_members`、`classroom_bookings`、`classroom_repairs`、`import_jobs`。所有跨表引用均为应用层逻辑外键(无 FK 约束),删除用户时 `iam.DeleteUserGrants` 级联清理授权行。
 - 连接:`db.ConfigFromEnv` 出 DSN(`charset=utf8mb4&parseTime=true&loc=Local`);`db.New` 生产拒绝 localhost 回落(`db.go`),`pingWithRetry` 轮询至 DB 就绪;连接池默认 25 open / 25 idle / 5min lifetime(可调 `DB_*_CONNS`/`DB_CONN_MAX_LIFETIME`)。
 

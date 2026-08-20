@@ -20,6 +20,7 @@ import {
 } from '@carbon/react'
 import {
   Building,
+  Contrast,
   Dashboard,
   Education,
   Logout,
@@ -33,6 +34,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import useLanguage from '../i18n/useLanguage'
+import { THEME_PREFERENCES, useTheme } from '../theme/ThemeContext'
 
 // The AI assistant chat widget is a large dependency chain (lit + Carbon web
 // components), so it is only fetched when a user with ai:chat permission is
@@ -46,6 +48,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { language, setLanguage, languages } = useLanguage()
   const { user, logout, can } = useAuth()
+  const { theme, setPreference } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -111,6 +114,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       itemText={t(`language.${lng}`)}
                       isDelete={false}
                       onClick={() => setLanguage(lng)}
+                    />
+                  ))}
+                </OverflowMenu>
+                <OverflowMenu
+                  renderIcon={Contrast}
+                  aria-label={t('aria.themeSwitcher')}
+                  iconDescription={t('aria.themeSwitcher')}
+                  align="bottom-end"
+                  flipped
+                  className="app-shell__theme-switcher"
+                >
+                  {THEME_PREFERENCES.map((pref) => (
+                    <OverflowMenuItem
+                      key={pref}
+                      itemText={t(`theme.${pref}`)}
+                      isDelete={false}
+                      onClick={() => setPreference(pref)}
                     />
                   ))}
                 </OverflowMenu>
@@ -322,7 +342,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 </SideNavItems>
               </SideNav>
             </Header>
-            <Theme theme="g10" className="app-shell__content">
+            {/* The theme class is also set on <html> (ThemeContext) so the
+                header, side nav and login page follow it; this Theme wrapper
+                keeps the content area's layer semantics (cds--layer-one). */}
+            <Theme theme={theme} className="app-shell__content">
               <Content id="main-content">{children}</Content>
             </Theme>
             {can('ai:chat') && (

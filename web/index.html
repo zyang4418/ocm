@@ -4,6 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OCM</title>
+    <script>
+      // Apply the saved Carbon theme before first paint to avoid a flash of
+      // the wrong theme. Mirrors src/theme/ThemeContext.tsx (key "ocm.theme"):
+      // "system" follows the OS color scheme (light -> g10, dark -> g100).
+      ;(function () {
+        var theme
+        try {
+          theme = localStorage.getItem('ocm.theme')
+        } catch (e) {
+          theme = null
+        }
+        if (
+          theme !== 'white' &&
+          theme !== 'g10' &&
+          theme !== 'g90' &&
+          theme !== 'g100'
+        ) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'g100'
+            : 'g10'
+        }
+        document.documentElement.classList.add('cds--' + theme)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

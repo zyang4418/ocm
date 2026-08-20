@@ -8,6 +8,8 @@ import {
   InlineNotification,
   NumberInput,
   PasswordInput,
+  RadioButton,
+  RadioButtonGroup,
   Select,
   SelectItem,
   TextInput,
@@ -17,6 +19,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
+import { THEME_PREFERENCES, useTheme } from '../theme/ThemeContext'
 
 // useSettings loads one settings endpoint into a form, saves via PUT, and
 // re-applies the masked response over the form (so a stored secret shows as
@@ -50,6 +53,36 @@ function useSettings(path, defaults, successText) {
       .finally(() => setSaving(false))
   }
   return { form, setForm, loaded, saving, error, notice, save }
+}
+
+// Appearance is a client-side preference (localStorage), unlike the server
+// settings sections below, so it applies instantly and is available to every
+// user - not just admins.
+function AppearanceSection() {
+  const { t } = useTranslation('settings')
+  const { preference, setPreference } = useTheme()
+
+  return (
+    <section className="settings-page__section">
+      <h2 className="settings-page__section-heading">{t('appearance.heading')}</h2>
+      <p className="settings-page__section-hint">{t('appearance.hint')}</p>
+      <RadioButtonGroup
+        legendText={t('appearance.label')}
+        name="theme-preference"
+        valueSelected={preference}
+        onChange={(value) => setPreference(value)}
+      >
+        {THEME_PREFERENCES.map((pref) => (
+          <RadioButton
+            key={pref}
+            id={`theme-pref-${pref}`}
+            labelText={t(`theme.${pref}`, { ns: 'common' })}
+            value={pref}
+          />
+        ))}
+      </RadioButtonGroup>
+    </section>
+  )
 }
 
 const mailDefaults = {
@@ -380,6 +413,7 @@ export default function SettingsPage() {
           </Breadcrumb>
           <h1 className="settings-page__heading">{t('title')}</h1>
           <p className="settings-page__subtitle">{t('subtitle')}</p>
+          <AppearanceSection />
           <MailSection disabled={!isAdmin} />
           <StorageSection disabled={!isAdmin} />
           <AiSection disabled={!isAdmin} />

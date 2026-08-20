@@ -6,6 +6,11 @@
   "saveButton": "Save",
   "placeholder": { "set": "Set — leave blank to keep", "unset": "Not set" },
   "secret": { "show": "Show secret", "hide": "Hide secret" },
+  "appearance": {
+    "heading": "Appearance",
+    "hint": "Choose the Carbon color theme for the interface, or follow your operating system's color scheme. Saved in this browser only.",
+    "label": "Theme"
+  },
   "mail": {
     "heading": "Email service",
     "hint": "SMTP sending configuration. Currently only stored; sending is not wired up yet.",

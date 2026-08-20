@@ -34,7 +34,8 @@
     "notification": "通知",
     "currentUser": "当前用户：{{name}}",
     "logout": "退出登录",
-    "languageSwitcher": "切换语言"
+    "languageSwitcher": "切换语言",
+    "themeSwitcher": "切换主题"
   },
   "nav": {
     "overview": "概览",
@@ -98,6 +99,13 @@
   "language": {
     "zh-CN": "简体中文",
     "en": "English"
+  },
+  "theme": {
+    "system": "跟随系统",
+    "white": "浅色（White）",
+    "g10": "浅色（Gray 10）",
+    "g90": "深色（Gray 90）",
+    "g100": "深色（Gray 100）"
   },
   "password": {
     "show": "显示密码",

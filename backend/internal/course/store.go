@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-sql-driver/mysql"
 	"ocm-backend/internal/dbutil"
 )
 
@@ -44,12 +43,13 @@ func nullableCode(code string) interface{} {
 }
 
 // Migrate creates the catalog, offering and session tables. It is idempotent.
-// Idempotent ALTERs (ignoring MySQL 1060 duplicate-column / 1061 duplicate-key)
-// upgrade pre-existing tables in place: the catalog gains academic-attribute
-// columns + a UNIQUE(code) index, and offerings gain 教务处 section-metadata
-// columns. See backend/internal/course/README.md for the column rationale.
+// See backend/internal/course/README.md for the column rationale.
 func (s *Store) Migrate(ctx context.Context) error {
 	stmts := []string{
+		// code is NULL-able so courses without a code (NULL) do not collide:
+		// MySQL treats multiple NULLs as distinct in a UNIQUE index, while
+		// empty strings '' would all compare equal. The app writes NULL for
+		// uncoded courses (see nullableCode).
 		`CREATE TABLE IF NOT EXISTS course_catalog (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(128) NOT NULL UNIQUE,
@@ -59,8 +59,14 @@ func (s *Store) Migrate(ctx context.Context) error {
     category    VARCHAR(32)  NOT NULL DEFAULT '',
     exam_type   VARCHAR(16)  NOT NULL DEFAULT '',
     description VARCHAR(255) NOT NULL DEFAULT '',
-    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_catalog_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+		// idx_offering_tclass gives the in-use check (SELECT COUNT(*) ...
+		// WHERE teaching_class_id = ? FOR UPDATE) a precise range/gap lock
+		// instead of a full-table scan; the UNIQUE (catalog_id,
+		// teaching_class_id, semester) cannot serve a query on
+		// teaching_class_id alone (it is not the leading column).
 		`CREATE TABLE IF NOT EXISTS course_offerings (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     catalog_id        BIGINT       NOT NULL,
@@ -76,7 +82,8 @@ func (s *Store) Migrate(ctx context.Context) error {
     semester          VARCHAR(32)  NOT NULL,
     note              VARCHAR(255) NOT NULL DEFAULT '',
     created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (catalog_id, teaching_class_id, semester)
+    UNIQUE (catalog_id, teaching_class_id, semester),
+    INDEX idx_offering_tclass (teaching_class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 		`CREATE TABLE IF NOT EXISTS course_sessions (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -93,88 +100,6 @@ func (s *Store) Migrate(ctx context.Context) error {
 	for _, q := range stmts {
 		if _, err := s.db.ExecContext(ctx, q); err != nil {
 			return fmt.Errorf("create course table: %w", err)
-		}
-	}
-	// Upgrade pre-existing catalog table: add attribute columns + UNIQUE(code).
-	catalogCols := []struct{ name, def string }{
-		{"credits", "DECIMAL(4,1) NOT NULL DEFAULT 0 AFTER code"},
-		{"total_hours", "INT NOT NULL DEFAULT 0 AFTER credits"},
-		{"category", "VARCHAR(32) NOT NULL DEFAULT '' AFTER total_hours"},
-		{"exam_type", "VARCHAR(16) NOT NULL DEFAULT '' AFTER category"},
-	}
-	for _, col := range catalogCols {
-		if _, err := s.db.ExecContext(ctx,
-			`ALTER TABLE course_catalog ADD COLUMN `+col.name+` `+col.def); err != nil {
-			var mysqlErr *mysql.MySQLError
-			if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-				return fmt.Errorf("add catalog column %s: %w", col.name, err)
-			}
-		}
-	}
-	// UNIQUE(code): code is NULL-able so courses without a code (NULL) do not
-	// collide — MySQL treats multiple NULLs as distinct in a UNIQUE index, while
-	// empty strings '' would all compare equal and violate the index. Upgrade
-	// path: widen the column to NULL DEFAULT NULL, migrate legacy '' rows to
-	// NULL, then add the unique key (idempotent; ignore 1061 duplicate-key-name).
-	// A data-level duplicate (1062) is intentionally NOT ignored: it signals two
-	// distinct courses wrongly sharing a code, which the caller must resolve.
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE course_catalog MODIFY COLUMN code VARCHAR(64) NULL DEFAULT NULL`); err != nil {
-		return fmt.Errorf("modify catalog code column: %w", err)
-	}
-	if _, err := s.db.ExecContext(ctx,
-		`UPDATE course_catalog SET code = NULL WHERE code = ''`); err != nil {
-		return fmt.Errorf("null out empty catalog codes: %w", err)
-	}
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE course_catalog ADD UNIQUE KEY uq_catalog_code (code)`); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1061 {
-			return fmt.Errorf("add catalog unique code: %w", err)
-		}
-	}
-	// Upgrade pre-existing offerings table: add 教务处 section-metadata columns.
-	offeringCols := []struct{ name, def string }{
-		{"course_seq", "VARCHAR(32) NOT NULL DEFAULT '' AFTER teacher"},
-		{"teacher_id", "VARCHAR(64) NOT NULL DEFAULT '' AFTER course_seq"},
-		{"teacher_title", "VARCHAR(32) NOT NULL DEFAULT '' AFTER teacher_id"},
-		{"college", "VARCHAR(64) NOT NULL DEFAULT '' AFTER teacher_title"},
-		{"max_students", "INT NOT NULL DEFAULT 0 AFTER college"},
-		{"requirement", "VARCHAR(16) NOT NULL DEFAULT '' AFTER max_students"},
-		{"weekly_hours", "INT NOT NULL DEFAULT 0 AFTER requirement"},
-	}
-	for _, col := range offeringCols {
-		if _, err := s.db.ExecContext(ctx,
-			`ALTER TABLE course_offerings ADD COLUMN `+col.name+` `+col.def); err != nil {
-			var mysqlErr *mysql.MySQLError
-			if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-				return fmt.Errorf("add offering column %s: %w", col.name, err)
-			}
-		}
-	}
-	// teaching_class_id is defined by the CREATE TABLE above for fresh installs,
-	// but a course_offerings table predating teaching classes lacks the column
-	// and would make the ADD INDEX below fail with MySQL 1054 (unknown column).
-	// Add it idempotently (ignore 1060 duplicate-column); legacy rows get 0 and
-	// simply match no teaching_class, which the INNER JOINs already enforce.
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE course_offerings ADD COLUMN teaching_class_id BIGINT NOT NULL DEFAULT 0 AFTER catalog_id`); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-			return fmt.Errorf("add offering teaching_class_id column: %w", err)
-		}
-	}
-	// Single-column index on teaching_class_id so the in-use check
-	// (SELECT COUNT(*) ... WHERE teaching_class_id = ? FOR UPDATE) takes a
-	// precise range/gap lock instead of a full-table scan. The existing
-	// UNIQUE (catalog_id, teaching_class_id, semester) cannot serve a query
-	// on teaching_class_id alone (it is not the leading column). Idempotent:
-	// ignore 1061 duplicate-key-name.
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE course_offerings ADD INDEX idx_offering_tclass (teaching_class_id)`); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1061 {
-			return fmt.Errorf("add offering teaching_class_id index: %w", err)
 		}
 	}
 	return nil

@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #f4f4f4;
+  background-color: var(--cds-background);
   background-image: url('./assets/login-background.png');
   background-position: 0 -220px;
   background-repeat: no-repeat;
@@ -26,8 +26,8 @@
   align-items: center;
   block-size: 3rem;
   flex: none;
-  background-color: #f4f4f4;
-  border-block-end: 1px solid #e0e0e0;
+  background-color: var(--cds-background);
+  border-block-end: 1px solid var(--cds-border-subtle);
 }
 
 .login__brand {
@@ -37,11 +37,11 @@
   padding-inline: 1rem 2rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: #161616;
+  color: var(--cds-text-primary);
   text-decoration: none;
 
   &:hover {
-    background-color: #e8e8e8;
+    background-color: var(--cds-layer-hover-01);
   }
 }
 
@@ -64,11 +64,11 @@
   padding-inline: 1rem;
   font-size: 0.875rem;
   line-height: 1.125rem;
-  color: #525252;
+  color: var(--cds-text-secondary);
   text-decoration: none;
 
   &:hover {
-    background-color: #e8e8e8;
+    background-color: var(--cds-layer-hover-01);
   }
 }
 
@@ -96,7 +96,7 @@
   inline-size: 660px;
   flex: none;
   padding: 94px 96px 0 64px;
-  background-color: #ffffff;
+  background-color: var(--cds-layer-01);
 }
 
 .login__logo {
@@ -110,7 +110,7 @@
   font-size: 2rem;
   font-weight: 400;
   line-height: 2rem;
-  color: #161616;
+  color: var(--cds-text-primary);
 }
 
 .login__title-cloud {
@@ -122,10 +122,10 @@
   margin: 8px 0 0;
   font-size: 0.875rem;
   line-height: 1;
-  color: #6f6f6f;
+  color: var(--cds-text-secondary);
 
   a {
-    color: #0f62fe;
+    color: var(--cds-link-primary);
     text-decoration: none;
 
     &:hover {
@@ -183,7 +183,7 @@
   min-block-size: 20px;
   font-size: 0.875rem;
   line-height: 1;
-  color: #161616;
+  color: var(--cds-text-primary);
 }
 
 .login__id-inputs {
@@ -245,7 +245,7 @@
 .login__link {
   font-size: 0.875rem;
   line-height: 1.125rem;
-  color: #0f62fe;
+  color: var(--cds-link-primary);
   text-decoration: none;
 
   &:hover {
@@ -258,14 +258,14 @@
   align-items: center;
   margin-block-start: 26px;
   font-size: 0.875rem;
-  color: #525252;
+  color: var(--cds-text-secondary);
   text-align: center;
 
   &::before,
   &::after {
     content: '';
     flex: 1;
-    border-block-end: 1px solid #c6c6c6;
+    border-block-end: 1px solid var(--cds-border-subtle);
   }
 
   &::before {
@@ -310,11 +310,11 @@
   border: none;
   background: none;
   font-size: 0.875rem;
-  color: #0f62fe;
+  color: var(--cds-link-primary);
   cursor: pointer;
 
   svg {
-    fill: #0f62fe;
+    fill: currentcolor;
   }
 }
 
@@ -323,10 +323,10 @@
   margin: 45px 0;
   font-size: 0.602rem;
   font-weight: 200;
-  color: #161616;
+  color: var(--cds-text-primary);
 
   a {
-    color: #0f62fe;
+    color: var(--cds-link-primary);
     text-decoration: none;
 
     &:hover {
@@ -362,15 +362,16 @@
   min-height: 100vh;
 }
 
-// Language switcher in the header global bar. The OverflowMenu trigger
-// defaults to a 40px (md layout token) square, while the neighbouring
-// HeaderGlobalAction buttons are a fixed 48px (mini-units(6)) square that
-// fills the bar. The shorter trigger top-aligns inside its stretched 48px
-// wrapper, so its icon sits ~4px higher than the other buttons. Pin the
-// trigger to the same 48px square as a header action and bump its icon to
-// 20px to match the size={20} icons used by the other HeaderGlobalActions,
-// so all four buttons read as a single row.
-.cds--header__global .app-shell__lang-switcher {
+// Header-global-bar menu triggers (language + theme switchers). The
+// OverflowMenu trigger defaults to a 40px (md layout token) square, while the
+// neighbouring HeaderGlobalAction buttons are a fixed 48px (mini-units(6))
+// square that fills the bar. The shorter trigger top-aligns inside its
+// stretched 48px wrapper, so its icon sits ~4px higher than the other
+// buttons. Pin the trigger to the same 48px square as a header action and
+// bump its icon to 20px to match the size={20} icons used by the other
+// HeaderGlobalActions, so every button reads as a single row.
+.cds--header__global .app-shell__lang-switcher,
+.cds--header__global .app-shell__theme-switcher {
   block-size: $spacing-09; // 3rem = 48px = mini-units(6)
   inline-size: $spacing-09;
 
@@ -970,8 +971,10 @@
   flex-direction: column;
   align-items: center;
   gap: $spacing-04;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--cds-border-subtle);
   padding: $spacing-06;
+  // Deliberately pure white in every theme: the QR code needs maximum
+  // contrast against its surround to stay scannable on classroom screens.
   background: #ffffff;
 }
 
@@ -980,7 +983,7 @@
   font-size: 2.5rem;
   font-weight: 600;
   letter-spacing: 0.5rem;
-  color: #161616;
+  color: var(--cds-text-primary);
 }
 
 .attendance-detail__side {
@@ -998,7 +1001,7 @@
 
 .attendance-detail__hint {
   max-width: 24rem;
-  color: #525252;
+  color: var(--cds-text-secondary);
 }
 
 .attendance-detail__stats {
@@ -1011,23 +1014,25 @@
   flex: 1;
   min-width: 8rem;
   text-align: center;
-  border: 1px solid #e0e0e0;
-  background: #ffffff;
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer-01);
   padding: $spacing-04;
 }
 
 .attendance-detail__stat-value {
   font-size: 2rem;
   font-weight: 600;
-  color: #0f62fe;
+  // Not a link - use the interactive token so the emphasis color follows the
+  // theme (#0f62fe light / #4589ff dark) instead of the link token.
+  color: var(--cds-interactive);
 }
 
 .attendance-detail__stat-label {
-  color: #525252;
+  color: var(--cds-text-secondary);
 }
 
 .attendance-report__empty {
-  color: #6f6f6f;
+  color: var(--cds-text-secondary);
 }
 
 .attendance-report__legend {
@@ -1541,16 +1546,16 @@
   flex-direction: column;
   gap: $spacing-05;
   padding: $spacing-05;
-  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border: 1px solid var(--cds-border-subtle);
   border-radius: 4px;
-  background: var(--cds-layer-01, #ffffff);
+  background: var(--cds-layer-01);
 }
 
 .observations-page__section-title {
   @include type-style('heading-03');
   margin: 0;
   padding-block-end: $spacing-03;
-  border-block-end: 1px solid var(--cds-border-subtle, #e0e0e0);
+  border-block-end: 1px solid var(--cds-border-subtle);
 }
 
 .observations-page__indicator {
@@ -1558,7 +1563,7 @@
   flex-direction: column;
   gap: $spacing-03;
   padding-block-end: $spacing-04;
-  border-block-end: 1px dashed var(--cds-border-subtle, #e0e0e0);
+  border-block-end: 1px dashed var(--cds-border-subtle);
 
   &:last-child {
     border-block-end: none;
@@ -1607,7 +1612,7 @@
 
   th,
   td {
-    border: 1px solid var(--cds-border-subtle, #e0e0e0);
+    border: 1px solid var(--cds-border-subtle);
     padding: $spacing-03;
     text-align: center;
     vertical-align: middle;
@@ -1615,7 +1620,7 @@
 
   th {
     @include type-style('productive-heading-01');
-    background: var(--cds-layer-02, #f4f4f4);
+    background: var(--cds-layer-02);
   }
 
   td {

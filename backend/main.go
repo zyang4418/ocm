@@ -115,9 +115,10 @@ func main() {
 		logging.L.Error("auth migration", "err", err)
 		os.Exit(1)
 	}
-	// iam.Migrate must run after auth.Migrate (users table exists) and before
-	// any route serves traffic: it migrates the legacy users.role column into
-	// user_roles grants, then drops the column.
+	// iam.Migrate must run after auth.Migrate (the users table must exist so
+	// the bootstrap grant can resolve the seeded admin account) and before
+	// any route serves traffic: it seeds the system roles and grants the
+	// bootstrap admin account its admin role.
 	iamStore := iam.NewStore(database)
 	if err := iamStore.Migrate(ctx); err != nil {
 		logging.L.Error("iam migration", "err", err)

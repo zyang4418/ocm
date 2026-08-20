@@ -32,8 +32,9 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-// Migrate creates the users table and seeds the initial admin account.
-// It is idempotent and safe to run on every startup.
+// Migrate creates the users table and seeds the initial admin account (with
+// no role grants yet; iam.Store.Migrate, which runs right after this, grants
+// it the admin role). It is idempotent and safe to run on every startup.
 func (s *Store) Migrate(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS users (
@@ -48,40 +49,6 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 	if err != nil {
 		return fmt.Errorf("create users table: %w", err)
-	}
-
-	// Add the user_type column for tables created before the RBAC upgrade
-	// (the legacy role column is migrated away by iam.Store.Migrate, which
-	// runs right after this). Ignore the duplicate-column error (1060).
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE users ADD COLUMN user_type VARCHAR(32) NOT NULL DEFAULT 'staff'`,
-	); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-			return fmt.Errorf("add user_type column: %w", err)
-		}
-	}
-
-	// Add the openid column for tables created before it existed. MySQL has no
-	// "ADD COLUMN IF NOT EXISTS", so ignore the duplicate-column error (1060).
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE users ADD COLUMN openid VARCHAR(64) NULL DEFAULT NULL`,
-	); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-			return fmt.Errorf("add openid column: %w", err)
-		}
-	}
-	// Add the unique index on openid for tables created before it existed;
-	// ignore the duplicate-index error (1061). Multiple NULLs are allowed, so
-	// unbound accounts coexist while each openid binds at most one account.
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE users ADD UNIQUE INDEX idx_users_openid (openid)`,
-	); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1061 {
-			return fmt.Errorf("add openid index: %w", err)
-		}
 	}
 
 	var count int

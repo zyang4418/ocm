@@ -34,7 +34,8 @@
     "notification": "Notifications",
     "currentUser": "Current user: {{name}}",
     "logout": "Log out",
-    "languageSwitcher": "Change language"
+    "languageSwitcher": "Change language",
+    "themeSwitcher": "Change theme"
   },
   "nav": {
     "overview": "Overview",
@@ -98,6 +99,13 @@
   "language": {
     "zh-CN": "简体中文",
     "en": "English"
+  },
+  "theme": {
+    "system": "System",
+    "white": "Light (White)",
+    "g10": "Light (Gray 10)",
+    "g90": "Dark (Gray 90)",
+    "g100": "Dark (Gray 100)"
   },
   "password": {
     "show": "Show password",

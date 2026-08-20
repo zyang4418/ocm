@@ -8,8 +8,6 @@ import (
 	"fmt"
 
 	"ocm-backend/internal/dbutil"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -59,16 +57,6 @@ CREATE TABLE IF NOT EXISTS import_jobs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 	if err != nil {
 		return fmt.Errorf("create import_jobs table: %w", err)
-	}
-	// Add the preview column for tables created before it existed. MySQL has no
-	// "ADD COLUMN IF NOT EXISTS", so ignore the duplicate-column error (1060).
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE import_jobs ADD COLUMN preview LONGTEXT NULL DEFAULT NULL AFTER error_report`,
-	); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-			return fmt.Errorf("add preview column: %w", err)
-		}
 	}
 	return nil
 }
