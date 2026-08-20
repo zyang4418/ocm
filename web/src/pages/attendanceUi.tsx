@@ -10,13 +10,12 @@ import { formatDate } from '../i18n/formatters'
 export const STATUS_KEYS = ['present', 'late', 'absent', 'leave'] as const
 export type RecordStatus = (typeof STATUS_KEYS)[number]
 
-// Carbon Tag types per record status; absent is the only one worth a warning
-// color, the rest stay neutral/positive. 'late' is 'yellow', which is NOT a
-// real Carbon tag kind (bx--tag--yellow has no CSS) - kept to preserve the
-// existing rendering until the status colors are revisited.
-const STATUS_COLOR: Record<RecordStatus, string> = {
+// Carbon Tag types per record status: present positive, absent warning-red,
+// leave neutral. Carbon Tag has no 'yellow' kind (bx--tag--yellow has no CSS),
+// so 'late' uses purple to stay distinguishable from the gray leave tag.
+const STATUS_COLOR: Record<RecordStatus, TagProps<'div'>['type']> = {
   present: 'green',
-  late: 'yellow',
+  late: 'purple',
   absent: 'red',
   leave: 'gray',
 }
@@ -24,7 +23,7 @@ const STATUS_COLOR: Record<RecordStatus, string> = {
 export function StatusTag({ status }: { status: string }) {
   const { t } = useTranslation('common')
   return (
-    <Tag type={(STATUS_COLOR[status as RecordStatus] ?? 'gray') as TagProps<'div'>['type']} size="sm">
+    <Tag type={STATUS_COLOR[status as RecordStatus] ?? 'gray'} size="sm">
       {t(`status.${status}`, { defaultValue: status })}
     </Tag>
   )
