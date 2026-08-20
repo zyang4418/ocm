@@ -1,22 +1,62 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, InlineNotification, Loading, Tag } from '@carbon/react'
+import { Button, InlineNotification, Loading, Tag, type TagProps } from '@carbon/react'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
+import type { RenderUserDefinedState } from '@carbon/ai-chat'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+
+type TagKind = TagProps<'div'>['type']
 
 // These components render inside Carbon AI Chat's user_defined slots. The chat
 // renders them through a React portal from the app tree, so contexts
 // (useAuth, useTranslation) and the global Carbon styles apply normally.
 
-function ToolIndicator({ tools }) {
+// The backend's SSE 'tool' events (internal/ai agent.go).
+export interface AiTool {
+  name: string
+  status: 'running' | 'ok' | 'error'
+}
+
+// One booking/session clash attached to a proposal (ProposalPayload.conflicts).
+export interface AiConflict {
+  kind: 'session' | 'booking'
+  courseName?: string
+  displayName?: string
+  periodStart: number
+  periodEnd: number
+}
+
+// ProposalPayload as emitted by the backend's propose_booking tool and
+// forwarded verbatim in SSE 'proposal' events.
+export interface AiProposal {
+  payload: {
+    classroomId: number
+    classroomName: string
+    date: string
+    periodStart: number
+    periodEnd: number
+    periodLabel: string
+    purpose: string
+    conflicts: AiConflict[]
+  }
+  state: 'proposed' | 'submitting' | 'confirmed' | 'failed' | 'dismissed'
+  error: string
+}
+
+// The two user_defined payloads this app streams (see AiChat's chunk mapping).
+export type AiUserDefined =
+  | { user_defined_type: 'ai_tools'; tools: AiTool[] }
+  | { user_defined_type: 'ai_proposal'; proposal: AiProposal }
+
+function ToolIndicator({ tools }: { tools?: AiTool[] }) {
   const { t } = useTranslation('aiChat')
   if (!tools || tools.length === 0) return null
   return (
     <div className="ai-chat-item__tools">
       {tools.map((tool, i) => {
         const label = t('tools.' + tool.name, { defaultValue: tool.name })
-        let type = 'cyan'
+        let type: TagKind = 'cyan'
         let text = t('tool.running', { label })
         let spinning = true
         if (tool.status === 'ok') {
@@ -39,7 +79,7 @@ function ToolIndicator({ tools }) {
   )
 }
 
-function ConflictNote({ conflicts }) {
+function ConflictNote({ conflicts }: { conflicts?: AiConflict[] }) {
   const { t } = useTranslation('aiChat')
   if (!conflicts || conflicts.length === 0) return null
   const items = conflicts.slice(0, 5).map((c) => {
@@ -63,10 +103,10 @@ function ConflictNote({ conflicts }) {
 // confirmation state machine: proposed -> submitting -> confirmed / failed, or
 // dismissed. The confirm button submits through the existing booking API,
 // which re-validates permissions and conflicts server-side.
-function ProposalCard({ proposal }) {
+function ProposalCard({ proposal }: { proposal: AiProposal }) {
   const { t } = useTranslation('aiChat')
   const { token } = useAuth()
-  const [state, setState] = useState('proposed') // proposed | submitting | confirmed | failed | dismissed
+  const [state, setState] = useState<'proposed' | 'submitting' | 'confirmed' | 'failed' | 'dismissed'>('proposed')
   const [error, setError] = useState('')
 
   if (state === 'dismissed') {
@@ -89,7 +129,7 @@ function ProposalCard({ proposal }) {
       })
       setState('confirmed')
     } catch (err) {
-      setError(err.status === 409 ? t('error.bookingConflict') : err.message)
+      setError((err as Error & { status?: number }).status === 409 ? t('error.bookingConflict') : (err as Error).message)
       setState('failed')
     }
   }
@@ -129,10 +169,11 @@ function ProposalCard({ proposal }) {
 // renderAiCustomItem maps the assistant's user_defined message items to React
 // components. Called by Carbon AI Chat on every rerender: keep it side-effect
 // free. During streaming messageItem is not set yet - fall back to the newest
-// partial chunk.
-export default function renderAiCustomItem(renderState) {
+// partial chunk. The payload shape is this app's own contract, so the library's
+// generic item is narrowed to AiUserDefined here.
+export default function renderAiCustomItem(renderState: RenderUserDefinedState) {
   const item = renderState?.messageItem ?? renderState?.partialItems?.at(-1)
-  const userDefined = item?.user_defined
+  const userDefined = item?.user_defined as AiUserDefined | undefined
   if (userDefined?.user_defined_type === 'ai_tools') {
     return <ToolIndicator tools={userDefined.tools} />
   }

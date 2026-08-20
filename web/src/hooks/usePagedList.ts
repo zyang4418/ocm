@@ -1,22 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { apiFetch } from '../auth/api.js'
+import { apiFetch } from '../auth/api'
+import type { Paged } from '../types/api'
+
+export interface UsePagedListOptions {
+  path: string
+  token?: string | null
+  extraParams?: Record<string, string | number | boolean | null | undefined>
+  initialPageSize?: number
+  debounceMs?: number
+}
+
+export interface PagedList<T> {
+  items: T[]
+  total: number
+  page: number
+  pageSize: number
+  q: string
+  loading: boolean
+  error: string
+  setPage: (page: number) => void
+  setPageSize: (pageSize: number) => void
+  setQ: (q: string) => void
+  reload: () => void
+}
 
 // usePagedList drives a paginated, server-searched list endpoint. It owns the
 // page/pageSize/q state, debounces the search input, unwraps the backend's
 // {items, total, page, pageSize} envelope and refetches when any of them
 // change. Callers get a reload() for post-mutation refresh (create/update/
-// delete, imports polling) — it refetches the current page.
+// delete, imports polling) - it refetches the current page.
 //
 // extraParams holds fixed filter params (e.g. classroom_id/status/from/to on
 // the bookings page); empty-string/null values are omitted from the query.
-export default function usePagedList({
+export default function usePagedList<T = unknown>({
   path,
   token,
   extraParams = {},
   initialPageSize = 100,
   debounceMs = 300,
-}) {
-  const [items, setItems] = useState([])
+}: UsePagedListOptions): PagedList<T> {
+  const [items, setItems] = useState<T[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(initialPageSize)
@@ -73,7 +96,7 @@ export default function usePagedList({
     // of flashing a spinner.
     if (itemsRef.current.length === 0) setLoading(true)
     setError('')
-    apiFetch(`${path}?${params.toString()}`, { token })
+    apiFetch<Paged<T>>(`${path}?${params.toString()}`, { token })
       .then((data) => {
         if (cancelled) return
         const rows = Array.isArray(data?.items) ? data.items : []
@@ -86,7 +109,7 @@ export default function usePagedList({
           setPage(page - 1)
         }
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         if (cancelled) return
         setError(err.message)
       })
@@ -99,12 +122,12 @@ export default function usePagedList({
   }, [path, token, page, pageSize, debouncedQ, paramsKey, reloadKey])
 
   // Changing the search term or page size starts a new result set: page 1.
-  const changeQ = useCallback((v) => {
+  const changeQ = useCallback((v: string) => {
     setQ(v)
     setPage(1)
   }, [])
 
-  const changePageSize = useCallback((size) => {
+  const changePageSize = useCallback((size: number) => {
     setPageSize(size)
     setPage(1)
   }, [])

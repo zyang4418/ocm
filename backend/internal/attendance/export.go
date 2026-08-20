@@ -14,6 +14,15 @@ import (
 // exportCheckin streams one checkin's record list as an xlsx download. The
 // roster's derived-absent rows are included, so the missing list is readable
 // straight from the file.
+// @Summary      Export a checkin's records as xlsx
+// @Tags         attendance
+// @Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param        id path int true "checkin id"
+// @Success      200 {file} file "xlsx download"
+// @Failure      400 {object} httpx.ErrorResponse "invalid id"
+// @Failure      404 {object} httpx.ErrorResponse "not found"
+// @Security     BearerAuth
+// @Router       /api/checkins/{id}/export [get]
 func (h *Handler) exportCheckin(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -54,6 +63,15 @@ func (h *Handler) exportCheckin(w http.ResponseWriter, r *http.Request) {
 
 // exportOfferingReport streams the L2 semester report for one offering: a
 // per-checkin summary sheet plus a student × checkin matrix sheet.
+// @Summary      Export offering attendance report as xlsx
+// @Tags         attendance
+// @Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param        offering_id query int true "course offering id"
+// @Success      200 {file} file "xlsx download"
+// @Failure      400 {object} httpx.ErrorResponse "offering_id required"
+// @Failure      404 {object} httpx.ErrorResponse "offering not found"
+// @Security     BearerAuth
+// @Router       /api/checkins/export [get]
 func (h *Handler) exportOfferingReport(w http.ResponseWriter, r *http.Request) {
 	offeringID := queryInt(r.URL.Query(), "offering_id")
 	if offeringID <= 0 {

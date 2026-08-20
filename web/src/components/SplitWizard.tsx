@@ -1,46 +1,56 @@
 import { useEffect, useState } from 'react'
-import { Button, InlineNotification, Tag } from '@carbon/react'
+import { Button, InlineNotification, Tag, type TagProps } from '@carbon/react'
 import { useTranslation } from 'react-i18next'
-import { apiFetch } from '../auth/api.js'
-import ImportPreviewTable from './ImportPreviewTable.jsx'
+import { apiFetch } from '../auth/api'
+import ImportPreviewTable from './ImportPreviewTable'
+import type { ImportJob, SplitStats } from '../types/api'
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export interface SplitWizardProps {
+  jobs: Array<{ id: number; type: string; status: string }>
+  stats?: SplitStats | null
+  warnings?: string[]
+  token?: string | null
+  onExit: () => void
+  onViewJobs: () => void
+}
 
 // SplitWizard guides an operator through the 6 jobs produced by
-// /api/imports/jwc_split in dependency order (classrooms → catalog →
-// admin_classes → teaching_classes → offerings → sessions). It renders INLINE
+// /api/imports/jwc_split in dependency order (classrooms -> catalog ->
+// admin_classes -> teaching_classes -> offerings -> sessions). It renders INLINE
 // (no modal) so the large preview tables get the full page width.
 //
 // Per step it shows a *fresh* preview: on entering a step it waits for the
 // initial preview, then reanalyzes against the current DB so dependent tables
 // no longer show the stale "课程不存在" errors produced at split time. The
-// operator then 确定 (commit) → 下一步.
+// operator then 确定 (commit) -> 下一步.
 //
 // 下一步 is gated on the step being committed or explicitly skipped, which
 // makes out-of-order commits impossible from this flow. 跳过当前步 leaves the
 // job in preview for later handling via /imports/:id; a genuinely failed commit
-// can be retried (the backend accepts failed→commit) or skipped. 退出 returns
+// can be retried (the backend accepts failed->commit) or skipped. 退出 returns
 // to the split form (onExit) without touching job state; the jobs persist and
 // are visible in /imports.
-export default function SplitWizard({ jobs, stats, warnings, token, onExit, onViewJobs }) {
+export default function SplitWizard({ jobs, stats, warnings, token, onExit, onViewJobs }: SplitWizardProps) {
   const { t } = useTranslation('imports')
   const steps = jobs // [{id,type,status}], already in dependency order
   const [current, setCurrent] = useState(0)
-  const [results, setResults] = useState({}) // jobId -> full job object
-  const [resolved, setResolved] = useState({}) // jobId -> 'succeeded'|'skipped'|'failed'
+  const [results, setResults] = useState<Record<number, ImportJob>>({}) // jobId -> full job object
+  const [resolved, setResolved] = useState<Record<number, 'succeeded' | 'skipped' | 'failed'>>({}) // jobId -> outcome
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [finished, setFinished] = useState(false)
 
-  const typeLabel = (type) => (type ? t('types.' + type + '.label', { defaultValue: type }) : '-')
+  const typeLabel = (type: string) => (type ? t(`types.${type}.label`, { defaultValue: type }) : '-')
 
-  async function fetchJob(id) {
-    return apiFetch(`/api/imports/${id}`, { token })
+  async function fetchJob(id: number): Promise<ImportJob> {
+    return apiFetch<ImportJob>(`/api/imports/${id}`, { token })
   }
 
   // pollUntil GETs a job until pred(status) is true or ~90s elapse; returns the
   // last-fetched job regardless (caller inspects job.status).
-  async function pollUntil(id, pred, { timeoutMs = 90000, interval = 1200 } = {}) {
+  async function pollUntil(id: number, pred: (status: string) => boolean, { timeoutMs = 90000, interval = 1200 } = {}) {
     const deadline = Date.now() + timeoutMs
     let job = await fetchJob(id)
     while (!pred(job.status) && Date.now() < deadline) {
@@ -59,7 +69,7 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
     setBusy(true)
     ;(async () => {
       try {
-        const id = steps[current].id
+        const id = steps[current]!.id
         let job = await pollUntil(id, (s) => s === 'preview' || s === 'failed')
         if (cancelled) return
         if (job.status === 'preview') {
@@ -67,7 +77,7 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
             await apiFetch(`/api/imports/${id}/reanalyze`, { method: 'POST', token })
             job = await pollUntil(id, (s) => s === 'preview' || s === 'failed')
           } catch {
-            // reanalyze rejected (e.g. lost a race) — fall back to the preview
+            // reanalyze rejected (e.g. lost a race) - fall back to the preview
             job = await fetchJob(id)
           }
         }
@@ -75,7 +85,7 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
         setResults((p) => ({ ...p, [id]: job }))
         if (job.status === 'failed') setResolved((p) => ({ ...p, [id]: 'failed' }))
       } catch (e) {
-        if (!cancelled) setError(e.message)
+        if (!cancelled) setError((e as Error).message)
       } finally {
         if (!cancelled) setBusy(false)
       }
@@ -87,7 +97,7 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
   }, [current])
 
   async function handleReanalyze() {
-    const id = steps[current].id
+    const id = steps[current]!.id
     setError('')
     setBusy(true)
     try {
@@ -95,14 +105,14 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
       const job = await pollUntil(id, (s) => s === 'preview' || s === 'failed')
       setResults((p) => ({ ...p, [id]: job }))
     } catch (e) {
-      setError(e.message)
+      setError((e as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
   async function handleCommit() {
-    const id = steps[current].id
+    const id = steps[current]!.id
     setError('')
     setBusy(true)
     try {
@@ -110,19 +120,19 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
       const job = await pollUntil(id, (s) => s === 'succeeded' || s === 'failed')
       setResults((p) => ({ ...p, [id]: job }))
       if (job.status === 'succeeded' || job.status === 'failed') {
-        setResolved((p) => ({ ...p, [id]: job.status }))
+        setResolved((p) => ({ ...p, [id]: job.status as 'succeeded' | 'failed' }))
       } else {
         setError(t('wizard.timeout'))
       }
     } catch (e) {
-      setError(e.message)
+      setError((e as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
   function handleSkip() {
-    const id = steps[current].id
+    const id = steps[current]!.id
     setResolved((p) => ({ ...p, [id]: 'skipped' }))
   }
 
@@ -152,14 +162,15 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
     )
   }
 
-  const step = steps[current]
+  const step = steps[current]!
   const job = results[step.id]
   const r = resolved[step.id]
   const isLast = current === steps.length - 1
   const notResolved = r !== 'succeeded' && r !== 'skipped'
+  const warnList = warnings ?? []
 
-  const stepState = (k) => {
-    const rs = resolved[steps[k].id]
+  const stepState = (k: number): 'done' | 'active' | 'todo' | 'skipped' | 'failed' => {
+    const rs = resolved[steps[k]!.id]
     if (k < current) return rs === 'skipped' ? 'skipped' : 'done'
     if (k === current) {
       if (rs === 'skipped') return 'skipped'
@@ -170,7 +181,9 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
     return 'todo'
   }
 
-  const tagType = { done: 'green', active: 'blue', todo: 'gray', skipped: 'gray', failed: 'red' }
+  const tagType: Record<'done' | 'active' | 'todo' | 'skipped' | 'failed', TagProps<'div'>['type']> = {
+    done: 'green', active: 'blue', todo: 'gray', skipped: 'gray', failed: 'red',
+  }
 
   const summary =
     r === 'succeeded' || r === 'failed'
@@ -205,15 +218,15 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
           hideCloseButton
           className="imports-page__upload-err"
         />
-        {warnings?.length > 0 && (
+        {warnList.length > 0 && (
           <details className="imports-page__warnings">
-            <summary>{t('split.warningsSummary', { count: warnings.length })}</summary>
+            <summary>{t('split.warningsSummary', { count: warnList.length })}</summary>
             <ul>
-              {warnings.slice(0, 50).map((w, i) => (
+              {warnList.slice(0, 50).map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
-              {warnings.length > 50 && (
-                <li>{t('split.warningsMore', { count: warnings.length - 50 })}</li>
+              {warnList.length > 50 && (
+                <li>{t('split.warningsMore', { count: warnList.length - 50 })}</li>
               )}
             </ul>
           </details>

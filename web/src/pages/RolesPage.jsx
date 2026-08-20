@@ -26,8 +26,8 @@ import {
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
 
 const emptyForm = { code: '', name: '', description: '', permissions: {} }
 

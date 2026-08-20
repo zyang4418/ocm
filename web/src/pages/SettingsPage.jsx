@@ -15,8 +15,8 @@ import {
 } from '@carbon/react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
 
 // useSettings loads one settings endpoint into a form, saves via PUT, and
 // re-applies the masked response over the form (so a stored secret shows as

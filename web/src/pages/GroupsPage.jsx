@@ -24,9 +24,9 @@ import {
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import { formatDate } from '../i18n/formatters.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import { formatDate } from '../i18n/formatters'
 
 const emptyForm = { name: '', description: '', members: [], roles: [] }
 

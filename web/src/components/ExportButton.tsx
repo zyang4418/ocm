@@ -1,9 +1,19 @@
 import { useState } from 'react'
-import { Button } from '@carbon/react'
+import { Button, type ButtonProps } from '@carbon/react'
 import { Download } from '@carbon/icons-react'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiDownload } from '../auth/api.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiDownload } from '../auth/api'
+
+export interface ExportButtonProps {
+  path: string
+  fallbackName?: string
+  label?: string
+  size?: ButtonProps<'button'>['size']
+  onError?: (message: string) => void
+  disabled?: boolean
+  className?: string
+}
 
 // ExportButton triggers an xlsx download from a GET export endpoint. It manages
 // its own loading state (disabling the button while the request is in flight)
@@ -19,7 +29,7 @@ export default function ExportButton({
   onError,
   disabled = false,
   className,
-}) {
+}: ExportButtonProps) {
   const { t } = useTranslation()
   const { token } = useAuth()
   const [exporting, setExporting] = useState(false)
@@ -31,7 +41,7 @@ export default function ExportButton({
       setExporting(true)
       await apiDownload(path, { token, fallbackName })
     } catch (err) {
-      if (onError) onError(err.message)
+      if (onError) onError((err as Error).message)
     } finally {
       setExporting(false)
     }

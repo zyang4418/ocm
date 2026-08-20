@@ -26,11 +26,11 @@ import {
 import { Add, CheckmarkOutline } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ListPagination from '../components/ListPagination.jsx'
-import usePagedList from '../hooks/usePagedList.js'
-import { formatDate } from '../i18n/formatters.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ListPagination from '../components/ListPagination'
+import usePagedList from '../hooks/usePagedList'
+import { formatDate } from '../i18n/formatters'
 
 const statusKind = {
   open: 'red',

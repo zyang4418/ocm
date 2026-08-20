@@ -58,6 +58,17 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 
 // ---- Checkins ----
 
+// @Summary      Create a checkin
+// @Tags         attendance
+// @Accept       json
+// @Produce      json
+// @Param        body body CheckinInput true "checkin input"
+// @Success      201 {object} CheckinView "created checkin"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / title required / session not in offering"
+// @Failure      404 {object} httpx.ErrorResponse "offering or session not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/checkins [post]
 func (h *Handler) createCheckin(w http.ResponseWriter, r *http.Request) {
 	var in CheckinInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -84,6 +95,21 @@ func (h *Handler) createCheckin(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
+// @Summary      List checkins
+// @Tags         attendance
+// @Produce      json
+// @Param        offering_id query int false "filter by course offering id"
+// @Param        session_id query int false "filter by schedule session id"
+// @Param        status query string false "checkin status" Enums(active,closed)
+// @Param        from query string false "inclusive start YYYY-MM-DD"
+// @Param        to query string false "inclusive end YYYY-MM-DD"
+// @Param        q query string false "search by title"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged checkins"
+// @Failure      400 {object} httpx.ErrorResponse "invalid status filter"
+// @Security     BearerAuth
+// @Router       /api/checkins [get]
 func (h *Handler) listCheckins(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -111,6 +137,15 @@ func (h *Handler) listCheckins(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, list, total, p)
 }
 
+// @Summary      Get a checkin
+// @Tags         attendance
+// @Produce      json
+// @Param        id path int true "checkin id"
+// @Success      200 {object} CheckinView "checkin detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid id"
+// @Failure      404 {object} httpx.ErrorResponse "not found"
+// @Security     BearerAuth
+// @Router       /api/checkins/{id} [get]
 func (h *Handler) getCheckin(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -129,6 +164,16 @@ func (h *Handler) getCheckin(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Close a checkin
+// @Tags         attendance
+// @Produce      json
+// @Param        id path int true "checkin id"
+// @Success      204 {string} string "closed"
+// @Failure      400 {object} httpx.ErrorResponse "invalid id"
+// @Failure      404 {object} httpx.ErrorResponse "not found"
+// @Failure      409 {object} httpx.ErrorResponse "already closed"
+// @Security     BearerAuth
+// @Router       /api/checkins/{id}/close [post]
 func (h *Handler) closeCheckin(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -151,6 +196,17 @@ func (h *Handler) closeCheckin(w http.ResponseWriter, r *http.Request) {
 
 // ---- Scan ----
 
+// @Summary      Scan to check in
+// @Tags         attendance
+// @Accept       json
+// @Produce      json
+// @Param        body body ScanRequest true "6-digit scan code"
+// @Success      200 {object} ScanResult "scan result"
+// @Failure      400 {object} httpx.ErrorResponse "invalid code"
+// @Failure      404 {object} httpx.ErrorResponse "code not found"
+// @Failure      409 {object} httpx.ErrorResponse "closed or expired"
+// @Security     BearerAuth
+// @Router       /api/checkins/scan [post]
 func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Code string `json:"code"`
@@ -189,6 +245,19 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 
 // ---- Records ----
 
+// @Summary      List a checkin's records
+// @Tags         attendance
+// @Produce      json
+// @Param        id path int true "checkin id"
+// @Param        status query string false "record status" Enums(present,late,absent,leave)
+// @Param        q query string false "search by student name/no"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged records"
+// @Failure      400 {object} httpx.ErrorResponse "invalid id/status"
+// @Failure      404 {object} httpx.ErrorResponse "checkin not found"
+// @Security     BearerAuth
+// @Router       /api/checkins/{id}/records [get]
 func (h *Handler) listRecords(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -218,6 +287,18 @@ func (h *Handler) listRecords(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, list, total, p)
 }
 
+// @Summary      Correct a student's record
+// @Tags         attendance
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "checkin id"
+// @Param        userId path int true "student user id"
+// @Param        body body RecordUpdateInput true "new status"
+// @Success      200 {object} CheckinRecordView "updated record"
+// @Failure      400 {object} httpx.ErrorResponse "invalid id/status"
+// @Failure      404 {object} httpx.ErrorResponse "checkin/student not found"
+// @Security     BearerAuth
+// @Router       /api/checkins/{id}/records/{userId} [put]
 func (h *Handler) updateRecord(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -257,6 +338,14 @@ func (h *Handler) updateRecord(w http.ResponseWriter, r *http.Request) {
 
 // ---- My checkins ----
 
+// @Summary      List the caller's own checkins
+// @Tags         attendance
+// @Produce      json
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged my checkins"
+// @Security     BearerAuth
+// @Router       /api/checkins/me [get]
 func (h *Handler) myCheckins(w http.ResponseWriter, r *http.Request) {
 	p := httpx.ParsePageParams(r.URL.Query())
 	subject, _ := authz.SubjectFrom(r.Context())
@@ -274,6 +363,15 @@ func (h *Handler) myCheckins(w http.ResponseWriter, r *http.Request) {
 
 // ---- L2 semester summary ----
 
+// @Summary      L2 semester attendance summary
+// @Tags         attendance
+// @Produce      json
+// @Param        offering_id query int true "course offering id"
+// @Success      200 {object} OfferingSummary "summary"
+// @Failure      400 {object} httpx.ErrorResponse "offering_id required"
+// @Failure      404 {object} httpx.ErrorResponse "offering not found"
+// @Security     BearerAuth
+// @Router       /api/checkins/summary [get]
 func (h *Handler) offeringSummary(w http.ResponseWriter, r *http.Request) {
 	offeringID := queryInt(r.URL.Query(), "offering_id")
 	if offeringID <= 0 {

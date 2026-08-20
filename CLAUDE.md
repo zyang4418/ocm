@@ -42,3 +42,14 @@ Classroom management system: Go backend + WeChat mini-program (小程序) + web 
 - `net/http` ServeMux(Go 1.22+ 方法路由)。认证在 `backend/internal/auth`。
 - MySQL 幂等迁移:ALTER 忽略 1060/1061/1062(见 importer/store.go 模式)。
 - 权限链:`auth.Middleware`(JWT→username)→ `user.LoadSubject`(每请求重算)→ `authz.RequirePermission`/`RequireAny`。RBAC 数据(`roles`/`user_roles`/`user_permissions`/`user_groups` 等)在 `internal/iam`;**有效权限 = 直接角色授权 ∪ 组角色授权 ∪ 直接权限授权**,授权可带 `expires_at` 过期;`*` 通配仅系统 admin 角色持有,不在权限目录(API 无法授予);授权 admin 角色需操作者持有 `*`。权限目录在代码(`authz.Catalog`),DB 只存权限字符串。handler 检查 permission 字符串,不检查角色名。
+
+## OpenAPI 契约(swaggo)
+
+- handler 注释用 swaggo 注解(`@Summary/@Param/@Success/@Router`,试点见 `backend/internal/attendance/handler.go`);`backend/docs/` 为生成产物勿手改。
+- 改 handler/model 后须 `go -C backend tool swag init -o docs --parseDependency --parseInternal` 并提交;前端 `npm --prefix web run gen:types` 重生成 `web/src/types/api.d.ts`(链路:swagger 2.0 -> swagger2openapi 转 OpenAPI 3 -> openapi-typescript)。Swagger UI 挂在 `/swagger/`。
+
+## 网页端(web/)
+
+- TypeScript strict;过渡期 `allowJs + checkJs:false`,存量 `.jsx` 分批迁 `.tsx`,全部迁完后关闭。类型源自 OpenAPI 契约(见上),手写补集在 `web/src/types/api.ts`(`ApiError`/`Paged<T>`/`Permission`)。
+- `npm --prefix web run typecheck` 为类型门禁;`build` 已含 `tsc --noEmit`。
+- 本地无 MySQL:后端业务路由等 DB 连通后才注册,冒烟看 `/healthz` 与 `/swagger/`;本地启动后端需 `APP_ENV=development`(注意不是 dev)。
