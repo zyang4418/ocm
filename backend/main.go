@@ -61,10 +61,13 @@ func main() {
 	// recovered panic still gets its final 500 recorded in the access line
 	// (inverted, the panic unwinds past AccessLog first and the line shows
 	// status 0). Recover logs the panic itself; AccessLog logs the completed
-	// request — each event exactly once.
+	// request — each event exactly once. Gzip is the innermost layer: a
+	// recovered-panic 500 is written to the StatusRecorder Recover received,
+	// bypassing Gzip, so it stays a clean uncompressed JSON error (see
+	// middleware.Gzip for the SSE/xlsx/204 exclusions).
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: middleware.AccessLog(httpx.Recover(mux)),
+		Handler: middleware.AccessLog(httpx.Recover(middleware.Gzip(mux))),
 	}
 
 	go func() {
