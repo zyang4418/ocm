@@ -12,8 +12,8 @@ import {
 } from '@carbon/react'
 import { ArrowRight, Document, Edit, Translate } from '@carbon/icons-react'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import useLanguage from '../i18n/useLanguage.js'
+import { useAuth } from '../auth/AuthContext'
+import useLanguage from '../i18n/useLanguage'
 import logoUrl from '../assets/logo.png'
 import wechatIconUrl from '../assets/wechat-icon.png'
 

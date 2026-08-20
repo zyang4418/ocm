@@ -30,11 +30,11 @@ import {
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ExportButton from '../components/ExportButton.jsx'
-import ListPagination from '../components/ListPagination.jsx'
-import usePagedList from '../hooks/usePagedList.js'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ExportButton from '../components/ExportButton'
+import ListPagination from '../components/ListPagination'
+import usePagedList from '../hooks/usePagedList'
 
 const emptyOffering = { catalogId: '', teachingClassId: '', teacher: '', semester: '', note: '' }
 const emptyCatalog = { name: '', code: '', description: '' }

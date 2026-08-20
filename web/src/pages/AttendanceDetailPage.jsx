@@ -24,12 +24,12 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ExportButton from '../components/ExportButton.jsx'
-import ListPagination from '../components/ListPagination.jsx'
-import usePagedList from '../hooks/usePagedList.js'
-import { CheckinStatusTag, STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi.jsx'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ExportButton from '../components/ExportButton'
+import ListPagination from '../components/ListPagination'
+import usePagedList from '../hooks/usePagedList'
+import { CheckinStatusTag, STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi'
 
 export default function AttendanceDetailPage() {
   const { t } = useTranslation('attendance')
@@ -54,6 +54,12 @@ export default function AttendanceDetailPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const list = usePagedList({ path: `/api/checkins/${id}/records`, token, extraParams: { status: statusFilter } })
   const { loading } = list
+
+  // Carbon DataTable requires a unique `id` on each row; checkin records are
+  // keyed by userId (no `id` field from the API), so derive it here. Without
+  // this, row.id is undefined, the find() below misses, and r.displayName
+  // throws — white-screening the page once any record renders.
+  const tableRows = list.items.map((r) => ({ ...r, id: r.userId }))
 
   const [editTarget, setEditTarget] = useState(null)
   const [editStatus, setEditStatus] = useState('')
@@ -269,7 +275,7 @@ export default function AttendanceDetailPage() {
           />
         )}
 
-        <DataTable rows={list.items} headers={headers}>
+        <DataTable rows={tableRows} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('detail.table.title')} description={t('detail.table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>

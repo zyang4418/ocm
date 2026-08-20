@@ -17,7 +17,15 @@ var (
 	ErrJobStateConflict = errors.New("import job not in expected state")
 )
 
-const jobColumns = `id, type, status, filename, payload, total_rows, succeeded_rows, failed_rows, error_report, preview, user_id, created_at, started_at, finished_at`
+const jobColumns = `id, type, status, filename, payload, total_rows, succeeded_rows, failed_rows, error_report, user_id, created_at, started_at, finished_at`
+
+// jobMetaColumns excludes payload (the base64 xlsx, up to 5MB), the preview blob
+// (the full dry-run rows, potentially tens of thousands), and error_report (a
+// per-row error JSON that can reach several MB for a sessions job whose rows
+// all fail) so GET /api/imports/{id} — polled by the wizard while a job
+// processes — stays small. Preview rows are served page-by-page by GetJobRows;
+// the error report is served on demand by GetJobErrors.
+const jobMetaColumns = `id, type, status, filename, total_rows, succeeded_rows, failed_rows, user_id, created_at, started_at, finished_at`
 
 // Store manages import job records in the import_jobs table.
 type Store struct {
@@ -136,11 +144,10 @@ func (s *Store) CreateJobs(ctx context.Context, userID int64, specs []JobSpec) (
 func (s *Store) GetJob(ctx context.Context, id int64) (Job, error) {
 	var j Job
 	var started, finished sql.NullTime
-	var preview sql.NullString
 	err := s.db.QueryRowContext(ctx,
 		`SELECT `+jobColumns+` FROM import_jobs WHERE id = ?`, id,
 	).Scan(
-		&j.ID, &j.Type, &j.Status, &j.Filename, &j.Payload, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.ErrorReport, &preview, &j.UserID, &j.CreatedAt, &started, &finished,
+		&j.ID, &j.Type, &j.Status, &j.Filename, &j.Payload, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.ErrorReport, &j.UserID, &j.CreatedAt, &started, &finished,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Job{}, ErrJobNotFound
@@ -148,8 +155,36 @@ func (s *Store) GetJob(ctx context.Context, id int64) (Job, error) {
 	if err != nil {
 		return Job{}, fmt.Errorf("get import job: %w", err)
 	}
-	if preview.Valid && preview.String != "" && preview.String != "null" {
-		_ = json.Unmarshal([]byte(preview.String), &j.Rows)
+	// Preview rows are intentionally not loaded here: GetJob backs the
+	// commit/reanalyze paths (which need Payload, not rows), and the rows are
+	// served page-by-page via GetJobRows to avoid decoding a multi-thousand-row
+	// preview on every call.
+	if started.Valid {
+		j.StartedAt = &started.Time
+	}
+	if finished.Valid {
+		j.FinishedAt = &finished.Time
+	}
+	return j, nil
+}
+
+// GetJobMeta returns a job's metadata without the payload or preview blob. It
+// backs GET /api/imports/{id}, which the wizard polls while a job processes;
+// excluding payload (≤5MB xlsx) and preview (potentially tens of thousands of
+// rows) keeps each poll response small.
+func (s *Store) GetJobMeta(ctx context.Context, id int64) (Job, error) {
+	var j Job
+	var started, finished sql.NullTime
+	err := s.db.QueryRowContext(ctx,
+		`SELECT `+jobMetaColumns+` FROM import_jobs WHERE id = ?`, id,
+	).Scan(
+		&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.UserID, &j.CreatedAt, &started, &finished,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Job{}, ErrJobNotFound
+	}
+	if err != nil {
+		return Job{}, fmt.Errorf("get import job meta: %w", err)
 	}
 	if started.Valid {
 		j.StartedAt = &started.Time
@@ -158,6 +193,81 @@ func (s *Store) GetJob(ctx context.Context, id int64) (Job, error) {
 		j.FinishedAt = &finished.Time
 	}
 	return j, nil
+}
+
+// GetJobRows returns one page of a job's preview rows plus the total preview
+// row count. The preview is stored as a JSON array in import_jobs.preview; it is
+// decoded into []json.RawMessage (one pass, no per-row map allocation for the
+// whole set) and only the requested page is unmarshaled into maps. Returns
+// ([], 0, nil) when the job has no preview (committed/cancelled/failed-early).
+func (s *Store) GetJobRows(ctx context.Context, id int64, limit, offset int) ([]map[string]any, int, error) {
+	var preview sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT preview FROM import_jobs WHERE id = ?`, id).Scan(&preview)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, 0, ErrJobNotFound
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("get import preview: %w", err)
+	}
+	if !preview.Valid || preview.String == "" || preview.String == "null" {
+		return []map[string]any{}, 0, nil
+	}
+	var raw []json.RawMessage
+	if err := json.Unmarshal([]byte(preview.String), &raw); err != nil {
+		// Malformed preview: surface as empty so the pager still renders.
+		return []map[string]any{}, 0, nil
+	}
+	total := len(raw)
+	if limit < 1 {
+		limit = 1
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > total {
+		offset = total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	page := make([]map[string]any, 0, end-offset)
+	for _, r := range raw[offset:end] {
+		var m map[string]any
+		if err := json.Unmarshal(r, &m); err != nil {
+			m = map[string]any{}
+		}
+		page = append(page, m)
+	}
+	return page, total, nil
+}
+
+// GetJobErrors returns a job's per-row error report. error_report is a JSON
+// array of RowError and can reach several MB for a large sessions job whose
+// rows all fail, so it is excluded from the polled list and meta queries
+// (PageJobs, GetJobMeta) and served here on demand by GET
+// /api/imports/{id}/errors. Returns an empty slice (not nil) when the job has
+// no errors or a malformed report.
+func (s *Store) GetJobErrors(ctx context.Context, id int64) ([]RowError, error) {
+	var report sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT error_report FROM import_jobs WHERE id = ?`, id).Scan(&report)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrJobNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get import job errors: %w", err)
+	}
+	if !report.Valid || report.String == "" || report.String == "null" {
+		return []RowError{}, nil
+	}
+	var errs []RowError
+	if err := json.Unmarshal([]byte(report.String), &errs); err != nil {
+		return []RowError{}, nil
+	}
+	if errs == nil {
+		errs = []RowError{}
+	}
+	return errs, nil
 }
 
 // ListJobs returns the most recent jobs (newest first), excluding the payload
@@ -208,7 +318,7 @@ func (s *Store) PageJobs(ctx context.Context, q string, p dbutil.Pagination) ([]
 		args = append(args, pat, pat)
 	}
 	query, queryArgs := p.AppendLimit(
-		`SELECT id, type, status, filename, total_rows, succeeded_rows, failed_rows, error_report, user_id, created_at, started_at, finished_at FROM import_jobs`+
+		`SELECT id, type, status, filename, total_rows, succeeded_rows, failed_rows, user_id, created_at, started_at, finished_at FROM import_jobs`+
 			where+` ORDER BY created_at DESC, id DESC`, args)
 	rows, err := s.db.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
@@ -221,7 +331,7 @@ func (s *Store) PageJobs(ctx context.Context, q string, p dbutil.Pagination) ([]
 		var j Job
 		var started, finished sql.NullTime
 		if err := rows.Scan(
-			&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.ErrorReport, &j.UserID, &j.CreatedAt, &started, &finished,
+			&j.ID, &j.Type, &j.Status, &j.Filename, &j.TotalRows, &j.SucceededRows, &j.FailedRows, &j.UserID, &j.CreatedAt, &started, &finished,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan import job: %w", err)
 		}

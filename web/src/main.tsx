@@ -8,10 +8,10 @@ import '@fontsource/ibm-plex-sans/600.css'
 import '@fontsource/ibm-plex-sans/700.css'
 import '@carbon/styles/css/styles.css'
 import './app.scss'
-import './i18n'
-import App from './App.jsx'
+import './i18n/index'
+import App from './App'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,

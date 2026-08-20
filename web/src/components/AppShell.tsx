@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type MouseEvent, type ReactNode } from 'react'
 import {
   Header,
   HeaderContainer,
@@ -31,25 +31,25 @@ import {
 } from '@carbon/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import useLanguage from '../i18n/useLanguage.js'
+import { useAuth } from '../auth/AuthContext'
+import useLanguage from '../i18n/useLanguage'
 
 // The AI assistant chat widget is a large dependency chain (lit + Carbon web
 // components), so it is only fetched when a user with ai:chat permission is
 // logged in.
-const AiChat = lazy(() => import('../ai/AiChat.jsx'))
+const AiChat = lazy(() => import('../ai/AiChat'))
 
 // AppShell renders the Carbon UI Shell frame (header + side navigation +
 // content area) shared by all authenticated pages. It persists across route
 // changes via a React Router layout route so the header never remounts.
-export default function AppShell({ children }) {
+export default function AppShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { language, setLanguage, languages } = useLanguage()
   const { user, logout, can } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const isActive = (path) => location.pathname === path
+  const isActive = (path: string) => location.pathname === path
   const inOrg =
     location.pathname.startsWith('/users') ||
     location.pathname.startsWith('/admin-classes') ||
@@ -74,7 +74,7 @@ export default function AppShell({ children }) {
   return (
     <HeaderContainer
       render={({ isSideNavExpanded, onClickSideNavExpand }) => {
-        const go = (path) => (e) => {
+        const go = (path: string) => (e: MouseEvent) => {
           e.preventDefault()
           navigate(path)
           if (isSideNavExpanded) onClickSideNavExpand()
@@ -207,6 +207,15 @@ export default function AppShell({ children }) {
                         onClick={go('/imports')}
                       >
                         {t('nav.dataImport')}
+                      </SideNavMenuItem>
+                    )}
+                    {can('course:manage') && (
+                      <SideNavMenuItem
+                        href="/imports/split"
+                        isActive={isActive('/imports/split')}
+                        onClick={go('/imports/split')}
+                      >
+                        {t('nav.jwcSplit')}
                       </SideNavMenuItem>
                     )}
                     {can('attendance:read') && (

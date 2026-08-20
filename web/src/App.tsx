@@ -1,30 +1,33 @@
 import { BrowserRouter, Navigate, Route, Routes, Outlet, useLocation } from 'react-router-dom'
 import { Loading } from '@carbon/react'
 import { useTranslation } from 'react-i18next'
-import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
-import LanguageProvider from './i18n/LanguageProvider.jsx'
-import AppShell from './components/AppShell.jsx'
-import LoginPage from './pages/LoginPage.jsx'
-import DashboardPage from './pages/DashboardPage.jsx'
-import BookingsPage from './pages/BookingsPage.jsx'
-import ClassroomsPage from './pages/ClassroomsPage.jsx'
-import CourseManagementPage from './pages/CourseManagementPage.jsx'
-import ScheduleConfigPage from './pages/ScheduleConfigPage.jsx'
-import TimetablePage from './pages/TimetablePage.jsx'
-import ImportsPage from './pages/ImportsPage.jsx'
-import UsersPage from './pages/UsersPage.jsx'
-import RolesPage from './pages/RolesPage.jsx'
-import GroupsPage from './pages/GroupsPage.jsx'
-import AdminClassesPage from './pages/AdminClassesPage.jsx'
-import TeachingClassesPage from './pages/TeachingClassesPage.jsx'
-import LogsPage from './pages/LogsPage.jsx'
-import SettingsPage from './pages/SettingsPage.jsx'
-import AttendancePage from './pages/AttendancePage.jsx'
-import AttendanceDetailPage from './pages/AttendanceDetailPage.jsx'
-import AttendanceReportPage from './pages/AttendanceReportPage.jsx'
-import ObservationsPage from './pages/ObservationsPage.jsx'
-import RepairsPage from './pages/RepairsPage.jsx'
-function RequireAuth({ children }) {
+import type { ReactNode } from 'react'
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import LanguageProvider from './i18n/LanguageProvider'
+import AppShell from './components/AppShell'
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import BookingsPage from './pages/BookingsPage'
+import ClassroomsPage from './pages/ClassroomsPage'
+import CourseManagementPage from './pages/CourseManagementPage'
+import ScheduleConfigPage from './pages/ScheduleConfigPage'
+import TimetablePage from './pages/TimetablePage'
+import ImportsPage from './pages/ImportsPage'
+import ImportDetailPage from './pages/ImportDetailPage'
+import SplitPage from './pages/SplitPage'
+import UsersPage from './pages/UsersPage'
+import RolesPage from './pages/RolesPage'
+import GroupsPage from './pages/GroupsPage'
+import AdminClassesPage from './pages/AdminClassesPage'
+import TeachingClassesPage from './pages/TeachingClassesPage'
+import LogsPage from './pages/LogsPage'
+import SettingsPage from './pages/SettingsPage'
+import AttendancePage from './pages/AttendancePage'
+import AttendanceDetailPage from './pages/AttendanceDetailPage'
+import AttendanceReportPage from './pages/AttendanceReportPage'
+import ObservationsPage from './pages/ObservationsPage'
+import RepairsPage from './pages/RepairsPage'
+function RequireAuth({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { user, bootstrapping } = useAuth()
   const location = useLocation()
@@ -65,6 +68,8 @@ export default function App() {
             <Route path="/schedule-config" element={<ScheduleConfigPage />} />
             <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/imports" element={<ImportsPage />} />
+            <Route path="/imports/split" element={<SplitPage />} />
+            <Route path="/imports/:id" element={<ImportDetailPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/groups" element={<GroupsPage />} />

@@ -19,10 +19,10 @@ import {
 } from '@carbon/react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ExportButton from '../components/ExportButton.jsx'
-import { STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi.jsx'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ExportButton from '../components/ExportButton'
+import { STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi'
 
 // L2 整学期考勤报表: pick one offering → per-student × per-checkin matrix
 // with per-status subtotals, downloadable as a two-sheet xlsx.

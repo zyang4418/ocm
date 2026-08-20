@@ -26,11 +26,11 @@ import {
 import { Add } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ListPagination from '../components/ListPagination.jsx'
-import usePagedList from '../hooks/usePagedList.js'
-import { CheckinStatusTag, formatDateTime } from './attendanceUi.jsx'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ListPagination from '../components/ListPagination'
+import usePagedList from '../hooks/usePagedList'
+import { CheckinStatusTag, formatDateTime } from './attendanceUi'
 
 export default function AttendancePage() {
   const { t } = useTranslation('attendance')

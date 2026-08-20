@@ -14,9 +14,9 @@ import {
 import { ChevronLeft, ChevronRight, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { apiFetch } from '../auth/api.js'
-import ExportButton from '../components/ExportButton.jsx'
+import { useAuth } from '../auth/AuthContext'
+import { apiFetch } from '../auth/api'
+import ExportButton from '../components/ExportButton'
 
 function fmt(d) {
   const y = d.getFullYear()

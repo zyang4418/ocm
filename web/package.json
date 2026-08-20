@@ -8,8 +8,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "gen:types": "swagger2openapi ../backend/docs/swagger.json -o .openapi.json && openapi-typescript .openapi.json -o src/types/api.d.ts"
   },
   "dependencies": {
     "@carbon/ai-chat": "^1.18.0",
@@ -28,8 +30,12 @@
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "@vitejs/plugin-react": "^6.0.2",
+    "openapi-typescript": "^7.13.0",
     "sass": "^1.102.0",
+    "swagger2openapi": "^7.0.8",
+    "typescript": "^5.9.3",
     "vite": "^8.0.16"
   },
   "overrides": {

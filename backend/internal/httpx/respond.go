@@ -19,6 +19,14 @@ func RespondError(w http.ResponseWriter, status int, message string) {
 	RespondJSON(w, status, map[string]string{"error": message})
 }
 
+// ErrorResponse is the wire shape of RespondError, used as the OpenAPI DTO for
+// failure responses (swaggo @Failure). It is documentation-only: RespondError
+// builds the map inline; this type mirrors its shape so generated clients see
+// { error: string } rather than an untyped object.
+type ErrorResponse struct {
+	Error string `json:"error" example:"invalid request body"`
+}
+
 // Error500 logs the underlying error for operators — handlers respond with a
 // generic message so the raw error would otherwise be discarded — then
 // responds 500 with that message. errs is optional: some call sites have no

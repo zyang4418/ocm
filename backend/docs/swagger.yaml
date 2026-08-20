@@ -1,0 +1,577 @@
+definitions:
+  attendance.CheckinInput:
+    properties:
+      durationMinute:
+        type: integer
+      lateMinutes:
+        type: integer
+      offeringId:
+        type: integer
+      sessionId:
+        type: integer
+      title:
+        type: string
+    type: object
+  attendance.CheckinRecordView:
+    properties:
+      adminClass:
+        description: '"grade name", "" when unknown'
+        type: string
+      checkedAt:
+        type: string
+      checkinId:
+        type: integer
+      displayName:
+        type: string
+      inRoster:
+        type: boolean
+      modifiedAt:
+        type: string
+      status:
+        type: string
+      studentNo:
+        type: string
+      userId:
+        type: integer
+    type: object
+  attendance.CheckinView:
+    properties:
+      closedAt:
+        type: string
+      code:
+        type: string
+      counts:
+        $ref: '#/definitions/attendance.Counts'
+      courseName:
+        type: string
+      createdAt:
+        type: string
+      createdBy:
+        type: integer
+      expiresAt:
+        type: string
+      id:
+        type: integer
+      lateMinutes:
+        type: integer
+      offeringId:
+        type: integer
+      semester:
+        type: string
+      sessionId:
+        type: integer
+      sessionText:
+        type: string
+      startsAt:
+        type: string
+      status:
+        description: active | closed
+        type: string
+      teacher:
+        type: string
+      teachingClassName:
+        type: string
+      title:
+        type: string
+    type: object
+  attendance.Counts:
+    properties:
+      absent:
+        type: integer
+      expected:
+        type: integer
+      late:
+        type: integer
+      leave:
+        type: integer
+      present:
+        type: integer
+    type: object
+  attendance.OfferingSummary:
+    properties:
+      checkins:
+        items:
+          $ref: '#/definitions/attendance.CheckinView'
+        type: array
+      courseName:
+        type: string
+      offeringId:
+        type: integer
+      rows:
+        items:
+          $ref: '#/definitions/attendance.SummaryRow'
+        type: array
+      semester:
+        type: string
+      teacher:
+        type: string
+      teachingClassName:
+        type: string
+    type: object
+  attendance.RecordUpdateInput:
+    properties:
+      status:
+        enum:
+        - present
+        - late
+        - absent
+        - leave
+        example: present
+        type: string
+    type: object
+  attendance.ScanRequest:
+    properties:
+      code:
+        example: "123456"
+        type: string
+    type: object
+  attendance.ScanResult:
+    properties:
+      checkinId:
+        type: integer
+      inRoster:
+        type: boolean
+      isNew:
+        type: boolean
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  attendance.SummaryRow:
+    properties:
+      adminClass:
+        type: string
+      displayName:
+        type: string
+      inRoster:
+        type: boolean
+      records:
+        additionalProperties:
+          type: string
+        type: object
+      studentNo:
+        type: string
+      totals:
+        additionalProperties:
+          type: integer
+        type: object
+      userId:
+        type: integer
+    type: object
+  httpx.ErrorResponse:
+    properties:
+      error:
+        example: invalid request body
+        type: string
+    type: object
+  httpx.Paged:
+    properties:
+      items: {}
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Classroom management backend (Go net/http ServeMux). Auth via JWT Bearer
+    (HS256, 24h); mini-program identity resolved server-side via code2Session.
+  title: OCM 智慧教室管理平台 API
+  version: "1.0"
+paths:
+  /api/checkins:
+    get:
+      parameters:
+      - description: filter by course offering id
+        in: query
+        name: offering_id
+        type: integer
+      - description: filter by schedule session id
+        in: query
+        name: session_id
+        type: integer
+      - description: checkin status
+        enum:
+        - active
+        - closed
+        in: query
+        name: status
+        type: string
+      - description: inclusive start YYYY-MM-DD
+        in: query
+        name: from
+        type: string
+      - description: inclusive end YYYY-MM-DD
+        in: query
+        name: to
+        type: string
+      - description: search by title
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged checkins
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid status filter
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List checkins
+      tags:
+      - attendance
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: checkin input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/attendance.CheckinInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created checkin
+          schema:
+            $ref: '#/definitions/attendance.CheckinView'
+        "400":
+          description: invalid body / title required / session not in offering
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: offering or session not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a checkin
+      tags:
+      - attendance
+  /api/checkins/{id}:
+    get:
+      parameters:
+      - description: checkin id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: checkin detail
+          schema:
+            $ref: '#/definitions/attendance.CheckinView'
+        "400":
+          description: invalid id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a checkin
+      tags:
+      - attendance
+  /api/checkins/{id}/close:
+    post:
+      parameters:
+      - description: checkin id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: closed
+          schema:
+            type: string
+        "400":
+          description: invalid id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: already closed
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Close a checkin
+      tags:
+      - attendance
+  /api/checkins/{id}/export:
+    get:
+      parameters:
+      - description: checkin id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: xlsx download
+          schema:
+            type: file
+        "400":
+          description: invalid id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export a checkin's records as xlsx
+      tags:
+      - attendance
+  /api/checkins/{id}/records:
+    get:
+      parameters:
+      - description: checkin id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: record status
+        enum:
+        - present
+        - late
+        - absent
+        - leave
+        in: query
+        name: status
+        type: string
+      - description: search by student name/no
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged records
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid id/status
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: checkin not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List a checkin's records
+      tags:
+      - attendance
+  /api/checkins/{id}/records/{userId}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: checkin id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: student user id
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: new status
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/attendance.RecordUpdateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated record
+          schema:
+            $ref: '#/definitions/attendance.CheckinRecordView'
+        "400":
+          description: invalid id/status
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: checkin/student not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Correct a student's record
+      tags:
+      - attendance
+  /api/checkins/export:
+    get:
+      parameters:
+      - description: course offering id
+        in: query
+        name: offering_id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: xlsx download
+          schema:
+            type: file
+        "400":
+          description: offering_id required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: offering not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export offering attendance report as xlsx
+      tags:
+      - attendance
+  /api/checkins/me:
+    get:
+      parameters:
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged my checkins
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+      security:
+      - BearerAuth: []
+      summary: List the caller's own checkins
+      tags:
+      - attendance
+  /api/checkins/scan:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 6-digit scan code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/attendance.ScanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: scan result
+          schema:
+            $ref: '#/definitions/attendance.ScanResult'
+        "400":
+          description: invalid code
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: code not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: closed or expired
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Scan to check in
+      tags:
+      - attendance
+  /api/checkins/summary:
+    get:
+      parameters:
+      - description: course offering id
+        in: query
+        name: offering_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: summary
+          schema:
+            $ref: '#/definitions/attendance.OfferingSummary'
+        "400":
+          description: offering_id required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: offering not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: L2 semester attendance summary
+      tags:
+      - attendance
+securityDefinitions:
+  BearerAuth:
+    description: '"JWT Bearer token; prefix with ''Bearer ''."'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

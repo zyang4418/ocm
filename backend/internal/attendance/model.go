@@ -82,6 +82,19 @@ type CheckinInput struct {
 	DurationMinute int    `json:"durationMinute"`
 }
 
+// ScanRequest is the scan body (POST /api/checkins/scan). The handler decodes
+// an inline struct of the same shape; this named type backs the OpenAPI schema
+// so swaggo can reference it in @Param.
+type ScanRequest struct {
+	Code string `json:"code" example:"123456"`
+}
+
+// RecordUpdateInput is the correction body (PUT /api/checkins/{id}/records/{userId}).
+// Like ScanRequest, it documents the inline body the handler decodes.
+type RecordUpdateInput struct {
+	Status string `json:"status" example:"present" enums:"present,late,absent,leave"`
+}
+
 // CheckinRecordView is one student row of a checkin's record list. Rows come
 // from two sources: the expected roster (derived via student_profiles → admin
 // classes → teaching class of the offering; missing records read as absent)
