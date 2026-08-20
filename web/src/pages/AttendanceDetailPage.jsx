@@ -55,6 +55,12 @@ export default function AttendanceDetailPage() {
   const list = usePagedList({ path: `/api/checkins/${id}/records`, token, extraParams: { status: statusFilter } })
   const { loading } = list
 
+  // Carbon DataTable requires a unique `id` on each row; checkin records are
+  // keyed by userId (no `id` field from the API), so derive it here. Without
+  // this, row.id is undefined, the find() below misses, and r.displayName
+  // throws — white-screening the page once any record renders.
+  const tableRows = list.items.map((r) => ({ ...r, id: r.userId }))
+
   const [editTarget, setEditTarget] = useState(null)
   const [editStatus, setEditStatus] = useState('')
   const [editError, setEditError] = useState('')
@@ -269,7 +275,7 @@ export default function AttendanceDetailPage() {
           />
         )}
 
-        <DataTable rows={list.items} headers={headers}>
+        <DataTable rows={tableRows} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('detail.table.title')} description={t('detail.table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
