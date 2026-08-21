@@ -41,12 +41,12 @@ type Observation struct {
 	ID             int64           `json:"id"`
 	TemplateType   string          `json:"templateType"`
 	OccurrenceID   *int64          `json:"occurrenceId" validate:"optional"` // nullable FK -> course_sessions
-	CourseID       int64           `json:"courseId"`                        // FK -> course_offerings
-	ClassroomID    *int64          `json:"classroomId" validate:"optional"` // nullable FK -> classrooms
-	ObserverID     int64           `json:"observerId"`   // FK -> users
-	ObserveDate    string          `json:"observeDate"`  // "YYYY-MM-DD"
-	Sections       []int           `json:"sections"`     // normalized period indices
-	Status         string          `json:"status"`       // draft | submitted
+	CourseID       int64           `json:"courseId"`                         // FK -> course_offerings
+	ClassroomID    *int64          `json:"classroomId" validate:"optional"`  // nullable FK -> classrooms
+	ObserverID     int64           `json:"observerId"`                       // FK -> users
+	ObserveDate    string          `json:"observeDate"`                      // "YYYY-MM-DD"
+	Sections       []int           `json:"sections"`                         // normalized period indices
+	Status         string          `json:"status"`                           // draft | submitted
 	Scores         json.RawMessage `json:"scores" swaggertype:"object"`
 	TotalScore     *float64        `json:"totalScore" validate:"optional"`
 	Content        string          `json:"content"`
