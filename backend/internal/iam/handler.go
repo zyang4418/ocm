@@ -49,10 +49,24 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 }
 
 // listPermissions returns the full permission catalog (defined in code).
+//
+// @Summary      List the permission catalog
+// @Tags         iam
+// @Produce      json
+// @Success      200 {array} authz.Permission "permission catalog"
+// @Security     BearerAuth
+// @Router       /api/permissions [get]
 func (h *Handler) listPermissions(w http.ResponseWriter, _ *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, authz.Catalog)
 }
 
+// @Summary      List roles
+// @Tags         iam
+// @Produce      json
+// @Success      200 {array} Role "all roles with permissions"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/roles [get]
 func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 	roles, err := h.store.ListRoles(r.Context())
 	if err != nil {
@@ -84,6 +98,17 @@ func validateRoleInput(in *RoleInput, requireCode bool) string {
 	return ""
 }
 
+// @Summary      Create a role
+// @Tags         iam
+// @Accept       json
+// @Produce      json
+// @Param        body body RoleInput true "role input"
+// @Success      201 {object} Role "created role"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / unknown permission"
+// @Failure      409 {object} httpx.ErrorResponse "role code already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/roles [post]
 func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 	var in RoleInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -107,6 +132,19 @@ func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, role)
 }
 
+// @Summary      Update a role (code immutable)
+// @Tags         iam
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "role id"
+// @Param        body body RoleInput true "role input"
+// @Success      200 {object} Role "updated role"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / unknown permission"
+// @Failure      404 {object} httpx.ErrorResponse "role not found"
+// @Failure      409 {object} httpx.ErrorResponse "system role cannot be modified"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/roles/{id} [put]
 func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -150,6 +188,16 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, role)
 }
 
+// @Summary      Delete a role
+// @Tags         iam
+// @Param        id path int true "role id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid role id"
+// @Failure      404 {object} httpx.ErrorResponse "role not found"
+// @Failure      409 {object} httpx.ErrorResponse "system role cannot be deleted / role still in use"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/roles/{id} [delete]
 func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -189,6 +237,13 @@ func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// @Summary      List user groups
+// @Tags         iam
+// @Produce      json
+// @Success      200 {array} GroupView "groups with member counts"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/groups [get]
 func (h *Handler) listGroups(w http.ResponseWriter, r *http.Request) {
 	groups, err := h.store.ListGroups(r.Context())
 	if err != nil {
@@ -198,6 +253,16 @@ func (h *Handler) listGroups(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, groups)
 }
 
+// @Summary      Get a user group (edit form prefill)
+// @Tags         iam
+// @Produce      json
+// @Param        id path int true "group id"
+// @Success      200 {object} GroupDetail "group detail with members and roles"
+// @Failure      400 {object} httpx.ErrorResponse "invalid group id"
+// @Failure      404 {object} httpx.ErrorResponse "group not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/groups/{id} [get]
 func (h *Handler) getGroup(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -262,6 +327,18 @@ func (h *Handler) validateGroupInput(w http.ResponseWriter, r *http.Request, in 
 	return true
 }
 
+// @Summary      Create a user group
+// @Tags         iam
+// @Accept       json
+// @Produce      json
+// @Param        body body GroupInput true "group input"
+// @Success      201 {object} GroupView "created group"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / member does not exist"
+// @Failure      403 {object} httpx.ErrorResponse "only administrators can grant the admin role"
+// @Failure      409 {object} httpx.ErrorResponse "group name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/groups [post]
 func (h *Handler) createGroup(w http.ResponseWriter, r *http.Request) {
 	var in GroupInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -284,6 +361,20 @@ func (h *Handler) createGroup(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, group)
 }
 
+// @Summary      Update a user group
+// @Tags         iam
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "group id"
+// @Param        body body GroupInput true "group input"
+// @Success      200 {object} GroupView "updated group"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / member does not exist"
+// @Failure      403 {object} httpx.ErrorResponse "only administrators can grant the admin role"
+// @Failure      404 {object} httpx.ErrorResponse "group not found"
+// @Failure      409 {object} httpx.ErrorResponse "group name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/groups/{id} [put]
 func (h *Handler) updateGroup(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -315,6 +406,15 @@ func (h *Handler) updateGroup(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, group)
 }
 
+// @Summary      Delete a user group
+// @Tags         iam
+// @Param        id path int true "group id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid group id"
+// @Failure      404 {object} httpx.ErrorResponse "group not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/groups/{id} [delete]
 func (h *Handler) deleteGroup(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

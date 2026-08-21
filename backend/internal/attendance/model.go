@@ -42,10 +42,10 @@ type Checkin struct {
 	LateMinutes int        `json:"lateMinutes"`
 	Status      string     `json:"status"` // active | closed
 	StartsAt    time.Time  `json:"startsAt"`
-	ExpiresAt   *time.Time `json:"expiresAt"`
+	ExpiresAt   *time.Time `json:"expiresAt" validate:"optional"`
 	CreatedBy   int64      `json:"createdBy"`
 	CreatedAt   time.Time  `json:"createdAt"`
-	ClosedAt    *time.Time `json:"closedAt"`
+	ClosedAt    *time.Time `json:"closedAt" validate:"optional"`
 }
 
 // CheckinView augments Checkin with the offering/session display names and the
@@ -106,8 +106,8 @@ type CheckinRecordView struct {
 	StudentNo   string     `json:"studentNo"`
 	AdminClass  string     `json:"adminClass"` // "grade name", "" when unknown
 	Status      string     `json:"status"`
-	CheckedAt   *time.Time `json:"checkedAt"`
-	ModifiedAt  *time.Time `json:"modifiedAt"`
+	CheckedAt   *time.Time `json:"checkedAt" validate:"optional"`
+	ModifiedAt  *time.Time `json:"modifiedAt" validate:"optional"`
 	InRoster    bool       `json:"inRoster"`
 }
 
@@ -147,7 +147,7 @@ type MyCheckinView struct {
 	SessionText       string     `json:"sessionText"`
 	StartsAt          time.Time  `json:"startsAt"`
 	Status            string     `json:"status"`
-	CheckedAt         *time.Time `json:"checkedAt"`
+	CheckedAt         *time.Time `json:"checkedAt" validate:"optional"`
 }
 
 // SummaryRow is one student's semester attendance. Records maps checkinID to

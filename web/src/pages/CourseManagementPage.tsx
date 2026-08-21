@@ -26,6 +26,7 @@ import {
   TabPanels,
   TabPanel,
   TextInput,
+  type DataTableHeader,
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -34,10 +35,32 @@ import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
-import usePagedList from '../hooks/usePagedList'
+import usePagedList, { type PagedList } from '../hooks/usePagedList'
+import type {
+  CatalogCourse,
+  CatalogInput,
+  OfferingInput,
+  OfferingView,
+  Paged,
+  TeachingClassView,
+} from '../types/api'
 
-const emptyOffering = { catalogId: '', teachingClassId: '', teacher: '', semester: '', note: '' }
+// Form state keeps ids/numbers as strings while editing; converted on submit.
+interface OfferingForm {
+  catalogId: string
+  teachingClassId: string
+  teacher: string
+  semester: string
+  note: string
+}
+
+const emptyOffering: OfferingForm = { catalogId: '', teachingClassId: '', teacher: '', semester: '', note: '' }
 const emptyCatalog = { name: '', code: '', description: '' }
+
+// Delete target: which tab's row (discriminated for URL + confirm text).
+type DeleteTarget =
+  | { kind: 'offering'; row: OfferingView }
+  | { kind: 'catalog'; row: CatalogCourse }
 
 export default function CourseManagementPage() {
   const { t, i18n } = useTranslation('courses')
@@ -45,7 +68,7 @@ export default function CourseManagementPage() {
   const navigate = useNavigate()
   const canManage = can('course:manage')
 
-  const offeringHeaders = [
+  const offeringHeaders: DataTableHeader[] = [
     { key: 'id', header: t('offeringField.id') },
     { key: 'catalogName', header: t('offeringField.catalogName') },
     { key: 'catalogCode', header: t('offeringField.catalogCode') },
@@ -54,19 +77,19 @@ export default function CourseManagementPage() {
     { key: 'teacher', header: t('offeringField.teacher') },
     { key: 'semester', header: t('offeringField.semester') },
   ]
-  const catalogHeaders = [
+  const catalogHeaders: DataTableHeader[] = [
     { key: 'id', header: t('catalogField.id') },
     { key: 'name', header: t('catalogField.name') },
     { key: 'code', header: t('catalogField.code') },
     { key: 'description', header: t('catalogField.description') },
   ]
 
-  const offerings = usePagedList({ path: '/api/offerings', token })
-  const catalogList = usePagedList({ path: '/api/courses', token })
+  const offerings = usePagedList<OfferingView>({ path: '/api/offerings', token })
+  const catalogList = usePagedList<CatalogCourse>({ path: '/api/courses', token })
   // Dropdown options for the offering modal need (near-)full lists; pull the
   // maximum page. optionsKey re-triggers the fetch after catalog mutations.
-  const [catalogOptions, setCatalogOptions] = useState([])
-  const [teachingClasses, setTeachingClasses] = useState([])
+  const [catalogOptions, setCatalogOptions] = useState<CatalogCourse[]>([])
+  const [teachingClasses, setTeachingClasses] = useState<TeachingClassView[]>([])
   const [optionsKey, setOptionsKey] = useState(0)
   // Export errors are separate from the list fetches (the hooks own theirs).
   const [exportError, setExportError] = useState('')
@@ -74,28 +97,28 @@ export default function CourseManagementPage() {
 
   // offering modals
   const [offCreateOpen, setOffCreateOpen] = useState(false)
-  const [offForm, setOffForm] = useState(emptyOffering)
+  const [offForm, setOffForm] = useState<OfferingForm>(emptyOffering)
   const [offError, setOffError] = useState('')
   const [offSaving, setOffSaving] = useState(false)
-  const [offEditTarget, setOffEditTarget] = useState(null)
+  const [offEditTarget, setOffEditTarget] = useState<OfferingView | null>(null)
 
   // catalog modals
   const [catCreateOpen, setCatCreateOpen] = useState(false)
   const [catForm, setCatForm] = useState(emptyCatalog)
   const [catError, setCatError] = useState('')
   const [catSaving, setCatSaving] = useState(false)
-  const [catEditTarget, setCatEditTarget] = useState(null)
+  const [catEditTarget, setCatEditTarget] = useState<CatalogCourse | null>(null)
 
   // delete (shared)
-  const [delTarget, setDelTarget] = useState(null) // {kind:'offering'|'catalog', row}
+  const [delTarget, setDelTarget] = useState<DeleteTarget | null>(null)
   const [delError, setDelError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     Promise.all([
-      apiFetch('/api/courses?page_size=500', { token }),
-      apiFetch('/api/teaching-classes?page_size=500', { token }),
+      apiFetch<Paged<CatalogCourse>>('/api/courses?page_size=500', { token }),
+      apiFetch<Paged<TeachingClassView>>('/api/teaching-classes?page_size=500', { token }),
     ])
       .then(([cats, tcs]) => {
         if (cancelled) return
@@ -119,7 +142,39 @@ export default function CourseManagementPage() {
       setOffError(t('validation.offeringRequired'))
       return
     }
-    const body = {
+    // OfferingInput is a whole-object replace: keep the untouched fields of
+    // the edit target (or zeros on create) so they are not reset.
+    const base: OfferingInput = offEditTarget
+      ? {
+          catalogId: offEditTarget.catalogId,
+          college: offEditTarget.college,
+          courseSeq: offEditTarget.courseSeq,
+          maxStudents: offEditTarget.maxStudents,
+          note: offEditTarget.note,
+          requirement: offEditTarget.requirement,
+          semester: offEditTarget.semester,
+          teacher: offEditTarget.teacher,
+          teacherId: offEditTarget.teacherId,
+          teacherTitle: offEditTarget.teacherTitle,
+          teachingClassId: offEditTarget.teachingClassId,
+          weeklyHours: offEditTarget.weeklyHours,
+        }
+      : {
+          catalogId: 0,
+          college: '',
+          courseSeq: '',
+          maxStudents: 0,
+          note: '',
+          requirement: '',
+          semester: '',
+          teacher: '',
+          teacherId: '',
+          teacherTitle: '',
+          teachingClassId: 0,
+          weeklyHours: 0,
+        }
+    const body: OfferingInput = {
+      ...base,
       catalogId: Number(offForm.catalogId),
       teachingClassId: Number(offForm.teachingClassId),
       teacher: offForm.teacher.trim(),
@@ -138,13 +193,13 @@ export default function CourseManagementPage() {
       setOffEditTarget(null)
       offerings.reload()
     } catch (err) {
-      setOffError(err.message)
+      setOffError((err as Error).message)
     } finally {
       setOffSaving(false)
     }
   }
 
-  const openEditOffering = (o) => {
+  const openEditOffering = (o: OfferingView) => {
     setOffEditTarget(o)
     setOffForm({
       catalogId: String(o.catalogId),
@@ -163,11 +218,22 @@ export default function CourseManagementPage() {
       setCatError(t('validation.catalogNameRequired'))
       return
     }
-    const body = {
-      name: catForm.name.trim(),
-      code: catForm.code.trim(),
-      description: catForm.description.trim(),
-    }
+    // CatalogInput is a whole-object replace: keep the edit target's other
+    // fields (category/credits/examType/totalHours) intact.
+    const body: CatalogInput = catEditTarget
+      ? {
+          category: catEditTarget.category,
+          code: catEditTarget.code,
+          credits: catEditTarget.credits,
+          description: catEditTarget.description,
+          examType: catEditTarget.examType,
+          name: catEditTarget.name,
+          totalHours: catEditTarget.totalHours,
+        }
+      : { category: '', code: '', credits: 0, description: '', examType: '', name: '', totalHours: 0 }
+    body.name = catForm.name.trim()
+    body.code = catForm.code.trim()
+    body.description = catForm.description.trim()
     try {
       setCatSaving(true)
       setCatError('')
@@ -181,13 +247,13 @@ export default function CourseManagementPage() {
       catalogList.reload()
       setOptionsKey((k) => k + 1) // keep the modal's course dropdown in sync
     } catch (err) {
-      setCatError(err.message)
+      setCatError((err as Error).message)
     } finally {
       setCatSaving(false)
     }
   }
 
-  const openEditCatalog = (c) => {
+  const openEditCatalog = (c: CatalogCourse) => {
     setCatEditTarget(c)
     setCatForm({ name: c.name, code: c.code, description: c.description })
     setCatError('')
@@ -196,12 +262,13 @@ export default function CourseManagementPage() {
 
   // ---- delete ----
   const handleDelete = async () => {
-    const { kind, row } = delTarget
-    const url = kind === 'offering' ? `/api/offerings/${row.id}` : `/api/courses/${row.id}`
+    if (!delTarget) return
+    const url = delTarget.kind === 'offering' ? `/api/offerings/${delTarget.row.id}` : `/api/courses/${delTarget.row.id}`
     try {
       setDeleting(true)
       setDelError('')
       await apiFetch(url, { method: 'DELETE', token })
+      const kind = delTarget.kind
       setDelTarget(null)
       if (kind === 'offering') {
         offerings.reload()
@@ -210,13 +277,13 @@ export default function CourseManagementPage() {
         setOptionsKey((k) => k + 1)
       }
     } catch (err) {
-      setDelError(err.message)
+      setDelError((err as Error).message)
     } finally {
       setDeleting(false)
     }
   }
 
-  const renderActions = (kind, row) =>
+  const renderActions = (kind: DeleteTarget['kind'], row: OfferingView | CatalogCourse) =>
     canManage && (
       <TableCell>
         <div className="courses-page__actions">
@@ -226,7 +293,7 @@ export default function CourseManagementPage() {
             hasIconOnly
             renderIcon={Edit}
             iconDescription={t('action.edit', { ns: 'common' })}
-            onClick={() => (kind === 'offering' ? openEditOffering(row) : openEditCatalog(row))}
+            onClick={() => (kind === 'offering' ? openEditOffering(row as OfferingView) : openEditCatalog(row as CatalogCourse))}
           />
           <Button
             kind="ghost"
@@ -234,7 +301,7 @@ export default function CourseManagementPage() {
             hasIconOnly
             renderIcon={TrashCan}
             iconDescription={t('action.delete', { ns: 'common' })}
-            onClick={() => setDelTarget({ kind, row })}
+            onClick={() => setDelTarget(kind === 'offering' ? { kind, row: row as OfferingView } : { kind, row: row as CatalogCourse })}
           />
         </div>
       </TableCell>
@@ -244,8 +311,8 @@ export default function CourseManagementPage() {
   // separator (zh: "、", en: ", ") via Intl.ListFormat narrow style.
   const listFmt = new Intl.ListFormat(i18n.language, { style: 'narrow' })
 
-  const renderTable = (list, headers, kind) => (
-    <DataTable rows={list.items} headers={headers}>
+  const renderTable = (list: PagedList<OfferingView> | PagedList<CatalogCourse>, headers: DataTableHeader[], kind: 'offering' | 'catalog') => (
+    <DataTable rows={list.items.map((item) => ({ ...item, id: String(item.id) }))} headers={headers}>
       {({ rows, headers: th, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
         <TableContainer
           title={kind === 'offering' ? t('table.offering.title') : t('table.catalog.title')}
@@ -286,7 +353,7 @@ export default function CourseManagementPage() {
             <TableHead>
               <TableRow>
                 {th.map((h) => (
-                  <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
+                  <TableHeader {...getHeaderProps({ header: h })}>
                     {h.header}
                   </TableHeader>
                 ))}
@@ -307,19 +374,19 @@ export default function CourseManagementPage() {
               ) : (
                 rows.map((row) => {
                   const item = list.items.find((x) => String(x.id) === String(row.id))
+                  if (!item) return null
                   return (
-                    <TableRow key={row.id} {...getRowProps({ row })}>
+                    <TableRow {...getRowProps({ row })}>
                       {row.cells.map((cell) => {
                         if (cell.info.header === 'classNames') {
+                          const value = cell.value as string[]
                           return (
                             <TableCell key={cell.id}>
-                              {Array.isArray(cell.value) && cell.value.length
-                                ? listFmt.format(cell.value)
-                                : '-'}
+                              {Array.isArray(value) && value.length ? listFmt.format(value) : '-'}
                             </TableCell>
                           )
                         }
-                        return <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
+                        return <TableCell key={cell.id}>{(cell.value as string) || '-'}</TableCell>
                       })}
                       {renderActions(kind, item)}
                     </TableRow>
@@ -510,7 +577,7 @@ export default function CourseManagementPage() {
       >
         <p className="courses-page__confirm-text">
           {t(`deleteConfirm.${delTarget?.kind ?? 'offering'}`, {
-            name: delTarget?.kind === 'offering' ? delTarget?.row?.catalogName : delTarget?.row?.name,
+            name: delTarget?.kind === 'offering' ? delTarget.row.catalogName : delTarget?.kind === 'catalog' ? delTarget.row.name : '',
           })}
         </p>
         {delError && (

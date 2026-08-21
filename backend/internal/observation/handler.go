@@ -71,6 +71,27 @@ func (h *Handler) templates(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, t)
 }
 
+// list serves the (self-scoped) observation list. NOTE: the template schema
+// endpoint (GET /api/observations/templates) is intentionally not annotated:
+// its payload comes from the Python-derived schema.json of the (not yet
+// wired) docx renderer, so Go is not the source of truth for that shape.
+//
+// @Summary      List observations
+// @Tags         observations
+// @Produce      json
+// @Param        status query string false "filter by status" Enums(draft,submitted)
+// @Param        template_type query string false "filter by template type"
+// @Param        course_id query int false "filter by offering id"
+// @Param        start_date query string false "range start (Y-M-D)"
+// @Param        end_date query string false "range end (Y-M-D)"
+// @Param        q query string false "search"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged observation views (non-admins see only their own)"
+// @Failure      400 {object} httpx.ErrorResponse "invalid date filter"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/observations [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := Filter{
@@ -106,6 +127,16 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, list, total, p)
 }
 
+// @Summary      Get an observation
+// @Tags         observations
+// @Produce      json
+// @Param        id path int true "observation id"
+// @Success      200 {object} ObservationView "observation detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid observation id"
+// @Failure      404 {object} httpx.ErrorResponse "observation not found / not yours"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/observations/{id} [get]
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -129,6 +160,16 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Create an observation (draft)
+// @Tags         observations
+// @Accept       json
+// @Produce      json
+// @Param        body body ObservationInput true "observation input"
+// @Success      201 {object} ObservationView "created observation"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / offering not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/observations [post]
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	var in ObservationInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -158,6 +199,18 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Update a draft observation
+// @Tags         observations
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "observation id"
+// @Param        body body ObservationInput true "observation input"
+// @Success      200 {object} ObservationView "updated observation"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / not a draft / not yours"
+// @Failure      404 {object} httpx.ErrorResponse "observation not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/observations/{id} [put]
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -198,6 +251,15 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Delete a draft observation
+// @Tags         observations
+// @Param        id path int true "observation id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid id / not a draft / not yours"
+// @Failure      404 {object} httpx.ErrorResponse "observation not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/observations/{id} [delete]
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -221,6 +283,16 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Submit an observation (locks it)
+// @Tags         observations
+// @Produce      json
+// @Param        id path int true "observation id"
+// @Success      200 {object} ObservationView "submitted observation"
+// @Failure      400 {object} httpx.ErrorResponse "required form fields missing"
+// @Failure      404 {object} httpx.ErrorResponse "observation not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/observations/{id}/submit [post]
 func (h *Handler) submit(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

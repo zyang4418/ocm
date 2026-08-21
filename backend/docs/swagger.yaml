@@ -1,4 +1,39 @@
 definitions:
+  ai.MaskedSettings:
+    properties:
+      apiKey:
+        type: string
+      apiKeySet:
+        type: boolean
+      baseUrl:
+        type: string
+      enabled:
+        type: boolean
+      model:
+        type: string
+    required:
+    - apiKey
+    - apiKeySet
+    - baseUrl
+    - enabled
+    - model
+    type: object
+  ai.Settings:
+    properties:
+      apiKey:
+        type: string
+      baseUrl:
+        type: string
+      enabled:
+        type: boolean
+      model:
+        type: string
+    required:
+    - apiKey
+    - baseUrl
+    - enabled
+    - model
+    type: object
   attendance.CheckinInput:
     properties:
       durationMinute:
@@ -11,6 +46,12 @@ definitions:
         type: integer
       title:
         type: string
+    required:
+    - durationMinute
+    - lateMinutes
+    - offeringId
+    - sessionId
+    - title
     type: object
   attendance.CheckinRecordView:
     properties:
@@ -33,6 +74,14 @@ definitions:
         type: string
       userId:
         type: integer
+    required:
+    - adminClass
+    - checkinId
+    - displayName
+    - inRoster
+    - status
+    - studentNo
+    - userId
     type: object
   attendance.CheckinView:
     properties:
@@ -73,6 +122,23 @@ definitions:
         type: string
       title:
         type: string
+    required:
+    - code
+    - counts
+    - courseName
+    - createdAt
+    - createdBy
+    - id
+    - lateMinutes
+    - offeringId
+    - semester
+    - sessionId
+    - sessionText
+    - startsAt
+    - status
+    - teacher
+    - teachingClassName
+    - title
     type: object
   attendance.Counts:
     properties:
@@ -86,6 +152,12 @@ definitions:
         type: integer
       present:
         type: integer
+    required:
+    - absent
+    - expected
+    - late
+    - leave
+    - present
     type: object
   attendance.OfferingSummary:
     properties:
@@ -107,6 +179,14 @@ definitions:
         type: string
       teachingClassName:
         type: string
+    required:
+    - checkins
+    - courseName
+    - offeringId
+    - rows
+    - semester
+    - teacher
+    - teachingClassName
     type: object
   attendance.RecordUpdateInput:
     properties:
@@ -118,12 +198,16 @@ definitions:
         - leave
         example: present
         type: string
+    required:
+    - status
     type: object
   attendance.ScanRequest:
     properties:
       code:
         example: "123456"
         type: string
+    required:
+    - code
     type: object
   attendance.ScanResult:
     properties:
@@ -137,6 +221,12 @@ definitions:
         type: string
       title:
         type: string
+    required:
+    - checkinId
+    - inRoster
+    - isNew
+    - status
+    - title
     type: object
   attendance.SummaryRow:
     properties:
@@ -158,12 +248,709 @@ definitions:
         type: object
       userId:
         type: integer
+    required:
+    - adminClass
+    - displayName
+    - inRoster
+    - records
+    - studentNo
+    - totals
+    - userId
+    type: object
+  auth.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  auth.LoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/auth.UserView'
+    required:
+    - token
+    - user
+    type: object
+  auth.UserView:
+    properties:
+      displayName:
+        type: string
+      groups:
+        items:
+          $ref: '#/definitions/iam.GroupBrief'
+        type: array
+      id:
+        type: integer
+      permissions:
+        items:
+          type: string
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/iam.RoleBrief'
+        type: array
+      type:
+        type: string
+      username:
+        type: string
+    required:
+    - displayName
+    - groups
+    - id
+    - permissions
+    - roles
+    - type
+    - username
+    type: object
+  auth.WxBindRequest:
+    properties:
+      code:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - code
+    - password
+    - username
+    type: object
+  auth.WxLoginRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  authz.Permission:
+    properties:
+      category:
+        type: string
+      categoryName:
+        type: string
+      code:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - category
+    - categoryName
+    - code
+    - description
+    - name
+    type: object
+  booking.BookingInput:
+    properties:
+      classroomId:
+        type: integer
+      date:
+        type: string
+      periodEnd:
+        type: integer
+      periodStart:
+        type: integer
+      purpose:
+        type: string
+    required:
+    - classroomId
+    - date
+    - periodEnd
+    - periodStart
+    - purpose
+    type: object
+  booking.BookingView:
+    properties:
+      classroomId:
+        type: integer
+      classroomName:
+        type: string
+      createdAt:
+        type: string
+      date:
+        description: '"YYYY-MM-DD"'
+        type: string
+      displayName:
+        type: string
+      id:
+        type: integer
+      periodEnd:
+        type: integer
+      periodStart:
+        type: integer
+      purpose:
+        type: string
+      reviewedAt:
+        type: string
+      status:
+        type: string
+      userId:
+        type: integer
+      username:
+        type: string
+    required:
+    - classroomId
+    - classroomName
+    - createdAt
+    - date
+    - displayName
+    - id
+    - periodEnd
+    - periodStart
+    - purpose
+    - status
+    - userId
+    - username
+    type: object
+  booking.DailyCount:
+    properties:
+      count:
+        type: integer
+      date:
+        type: string
+    required:
+    - count
+    - date
+    type: object
+  booking.ReviewInput:
+    properties:
+      decision:
+        description: '"approve" or "reject"'
+        type: string
+    required:
+    - decision
+    type: object
+  classroom.Classroom:
+    properties:
+      building:
+        type: string
+      campus:
+        type: string
+      capacity:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      floor:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+    required:
+    - building
+    - campus
+    - capacity
+    - createdAt
+    - description
+    - floor
+    - id
+    - name
+    - status
+    - type
+    type: object
+  classroom.ClassroomInput:
+    properties:
+      building:
+        type: string
+      campus:
+        type: string
+      capacity:
+        type: integer
+      description:
+        type: string
+      floor:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+    required:
+    - building
+    - campus
+    - capacity
+    - description
+    - floor
+    - name
+    - status
+    - type
+    type: object
+  classroom.RepairInput:
+    properties:
+      classroomId:
+        type: integer
+      description:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+    required:
+    - classroomId
+    - description
+    - images
+    type: object
+  classroom.RepairUpdateInput:
+    properties:
+      remark:
+        type: string
+      status:
+        type: string
+    required:
+    - remark
+    - status
+    type: object
+  classroom.RepairView:
+    properties:
+      assigneeId:
+        type: integer
+      assigneeName:
+        type: string
+      building:
+        type: string
+      classroomId:
+        type: integer
+      classroomName:
+        type: string
+      createdAt:
+        type: string
+      creatorId:
+        type: integer
+      creatorName:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      images:
+        items:
+          type: string
+        type: array
+      remark:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - assigneeName
+    - building
+    - classroomId
+    - classroomName
+    - createdAt
+    - creatorId
+    - creatorName
+    - description
+    - id
+    - images
+    - remark
+    - status
+    - updatedAt
+    type: object
+  course.CatalogCourse:
+    properties:
+      category:
+        description: 课程类别二：专业基础课/专业课/学科基础课/通识教育课
+        type: string
+      code:
+        type: string
+      createdAt:
+        type: string
+      credits:
+        type: number
+      description:
+        type: string
+      examType:
+        description: 考核方式：考试/考查
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      totalHours:
+        type: integer
+    required:
+    - category
+    - code
+    - createdAt
+    - credits
+    - description
+    - examType
+    - id
+    - name
+    - totalHours
+    type: object
+  course.CatalogInput:
+    properties:
+      category:
+        type: string
+      code:
+        type: string
+      credits:
+        type: number
+      description:
+        type: string
+      examType:
+        type: string
+      name:
+        type: string
+      totalHours:
+        type: integer
+    required:
+    - category
+    - code
+    - credits
+    - description
+    - examType
+    - name
+    - totalHours
+    type: object
+  course.OfferingInput:
+    properties:
+      catalogId:
+        type: integer
+      college:
+        type: string
+      courseSeq:
+        type: string
+      maxStudents:
+        type: integer
+      note:
+        type: string
+      requirement:
+        type: string
+      semester:
+        type: string
+      teacher:
+        type: string
+      teacherId:
+        type: string
+      teacherTitle:
+        type: string
+      teachingClassId:
+        type: integer
+      weeklyHours:
+        type: integer
+    required:
+    - catalogId
+    - college
+    - courseSeq
+    - maxStudents
+    - note
+    - requirement
+    - semester
+    - teacher
+    - teacherId
+    - teacherTitle
+    - teachingClassId
+    - weeklyHours
+    type: object
+  course.OfferingView:
+    properties:
+      catalogCode:
+        type: string
+      catalogId:
+        type: integer
+      catalogName:
+        type: string
+      classNames:
+        items:
+          type: string
+        type: array
+      college:
+        description: 开课学院
+        type: string
+      courseSeq:
+        description: 课程序号，如 113130004.68
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      maxStudents:
+        description: 人数上限
+        type: integer
+      note:
+        type: string
+      requirement:
+        description: 课程类别一：必修/限选/任选
+        type: string
+      semester:
+        type: string
+      teacher:
+        type: string
+      teacherId:
+        description: 教师工号（合上课逗号合并）
+        type: string
+      teacherTitle:
+        description: 教师职称
+        type: string
+      teachingClassId:
+        type: integer
+      teachingClassName:
+        type: string
+      weeklyHours:
+        description: 周学时
+        type: integer
+    required:
+    - catalogCode
+    - catalogId
+    - catalogName
+    - classNames
+    - college
+    - courseSeq
+    - createdAt
+    - id
+    - maxStudents
+    - note
+    - requirement
+    - semester
+    - teacher
+    - teacherId
+    - teacherTitle
+    - teachingClassId
+    - teachingClassName
+    - weeklyHours
+    type: object
+  course.SessionInput:
+    properties:
+      classroomId:
+        type: integer
+      date:
+        type: string
+      note:
+        type: string
+      offeringId:
+        type: integer
+      periodEnd:
+        type: integer
+      periodStart:
+        type: integer
+    required:
+    - classroomId
+    - date
+    - note
+    - offeringId
+    - periodEnd
+    - periodStart
+    type: object
+  course.SessionView:
+    properties:
+      catalogCode:
+        type: string
+      classNames:
+        items:
+          type: string
+        type: array
+      classroomId:
+        type: integer
+      classroomName:
+        type: string
+      courseName:
+        type: string
+      createdAt:
+        type: string
+      date:
+        description: '"YYYY-MM-DD"'
+        type: string
+      id:
+        type: integer
+      note:
+        type: string
+      offeringId:
+        type: integer
+      periodEnd:
+        type: integer
+      periodStart:
+        type: integer
+      semester:
+        type: string
+      teacher:
+        type: string
+      teachingClassName:
+        type: string
+    required:
+    - catalogCode
+    - classNames
+    - classroomId
+    - classroomName
+    - courseName
+    - createdAt
+    - date
+    - id
+    - note
+    - offeringId
+    - periodEnd
+    - periodStart
+    - semester
+    - teacher
+    - teachingClassName
+    type: object
+  course.TimetableDay:
+    properties:
+      date:
+        type: string
+      dayOfWeek:
+        description: 1=Mon .. 7=Sun
+        type: integer
+      regimeName:
+        type: string
+      slots:
+        items:
+          $ref: '#/definitions/course.TimetableSlot'
+        type: array
+    required:
+    - date
+    - dayOfWeek
+    - regimeName
+    - slots
+    type: object
+  course.TimetableSlot:
+    properties:
+      endTime:
+        type: string
+      periodIndex:
+        type: integer
+      session:
+        allOf:
+        - $ref: '#/definitions/course.SessionView'
+        description: nil when the slot is free
+      startTime:
+        type: string
+    required:
+    - endTime
+    - periodIndex
+    - startTime
+    type: object
+  dashboard.BookingsSection:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/booking.BookingView'
+        type: array
+      total:
+        type: integer
+    required:
+    - items
+    - total
+    type: object
+  dashboard.PeriodCount:
+    properties:
+      count:
+        type: integer
+      period:
+        type: integer
+    required:
+    - count
+    - period
+    type: object
+  dashboard.RepairsSection:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/classroom.RepairView'
+        type: array
+      total:
+        type: integer
+    required:
+    - items
+    - total
+    type: object
+  dashboard.SessionsSection:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/course.SessionView'
+        type: array
+      total:
+        type: integer
+    required:
+    - items
+    - total
+    type: object
+  dashboard.Summary:
+    properties:
+      bookingLoad:
+        description: |-
+          BookingLoad is approved booking counts per day over the next 14 days,
+          zero-filled. Scope matches the caller: booking:approve sees every
+          booking, everyone else only their own. Visible to every authenticated
+          subject.
+        items:
+          $ref: '#/definitions/booking.DailyCount'
+        type: array
+      classroomTotal:
+        description: ClassroomTotal is the number of managed classrooms (classroom:read).
+        type: integer
+      date:
+        description: |-
+          Date is the echoed "YYYY-MM-DD" school day the figures refer to
+          (supplied by the client so server/client timezone skew cannot shift
+          "today").
+        type: string
+      myBookings:
+        description: |-
+          MyBookings is the caller's own approved bookings starting at Date,
+          soonest first. Visible to every authenticated subject: a booking's
+          creator can always see their own reservation.
+        items:
+          $ref: '#/definitions/booking.BookingView'
+        type: array
+      openRepairs:
+        allOf:
+        - $ref: '#/definitions/dashboard.RepairsSection'
+        description: |-
+          OpenRepairs is the unresolved ticket queue, open or processing,
+          scoped like the repair list itself: repair:assign sees every ticket,
+          a plain repair:create only their own (repair:create OR repair:assign).
+      pendingBookings:
+        allOf:
+        - $ref: '#/definitions/dashboard.BookingsSection'
+        description: PendingBookings is the pending-approval queue (booking:approve).
+      recentLogs:
+        description: RecentLogs is the latest audit trail entries (log:read).
+        items:
+          $ref: '#/definitions/systemlog.LogView'
+        type: array
+      sessionPeriods:
+        description: |-
+          SessionPeriods is today's occupancy histogram: for each period index
+          1..max, how many sessions are running (a session spanning periods 1-2
+          counts in both slots). Filled alongside TodaySessions from the same
+          query, so it carries the same course:read gate (course:read).
+        items:
+          $ref: '#/definitions/dashboard.PeriodCount'
+        type: array
+      todaySessions:
+        allOf:
+        - $ref: '#/definitions/dashboard.SessionsSection'
+        description: |-
+          TodaySessions is the day's course session count plus a preview of the
+          first sessions by period (course:read).
+    required:
+    - date
     type: object
   httpx.ErrorResponse:
     properties:
       error:
         example: invalid request body
         type: string
+    required:
+    - error
     type: object
   httpx.Paged:
     properties:
@@ -174,6 +961,942 @@ definitions:
         type: integer
       total:
         type: integer
+    required:
+    - items
+    - page
+    - pageSize
+    - total
+    type: object
+  iam.GroupBrief:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - id
+    - name
+    type: object
+  iam.GroupDetail:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      memberCount:
+        type: integer
+      members:
+        items:
+          $ref: '#/definitions/iam.GroupMemberView'
+        type: array
+      name:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/iam.RoleBrief'
+        type: array
+    required:
+    - createdAt
+    - description
+    - id
+    - memberCount
+    - members
+    - name
+    - roles
+    type: object
+  iam.GroupInput:
+    properties:
+      description:
+        type: string
+      members:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      roles:
+        items:
+          type: integer
+        type: array
+    required:
+    - description
+    - members
+    - name
+    - roles
+    type: object
+  iam.GroupMemberView:
+    properties:
+      displayName:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    required:
+    - displayName
+    - id
+    - username
+    type: object
+  iam.GroupView:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      memberCount:
+        type: integer
+      name:
+        type: string
+    required:
+    - createdAt
+    - description
+    - id
+    - memberCount
+    - name
+    type: object
+  iam.PermGrantInput:
+    properties:
+      expiresAt:
+        type: string
+      permission:
+        type: string
+    required:
+    - permission
+    type: object
+  iam.PermGrantView:
+    properties:
+      expiresAt:
+        type: string
+      permission:
+        type: string
+    required:
+    - permission
+    type: object
+  iam.Role:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      isSystem:
+        type: boolean
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    required:
+    - code
+    - description
+    - id
+    - isSystem
+    - name
+    - permissions
+    type: object
+  iam.RoleBrief:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - code
+    - id
+    - name
+    type: object
+  iam.RoleGrantInput:
+    properties:
+      expiresAt:
+        type: string
+      roleCode:
+        type: string
+    required:
+    - roleCode
+    type: object
+  iam.RoleGrantView:
+    properties:
+      code:
+        type: string
+      expiresAt:
+        type: string
+      name:
+        type: string
+      roleId:
+        type: integer
+    required:
+    - code
+    - name
+    - roleId
+    type: object
+  iam.RoleInput:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    required:
+    - code
+    - description
+    - name
+    - permissions
+    type: object
+  iam.UserGrantView:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/iam.GroupBrief'
+        type: array
+      permissions:
+        items:
+          $ref: '#/definitions/iam.PermGrantView'
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/iam.RoleGrantView'
+        type: array
+    required:
+    - groups
+    - permissions
+    - roles
+    type: object
+  importer.Job:
+    properties:
+      createdAt:
+        type: string
+      errorReport:
+        type: string
+      failedRows:
+        type: integer
+      filename:
+        type: string
+      finishedAt:
+        type: string
+      id:
+        type: integer
+      rows:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+      startedAt:
+        type: string
+      status:
+        type: string
+      succeededRows:
+        type: integer
+      totalRows:
+        type: integer
+      type:
+        type: string
+      userId:
+        type: integer
+    required:
+    - createdAt
+    - errorReport
+    - failedRows
+    - filename
+    - id
+    - status
+    - succeededRows
+    - totalRows
+    - type
+    - userId
+    type: object
+  importer.JobAccepted:
+    properties:
+      id:
+        type: integer
+      status:
+        type: string
+    required:
+    - id
+    - status
+    type: object
+  importer.JobErrors:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/importer.RowError'
+        type: array
+    required:
+    - errors
+    type: object
+  importer.PreviewRowsPage:
+    properties:
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      rows:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+      total:
+        type: integer
+    required:
+    - page
+    - pageSize
+    - rows
+    - total
+    type: object
+  importer.RowError:
+    properties:
+      error:
+        type: string
+      row:
+        type: integer
+    required:
+    - error
+    - row
+    type: object
+  importer.SplitJobRef:
+    properties:
+      id:
+        type: integer
+      status:
+        type: string
+      type:
+        type: string
+    required:
+    - id
+    - status
+    - type
+    type: object
+  importer.SplitResult:
+    properties:
+      jobs:
+        items:
+          $ref: '#/definitions/importer.SplitJobRef'
+        type: array
+      stats:
+        $ref: '#/definitions/jwc.Stats'
+      warnings:
+        items:
+          type: string
+        type: array
+    required:
+    - jobs
+    - stats
+    - warnings
+    type: object
+  jwc.Stats:
+    properties:
+      adminClasses:
+        description: 去重后行政班数
+        type: integer
+      catalogCourses:
+        description: 去重后课程数
+        type: integer
+      classrooms:
+        description: 去重后教室数
+        type: integer
+      noTeacherFilled:
+        description: 无教师已填「未安排」的开课数
+        type: integer
+      offerings:
+        description: 开课数
+        type: integer
+      rows:
+        description: 源表数据行数
+        type: integer
+      sessions:
+        description: 展开后课次数
+        type: integer
+      skippedEmptyAdmin:
+        description: 空行政班跳过的开课数
+        type: integer
+      skippedParallel:
+        description: 平行教学班跳过的开课数
+        type: integer
+      teachingClasses:
+        description: 教学班数
+        type: integer
+      warnings:
+        description: 人类可读告警
+        items:
+          type: string
+        type: array
+    required:
+    - adminClasses
+    - catalogCourses
+    - classrooms
+    - noTeacherFilled
+    - offerings
+    - rows
+    - sessions
+    - skippedEmptyAdmin
+    - skippedParallel
+    - teachingClasses
+    - warnings
+    type: object
+  mail.MaskedSettings:
+    properties:
+      enabled:
+        type: boolean
+      encryption:
+        type: string
+      fromAddress:
+        type: string
+      fromName:
+        type: string
+      host:
+        type: string
+      password:
+        type: string
+      passwordSet:
+        type: boolean
+      port:
+        type: integer
+      username:
+        type: string
+    required:
+    - enabled
+    - encryption
+    - fromAddress
+    - fromName
+    - host
+    - password
+    - passwordSet
+    - port
+    - username
+    type: object
+  mail.Settings:
+    properties:
+      enabled:
+        type: boolean
+      encryption:
+        type: string
+      fromAddress:
+        type: string
+      fromName:
+        type: string
+      host:
+        type: string
+      password:
+        type: string
+      port:
+        type: integer
+      username:
+        type: string
+    required:
+    - enabled
+    - encryption
+    - fromAddress
+    - fromName
+    - host
+    - password
+    - port
+    - username
+    type: object
+  observation.ObservationInput:
+    properties:
+      classroomId:
+        type: integer
+      courseId:
+        type: integer
+      formData:
+        type: object
+      isAnonymous:
+        type: boolean
+      observeDate:
+        type: string
+      occurrenceId:
+        type: integer
+      sections:
+        items:
+          type: integer
+        type: array
+      templateType:
+        type: string
+    required:
+    - courseId
+    - formData
+    - isAnonymous
+    - observeDate
+    - sections
+    - templateType
+    type: object
+  observation.ObservationView:
+    properties:
+      classroomId:
+        description: nullable FK -> classrooms
+        type: integer
+      classroomName:
+        type: string
+      content:
+        type: string
+      courseCode:
+        type: string
+      courseId:
+        description: FK -> course_offerings
+        type: integer
+      courseName:
+        type: string
+      courseSnapshot:
+        type: object
+      createdAt:
+        type: string
+      exportedAt:
+        type: string
+      formData:
+        type: object
+      id:
+        type: integer
+      isAnonymous:
+        type: boolean
+      observeDate:
+        description: '"YYYY-MM-DD"'
+        type: string
+      observerId:
+        description: FK -> users
+        type: integer
+      observerName:
+        type: string
+      occurrenceId:
+        description: nullable FK -> course_sessions
+        type: integer
+      remark:
+        type: string
+      scores:
+        type: object
+      sections:
+        description: normalized period indices
+        items:
+          type: integer
+        type: array
+      status:
+        description: draft | submitted
+        type: string
+      teacher:
+        type: string
+      teachingClassName:
+        type: string
+      templateType:
+        type: string
+      totalScore:
+        type: number
+      updatedAt:
+        type: string
+    required:
+    - classroomName
+    - content
+    - courseCode
+    - courseId
+    - courseName
+    - courseSnapshot
+    - createdAt
+    - formData
+    - id
+    - isAnonymous
+    - observeDate
+    - observerId
+    - observerName
+    - remark
+    - scores
+    - sections
+    - status
+    - teacher
+    - teachingClassName
+    - templateType
+    - updatedAt
+    type: object
+  schedule.Period:
+    properties:
+      endTime:
+        description: '"HH:MM"'
+        type: string
+      id:
+        type: integer
+      periodIndex:
+        type: integer
+      regimeId:
+        type: integer
+      startTime:
+        description: '"HH:MM"'
+        type: string
+    required:
+    - endTime
+    - id
+    - periodIndex
+    - regimeId
+    - startTime
+    type: object
+  schedule.PeriodInput:
+    properties:
+      endTime:
+        type: string
+      periodIndex:
+        type: integer
+      startTime:
+        type: string
+    required:
+    - endTime
+    - periodIndex
+    - startTime
+    type: object
+  schedule.PeriodsInput:
+    properties:
+      periods:
+        items:
+          $ref: '#/definitions/schedule.PeriodInput'
+        type: array
+    required:
+    - periods
+    type: object
+  schedule.Regime:
+    properties:
+      createdAt:
+        type: string
+      effectiveDay:
+        type: integer
+      effectiveMonth:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      periods:
+        items:
+          $ref: '#/definitions/schedule.Period'
+        type: array
+    required:
+    - createdAt
+    - effectiveDay
+    - effectiveMonth
+    - id
+    - name
+    - periods
+    type: object
+  schedule.RegimeInput:
+    properties:
+      effectiveDay:
+        type: integer
+      effectiveMonth:
+        type: integer
+      name:
+        type: string
+    required:
+    - effectiveDay
+    - effectiveMonth
+    - name
+    type: object
+  storage.MaskedSettings:
+    properties:
+      accessKey:
+        type: string
+      bucket:
+        type: string
+      enabled:
+        type: boolean
+      endpoint:
+        type: string
+      publicBaseUrl:
+        type: string
+      region:
+        type: string
+      secretKey:
+        type: string
+      secretKeySet:
+        type: boolean
+      usePathStyle:
+        type: boolean
+      useSsl:
+        type: boolean
+    required:
+    - accessKey
+    - bucket
+    - enabled
+    - endpoint
+    - publicBaseUrl
+    - region
+    - secretKey
+    - secretKeySet
+    - usePathStyle
+    - useSsl
+    type: object
+  storage.Settings:
+    properties:
+      accessKey:
+        type: string
+      bucket:
+        type: string
+      enabled:
+        type: boolean
+      endpoint:
+        type: string
+      publicBaseUrl:
+        type: string
+      region:
+        type: string
+      secretKey:
+        type: string
+      usePathStyle:
+        type: boolean
+      useSsl:
+        type: boolean
+    required:
+    - accessKey
+    - bucket
+    - enabled
+    - endpoint
+    - publicBaseUrl
+    - region
+    - secretKey
+    - usePathStyle
+    - useSsl
+    type: object
+  systemlog.LogView:
+    properties:
+      actorId:
+        description: null when the row has no actor
+        type: integer
+      actorName:
+        type: string
+      clientIp:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      method:
+        type: string
+      path:
+        type: string
+      statusCode:
+        type: integer
+      summary:
+        type: string
+    required:
+    - actorName
+    - clientIp
+    - createdAt
+    - id
+    - method
+    - path
+    - statusCode
+    - summary
+    type: object
+  systemlog.Settings:
+    properties:
+      retentionDays:
+        type: integer
+      retentionEnabled:
+        type: boolean
+    required:
+    - retentionDays
+    - retentionEnabled
+    type: object
+  user.AdminClass:
+    properties:
+      createdAt:
+        type: string
+      grade:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      note:
+        type: string
+    required:
+    - createdAt
+    - grade
+    - id
+    - name
+    - note
+    type: object
+  user.AdminClassInput:
+    properties:
+      grade:
+        type: string
+      name:
+        type: string
+      note:
+        type: string
+    required:
+    - grade
+    - name
+    - note
+    type: object
+  user.ChangePasswordInput:
+    properties:
+      password:
+        type: string
+    required:
+    - password
+    type: object
+  user.ClassRef:
+    properties:
+      grade:
+        description: Grade is included so the UI can render the full "2024级/计算机244"
+          label.
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - grade
+    - id
+    - name
+    type: object
+  user.CreateUserInput:
+    properties:
+      displayName:
+        type: string
+      password:
+        type: string
+      type:
+        type: string
+      username:
+        type: string
+    required:
+    - displayName
+    - password
+    - type
+    - username
+    type: object
+  user.StudentProfileInput:
+    properties:
+      note:
+        type: string
+      studentNo:
+        type: string
+      userId:
+        type: integer
+    required:
+    - note
+    - studentNo
+    - userId
+    type: object
+  user.StudentProfileView:
+    properties:
+      adminClassId:
+        type: integer
+      displayName:
+        type: string
+      note:
+        type: string
+      studentNo:
+        type: string
+      userId:
+        type: integer
+      username:
+        type: string
+    required:
+    - adminClassId
+    - displayName
+    - note
+    - studentNo
+    - userId
+    - username
+    type: object
+  user.TeachingClassInput:
+    properties:
+      classIds:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      note:
+        type: string
+    required:
+    - classIds
+    - name
+    - note
+    type: object
+  user.TeachingClassView:
+    properties:
+      classes:
+        items:
+          $ref: '#/definitions/user.ClassRef'
+        type: array
+      createdAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      note:
+        type: string
+    required:
+    - classes
+    - createdAt
+    - id
+    - name
+    - note
+    type: object
+  user.UpdateUserInput:
+    properties:
+      displayName:
+        type: string
+      type:
+        type: string
+    required:
+    - displayName
+    - type
+    type: object
+  user.User:
+    properties:
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      groups:
+        items:
+          $ref: '#/definitions/iam.GroupBrief'
+        type: array
+      id:
+        type: integer
+      roles:
+        items:
+          $ref: '#/definitions/iam.RoleBrief'
+        type: array
+      type:
+        type: string
+      username:
+        type: string
+    required:
+    - createdAt
+    - displayName
+    - id
+    - type
+    - username
+    type: object
+  user.UserPermissionsInput:
+    properties:
+      permissions:
+        items:
+          $ref: '#/definitions/iam.PermGrantInput'
+        type: array
+    required:
+    - permissions
+    type: object
+  user.UserRolesInput:
+    properties:
+      roles:
+        items:
+          $ref: '#/definitions/iam.RoleGrantInput'
+        type: array
+    required:
+    - roles
     type: object
 info:
   contact: {}
@@ -182,6 +1905,680 @@ info:
   title: OCM 智慧教室管理平台 API
   version: "1.0"
 paths:
+  /api/admin-classes:
+    get:
+      parameters:
+      - description: search by grade/name
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged admin classes
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List admin classes
+      tags:
+      - org
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: admin class input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.AdminClassInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created admin class
+          schema:
+            $ref: '#/definitions/user.AdminClass'
+        "400":
+          description: invalid body / grade and name required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: grade + name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an admin class
+      tags:
+      - org
+  /api/admin-classes/{id}:
+    delete:
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid admin class id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: teaching classes still reference the admin class
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an admin class
+      tags:
+      - org
+    get:
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: admin class
+          schema:
+            $ref: '#/definitions/user.AdminClass'
+        "400":
+          description: invalid admin class id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an admin class (with members)
+      tags:
+      - org
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: admin class input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.AdminClassInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated admin class
+          schema:
+            $ref: '#/definitions/user.AdminClass'
+        "400":
+          description: invalid body / grade and name required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: grade + name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an admin class
+      tags:
+      - org
+  /api/admin-classes/{id}/students:
+    get:
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: roster entries
+          schema:
+            items:
+              $ref: '#/definitions/user.StudentProfileView'
+            type: array
+        "400":
+          description: invalid admin class id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List a class's roster
+      tags:
+      - org
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: roster entry input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.StudentProfileInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: added roster entry
+          schema:
+            $ref: '#/definitions/user.StudentProfileView'
+        "400":
+          description: invalid body / user is not a student
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: student already in a class
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a student to the roster
+      tags:
+      - org
+  /api/admin-classes/{id}/students/{userId}:
+    delete:
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: user is not in this class
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a student from the roster
+      tags:
+      - org
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: admin class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: roster entry input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.StudentProfileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated roster entry
+          schema:
+            $ref: '#/definitions/user.StudentProfileView'
+        "400":
+          description: invalid body / user is not in this class
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a roster entry
+      tags:
+      - org
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token + user view
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "401":
+          description: invalid credentials
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Login with username/password
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user view with roles/groups/permissions
+          schema:
+            $ref: '#/definitions/auth.UserView'
+        "401":
+          description: not authenticated
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the current user's identity
+      tags:
+      - auth
+  /api/auth/wx-bind:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: credentials + wx.login() code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.WxBindRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token + user view
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: invalid body / already bound
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: invalid credentials
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Bind a WeChat openid to an existing account
+      tags:
+      - auth
+  /api/auth/wx-login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: wx.login() code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.WxLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token + user view
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: code required / account not bound
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: WeChat mini-program silent login (bound accounts only)
+      tags:
+      - auth
+  /api/auth/wx-unbind:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: fresh token + user view
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: no binding to remove
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: not authenticated
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Unbind the current user's WeChat openid
+      tags:
+      - auth
+  /api/bookings:
+    get:
+      parameters:
+      - description: filter by classroom id
+        in: query
+        name: classroom_id
+        type: integer
+      - description: filter by status
+        enum:
+        - pending
+        - approved
+        - rejected
+        - cancelled
+        in: query
+        name: status
+        type: string
+      - description: date range start (Y-M-D)
+        in: query
+        name: from
+        type: string
+      - description: date range end (Y-M-D)
+        in: query
+        name: to
+        type: string
+      - description: search
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged booking views
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid filter
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List classroom bookings
+      tags:
+      - bookings
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: booking input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/booking.BookingInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created booking view
+          schema:
+            $ref: '#/definitions/booking.BookingView'
+        "400":
+          description: invalid body / classroom unavailable / period not in regime
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: not authenticated
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: classroom already booked for this date and period
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a classroom booking (pending approval)
+      tags:
+      - bookings
+  /api/bookings/{id}:
+    get:
+      parameters:
+      - description: booking id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: booking detail
+          schema:
+            $ref: '#/definitions/booking.BookingView'
+        "400":
+          description: invalid booking id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: booking not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a booking
+      tags:
+      - bookings
+  /api/bookings/{id}/cancel:
+    post:
+      parameters:
+      - description: booking id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: cancelled booking view
+          schema:
+            $ref: '#/definitions/booking.BookingView'
+        "400":
+          description: invalid booking id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: you can only cancel your own bookings
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: booking not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: booking cannot be cancelled in its current status
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel a booking (creator or admin)
+      tags:
+      - bookings
+  /api/bookings/{id}/review:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: booking id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: decision
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/booking.ReviewInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: reviewed booking view
+          schema:
+            $ref: '#/definitions/booking.BookingView'
+        "400":
+          description: invalid body / decision must be 'approve' or 'reject'
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: booking not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: booking is no longer pending / classroom no longer free
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Approve or reject a pending booking
+      tags:
+      - bookings
   /api/checkins:
     get:
       parameters:
@@ -568,6 +2965,2863 @@ paths:
       summary: L2 semester attendance summary
       tags:
       - attendance
+  /api/classrooms:
+    get:
+      parameters:
+      - description: search by name/building/campus
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged classrooms
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List classrooms
+      tags:
+      - classrooms
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: classroom input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/classroom.ClassroomInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created classroom
+          schema:
+            $ref: '#/definitions/classroom.Classroom'
+        "400":
+          description: invalid body / name required / capacity must be positive
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: classroom name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a classroom
+      tags:
+      - classrooms
+  /api/classrooms/{id}:
+    delete:
+      parameters:
+      - description: classroom id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid classroom id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a classroom
+      tags:
+      - classrooms
+    get:
+      parameters:
+      - description: classroom id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: classroom detail
+          schema:
+            $ref: '#/definitions/classroom.Classroom'
+        "400":
+          description: invalid classroom id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a classroom
+      tags:
+      - classrooms
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: classroom id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: classroom input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/classroom.ClassroomInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated classroom
+          schema:
+            $ref: '#/definitions/classroom.Classroom'
+        "400":
+          description: invalid body / name required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: classroom name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a classroom
+      tags:
+      - classrooms
+  /api/courses:
+    get:
+      parameters:
+      - description: search by code/name
+        in: query
+        name: q
+        type: string
+      - description: filter by department
+        in: query
+        name: department
+        type: string
+      - description: filter by credit
+        in: query
+        name: credit
+        type: number
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged catalog entries
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List course catalog entries
+      tags:
+      - courses
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: catalog input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/course.CatalogInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created catalog entry
+          schema:
+            $ref: '#/definitions/course.CatalogCourse'
+        "400":
+          description: invalid body / required fields missing
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: catalog code already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a course catalog entry
+      tags:
+      - courses
+  /api/courses/{id}:
+    delete:
+      parameters:
+      - description: catalog id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid catalog id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: catalog entry not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: offerings still reference the catalog
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a course catalog entry
+      tags:
+      - courses
+    get:
+      parameters:
+      - description: catalog id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: catalog detail
+          schema:
+            $ref: '#/definitions/course.CatalogCourse'
+        "400":
+          description: invalid catalog id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: catalog entry not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a course catalog entry
+      tags:
+      - courses
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: catalog id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: catalog input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/course.CatalogInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated catalog entry
+          schema:
+            $ref: '#/definitions/course.CatalogCourse'
+        "400":
+          description: invalid body / required fields missing
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: catalog entry not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: catalog code already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a course catalog entry
+      tags:
+      - courses
+  /api/dashboard/summary:
+    get:
+      description: |-
+        Each section is present only when the caller holds the
+        permission that gates it — absence means "hidden".
+      parameters:
+      - description: school day (Y-M-D)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: sectioned summary
+          schema:
+            $ref: '#/definitions/dashboard.Summary'
+        "400":
+          description: date must be YYYY-MM-DD
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: not authenticated
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Console homepage summary (permission-gated sections)
+      tags:
+      - dashboard
+  /api/groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: groups with member counts
+          schema:
+            items:
+              $ref: '#/definitions/iam.GroupView'
+            type: array
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List user groups
+      tags:
+      - iam
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: group input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iam.GroupInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created group
+          schema:
+            $ref: '#/definitions/iam.GroupView'
+        "400":
+          description: invalid body / member does not exist
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: only administrators can grant the admin role
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: group name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a user group
+      tags:
+      - iam
+  /api/groups/{id}:
+    delete:
+      parameters:
+      - description: group id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid group id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: group not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a user group
+      tags:
+      - iam
+    get:
+      parameters:
+      - description: group id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: group detail with members and roles
+          schema:
+            $ref: '#/definitions/iam.GroupDetail'
+        "400":
+          description: invalid group id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: group not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a user group (edit form prefill)
+      tags:
+      - iam
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: group id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: group input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iam.GroupInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated group
+          schema:
+            $ref: '#/definitions/iam.GroupView'
+        "400":
+          description: invalid body / member does not exist
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: only administrators can grant the admin role
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: group not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: group name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a user group
+      tags:
+      - iam
+  /api/imports:
+    get:
+      parameters:
+      - description: search by filename
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged import jobs (metadata only)
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List import jobs
+      tags:
+      - imports
+  /api/imports/{id}:
+    get:
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: job metadata (no rows/payload/error report)
+          schema:
+            $ref: '#/definitions/importer.Job'
+        "400":
+          description: invalid job id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: import job not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an import job's metadata
+      tags:
+      - imports
+  /api/imports/{id}/cancel:
+    post:
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: job cancelled
+          schema:
+            $ref: '#/definitions/importer.JobAccepted'
+        "400":
+          description: invalid job id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: import job not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: job cannot be cancelled in its current status
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel a preview job
+      tags:
+      - imports
+  /api/imports/{id}/commit:
+    post:
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: commit started
+          schema:
+            $ref: '#/definitions/importer.JobAccepted'
+        "400":
+          description: invalid job id / job is not in preview
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: import job not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: job is being processed by someone else
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Commit a preview job (async)
+      tags:
+      - imports
+  /api/imports/{id}/errors:
+    get:
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: per-row errors
+          schema:
+            $ref: '#/definitions/importer.JobErrors'
+        "400":
+          description: invalid job id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: import job not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a job's per-row error report
+      tags:
+      - imports
+  /api/imports/{id}/reanalyze:
+    post:
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: re-analysis started
+          schema:
+            $ref: '#/definitions/importer.JobAccepted'
+        "400":
+          description: invalid job id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: import job not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: job is being processed by someone else
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Re-run analysis of a job (async)
+      tags:
+      - imports
+  /api/imports/{id}/rows:
+    get:
+      parameters:
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size (clamped 1..500)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: dry-run preview rows page
+          schema:
+            $ref: '#/definitions/importer.PreviewRowsPage'
+        "400":
+          description: invalid job id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: import job not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get one page of a job's preview rows
+      tags:
+      - imports
+  /api/imports/{type}:
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        Accepts multipart/form-data with a `file` field. The job is
+        parsed/validated in the background; poll GET /api/imports/{id}.
+      parameters:
+      - description: import type
+        enum:
+        - classrooms
+        - bookings
+        - catalog
+        - offerings
+        - sessions
+        - admin_classes
+        - teaching_classes
+        - regimes
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: xlsx file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: job accepted for processing
+          schema:
+            $ref: '#/definitions/importer.JobAccepted'
+        "400":
+          description: invalid type / file required / bad xlsx
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload a typed xlsx import file (async dry-run)
+      tags:
+      - imports
+  /api/imports/jwc_split:
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        Accepts multipart/form-data with `file`, `semester` and
+        `week1Monday` fields. Splits the master xlsx into six typed
+        import jobs (classrooms, catalog, admin/teaching classes,
+        offerings, sessions, regimes) and processes them.
+      parameters:
+      - description: JWC master xlsx
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: semester label, e.g. 2024-2025-2
+        in: formData
+        name: semester
+        required: true
+        type: string
+      - description: first week's Monday (Y-M-D)
+        in: formData
+        name: week1Monday
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: created jobs, split stats and warnings
+          schema:
+            $ref: '#/definitions/importer.SplitResult'
+        "400":
+          description: file/semester/week1Monday required / bad xlsx / week1Monday
+            is not a Monday
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload a JWC (教务处) master timetable and split it into six imports
+      tags:
+      - imports
+  /api/logs:
+    get:
+      parameters:
+      - description: range start (Y-M-D)
+        in: query
+        name: from
+        type: string
+      - description: range end (Y-M-D)
+        in: query
+        name: to
+        type: string
+      - description: search
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged log views
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid date filter
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List audit log entries
+      tags:
+      - logs
+  /api/logs/settings:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: retention settings
+          schema:
+            $ref: '#/definitions/systemlog.Settings'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get log retention settings
+      tags:
+      - logs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: retention settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/systemlog.Settings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated retention settings
+          schema:
+            $ref: '#/definitions/systemlog.Settings'
+        "400":
+          description: invalid body / retentionDays out of range
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update log retention settings
+      tags:
+      - logs
+  /api/observations:
+    get:
+      parameters:
+      - description: filter by status
+        enum:
+        - draft
+        - submitted
+        in: query
+        name: status
+        type: string
+      - description: filter by template type
+        in: query
+        name: template_type
+        type: string
+      - description: filter by offering id
+        in: query
+        name: course_id
+        type: integer
+      - description: range start (Y-M-D)
+        in: query
+        name: start_date
+        type: string
+      - description: range end (Y-M-D)
+        in: query
+        name: end_date
+        type: string
+      - description: search
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged observation views (non-admins see only their own)
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid date filter
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List observations
+      tags:
+      - observations
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: observation input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/observation.ObservationInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created observation
+          schema:
+            $ref: '#/definitions/observation.ObservationView'
+        "400":
+          description: invalid body / offering not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an observation (draft)
+      tags:
+      - observations
+  /api/observations/{id}:
+    delete:
+      parameters:
+      - description: observation id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid id / not a draft / not yours
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: observation not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a draft observation
+      tags:
+      - observations
+    get:
+      parameters:
+      - description: observation id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: observation detail
+          schema:
+            $ref: '#/definitions/observation.ObservationView'
+        "400":
+          description: invalid observation id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: observation not found / not yours
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an observation
+      tags:
+      - observations
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: observation id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: observation input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/observation.ObservationInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated observation
+          schema:
+            $ref: '#/definitions/observation.ObservationView'
+        "400":
+          description: invalid body / not a draft / not yours
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: observation not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a draft observation
+      tags:
+      - observations
+  /api/observations/{id}/submit:
+    post:
+      parameters:
+      - description: observation id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: submitted observation
+          schema:
+            $ref: '#/definitions/observation.ObservationView'
+        "400":
+          description: required form fields missing
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: observation not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Submit an observation (locks it)
+      tags:
+      - observations
+  /api/offerings:
+    get:
+      parameters:
+      - description: filter by semester
+        in: query
+        name: semester
+        type: string
+      - description: filter by catalog id
+        in: query
+        name: catalog_id
+        type: integer
+      - description: filter by teacher id
+        in: query
+        name: teacher_id
+        type: integer
+      - description: search
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged offerings
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List offerings
+      tags:
+      - offerings
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: offering input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/course.OfferingInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created offering
+          schema:
+            $ref: '#/definitions/course.OfferingView'
+        "400":
+          description: invalid body / referenced catalog or teaching class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: semester + catalog + teaching class already offered
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an offering
+      tags:
+      - offerings
+  /api/offerings/{id}:
+    delete:
+      parameters:
+      - description: offering id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid offering id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: offering not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: sessions still exist for the offering
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an offering
+      tags:
+      - offerings
+    get:
+      parameters:
+      - description: offering id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: offering detail
+          schema:
+            $ref: '#/definitions/course.OfferingView'
+        "400":
+          description: invalid offering id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: offering not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an offering
+      tags:
+      - offerings
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: offering id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: offering input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/course.OfferingInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated offering
+          schema:
+            $ref: '#/definitions/course.OfferingView'
+        "400":
+          description: invalid body / referenced catalog or teaching class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: offering not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: semester + catalog + teaching class already offered
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an offering
+      tags:
+      - offerings
+  /api/permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: permission catalog
+          schema:
+            items:
+              $ref: '#/definitions/authz.Permission'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List the permission catalog
+      tags:
+      - iam
+  /api/repairs:
+    get:
+      parameters:
+      - description: filter by classroom id
+        in: query
+        name: classroom_id
+        type: integer
+      - description: filter by status
+        enum:
+        - open
+        - processing
+        - completed
+        - confirmed
+        in: query
+        name: status
+        type: string
+      - description: search
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged repair views
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List repair tickets
+      tags:
+      - repairs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: repair input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/classroom.RepairInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created repair view
+          schema:
+            $ref: '#/definitions/classroom.RepairView'
+        "400":
+          description: invalid body / classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: open ticket already exists for the classroom
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a repair ticket
+      tags:
+      - repairs
+  /api/repairs/{id}:
+    get:
+      parameters:
+      - description: repair id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: repair detail
+          schema:
+            $ref: '#/definitions/classroom.RepairView'
+        "400":
+          description: invalid repair id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: repair ticket not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a repair ticket
+      tags:
+      - repairs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: repair id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: status transition
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/classroom.RepairUpdateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated repair view
+          schema:
+            $ref: '#/definitions/classroom.RepairView'
+        "400":
+          description: invalid body / invalid status transition
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: repair ticket not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Process a repair ticket (start/finish)
+      tags:
+      - repairs
+  /api/repairs/{id}/confirm:
+    post:
+      parameters:
+      - description: repair id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: confirmed repair view
+          schema:
+            $ref: '#/definitions/classroom.RepairView'
+        "400":
+          description: repair not completed yet
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: only the creator may confirm
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: repair ticket not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Confirm a completed repair (creator only)
+      tags:
+      - repairs
+  /api/repairs/emergency:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: repair input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/classroom.RepairInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created repair view
+          schema:
+            $ref: '#/definitions/classroom.RepairView'
+        "400":
+          description: invalid body / classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an emergency repair ticket (skips the open-ticket guard)
+      tags:
+      - repairs
+  /api/roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: all roles with permissions
+          schema:
+            items:
+              $ref: '#/definitions/iam.Role'
+            type: array
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List roles
+      tags:
+      - iam
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: role input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iam.RoleInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created role
+          schema:
+            $ref: '#/definitions/iam.Role'
+        "400":
+          description: invalid body / unknown permission
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: role code already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a role
+      tags:
+      - iam
+  /api/roles/{id}:
+    delete:
+      parameters:
+      - description: role id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid role id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: role not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: system role cannot be deleted / role still in use
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a role
+      tags:
+      - iam
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: role id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: role input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iam.RoleInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated role
+          schema:
+            $ref: '#/definitions/iam.Role'
+        "400":
+          description: invalid body / unknown permission
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: role not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: system role cannot be modified
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a role (code immutable)
+      tags:
+      - iam
+  /api/schedule/active:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: regime with periods
+          schema:
+            $ref: '#/definitions/schedule.Regime'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the regime active today
+      tags:
+      - schedule
+  /api/schedule/regimes:
+    get:
+      parameters:
+      - description: search by name
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged regimes with periods
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List bell-time regimes
+      tags:
+      - schedule
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: regime input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/schedule.RegimeInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created regime (no periods yet)
+          schema:
+            $ref: '#/definitions/schedule.Regime'
+        "400":
+          description: invalid body / name required / effective date invalid
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: effective date already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a bell-time regime
+      tags:
+      - schedule
+  /api/schedule/regimes/{id}:
+    delete:
+      parameters:
+      - description: regime id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid regime id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: regime not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: cannot delete the last regime
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a bell-time regime
+      tags:
+      - schedule
+    get:
+      parameters:
+      - description: regime id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: regime with periods
+          schema:
+            $ref: '#/definitions/schedule.Regime'
+        "400":
+          description: invalid regime id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: regime not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a bell-time regime
+      tags:
+      - schedule
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: regime id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: regime input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/schedule.RegimeInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated regime with periods
+          schema:
+            $ref: '#/definitions/schedule.Regime'
+        "400":
+          description: invalid body / name required / effective date invalid
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: regime not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: effective date already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a bell-time regime
+      tags:
+      - schedule
+  /api/schedule/regimes/{id}/periods:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: regime id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: full replacement set of periods
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/schedule.PeriodsInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: regime with the new periods
+          schema:
+            $ref: '#/definitions/schedule.Regime'
+        "400":
+          description: invalid body / period numbers must be contiguous
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: regime not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace a regime's periods (bell times)
+      tags:
+      - schedule
+  /api/sessions:
+    get:
+      parameters:
+      - description: filter by offering id
+        in: query
+        name: offering_id
+        type: integer
+      - description: filter by classroom id
+        in: query
+        name: classroom_id
+        type: integer
+      - description: date range start (Y-M-D)
+        in: query
+        name: from
+        type: string
+      - description: date range end (Y-M-D)
+        in: query
+        name: to
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged sessions
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List sessions
+      tags:
+      - sessions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: session input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/course.SessionInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created session
+          schema:
+            $ref: '#/definitions/course.SessionView'
+        "400":
+          description: invalid body / referenced offering or classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: classroom occupied in the same periods
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a session
+      tags:
+      - sessions
+  /api/sessions/{id}:
+    delete:
+      parameters:
+      - description: session id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid session id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: session not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a session
+      tags:
+      - sessions
+    get:
+      parameters:
+      - description: session id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: session detail
+          schema:
+            $ref: '#/definitions/course.SessionView'
+        "400":
+          description: invalid session id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: session not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a session
+      tags:
+      - sessions
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: session id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: session input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/course.SessionInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated session
+          schema:
+            $ref: '#/definitions/course.SessionView'
+        "400":
+          description: invalid body / referenced offering or classroom not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: session not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: classroom occupied in the same periods
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a session
+      tags:
+      - sessions
+  /api/settings/ai:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: settings with the API key hidden
+          schema:
+            $ref: '#/definitions/ai.MaskedSettings'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get AI assistant settings (API key masked)
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        An empty apiKey means "keep the stored one" — the key can
+        never be cleared through the API.
+      parameters:
+      - description: AI settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ai.Settings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated settings (key masked)
+          schema:
+            $ref: '#/definitions/ai.MaskedSettings'
+        "400":
+          description: invalid body / apiKey required when enabled
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update AI assistant settings
+      tags:
+      - settings
+  /api/settings/email:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: settings with the password hidden
+          schema:
+            $ref: '#/definitions/mail.MaskedSettings'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get mail service settings (password masked)
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        An empty password means "keep the stored one" — the secret
+        can never be cleared through the API.
+      parameters:
+      - description: mail settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/mail.Settings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated settings (password masked)
+          schema:
+            $ref: '#/definitions/mail.MaskedSettings'
+        "400":
+          description: invalid body / required fields missing when enabled
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update mail service settings
+      tags:
+      - settings
+  /api/settings/storage:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: settings with the secret key hidden
+          schema:
+            $ref: '#/definitions/storage.MaskedSettings'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get object storage settings (secret key masked)
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        An empty secretKey means "keep the stored one" — the secret
+        can never be cleared through the API.
+      parameters:
+      - description: storage settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/storage.Settings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated settings (secret masked)
+          schema:
+            $ref: '#/definitions/storage.MaskedSettings'
+        "400":
+          description: invalid body / required fields missing when enabled
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update object storage settings
+      tags:
+      - settings
+  /api/teaching-classes:
+    get:
+      parameters:
+      - description: search by name
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged teaching classes
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List teaching classes
+      tags:
+      - org
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: teaching class input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.TeachingClassInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created teaching class
+          schema:
+            $ref: '#/definitions/user.TeachingClassView'
+        "400":
+          description: invalid body / name required / member admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a teaching class
+      tags:
+      - org
+  /api/teaching-classes/{id}:
+    delete:
+      parameters:
+      - description: teaching class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid teaching class id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: teaching class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: offerings still reference the teaching class
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a teaching class
+      tags:
+      - org
+    get:
+      parameters:
+      - description: teaching class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: teaching class with member admin classes
+          schema:
+            $ref: '#/definitions/user.TeachingClassView'
+        "400":
+          description: invalid teaching class id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: teaching class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a teaching class
+      tags:
+      - org
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: teaching class id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: teaching class input (classIds replace semantics)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.TeachingClassInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated teaching class
+          schema:
+            $ref: '#/definitions/user.TeachingClassView'
+        "400":
+          description: invalid body / name required / member admin class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: teaching class not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: name already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a teaching class
+      tags:
+      - org
+  /api/timetable:
+    get:
+      parameters:
+      - description: classroom id
+        in: query
+        name: classroom_id
+        required: true
+        type: integer
+      - description: range start (Y-M-D)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: range end (Y-M-D)
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: one entry per day in range
+          schema:
+            items:
+              $ref: '#/definitions/course.TimetableDay'
+            type: array
+        "400":
+          description: classroom_id required / invalid date range
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Classroom timetable for a date range
+      tags:
+      - sessions
+  /api/users:
+    get:
+      parameters:
+      - description: search by username/display name
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged users with role/group summaries
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: create user input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.CreateUserInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created user
+          schema:
+            $ref: '#/definitions/user.User'
+        "400":
+          description: invalid body / required fields missing
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: username already taken
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a user
+      tags:
+      - users
+  /api/users/{id}:
+    delete:
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid user id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: only administrators can delete an administrator's account
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: cannot delete your own account
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user detail
+          schema:
+            $ref: '#/definitions/user.User'
+        "400":
+          description: invalid user id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: update user input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.UpdateUserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated user
+          schema:
+            $ref: '#/definitions/user.User'
+        "400":
+          description: invalid body / displayName required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a user
+      tags:
+      - users
+  /api/users/{id}/grants:
+    get:
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: grant view incl. expired rows
+          schema:
+            $ref: '#/definitions/iam.UserGrantView'
+        "400":
+          description: invalid user id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a user's grants (roles / permissions / groups)
+      tags:
+      - users
+  /api/users/{id}/password:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: new password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.ChangePasswordInput'
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid body / password required
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: only administrators can change an administrator's password
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reset a user's password
+      tags:
+      - users
+  /api/users/{id}/permissions:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: whole-set permission grants
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.UserPermissionsInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated grant view
+          schema:
+            $ref: '#/definitions/iam.UserGrantView'
+        "400":
+          description: invalid body / unknown permission
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace a user's permission grants
+      tags:
+      - users
+  /api/users/{id}/roles:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: whole-set role grants
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.UserRolesInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated grant view
+          schema:
+            $ref: '#/definitions/iam.UserGrantView'
+        "400":
+          description: invalid body / unknown role code
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: only administrators can grant the admin role
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Replace a user's role grants
+      tags:
+      - users
 securityDefinitions:
   BearerAuth:
     description: '"JWT Bearer token; prefix with ''Bearer ''."'

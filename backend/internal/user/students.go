@@ -169,6 +169,16 @@ func (h *Handler) registerStudentRoutes(mux *http.ServeMux, authenticate func(ht
 
 // ---- Handlers ----
 
+// @Summary      List a class's roster
+// @Tags         org
+// @Produce      json
+// @Param        id path int true "admin class id"
+// @Success      200 {array} StudentProfileView "roster entries"
+// @Failure      400 {object} httpx.ErrorResponse "invalid admin class id"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id}/students [get]
 func (h *Handler) listStudents(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -191,6 +201,19 @@ func (h *Handler) listStudents(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, list)
 }
 
+// @Summary      Add a student to the roster
+// @Tags         org
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "admin class id"
+// @Param        body body StudentProfileInput true "roster entry input"
+// @Success      201 {object} StudentProfileView "added roster entry"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / user is not a student"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      409 {object} httpx.ErrorResponse "student already in a class"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id}/students [post]
 func (h *Handler) addStudent(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -222,6 +245,19 @@ func (h *Handler) addStudent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Update a roster entry
+// @Tags         org
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "admin class id"
+// @Param        userId path int true "user id"
+// @Param        body body StudentProfileInput true "roster entry input"
+// @Success      200 {object} StudentProfileView "updated roster entry"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / user is not in this class"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id}/students/{userId} [put]
 func (h *Handler) updateStudent(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -250,6 +286,16 @@ func (h *Handler) updateStudent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Remove a student from the roster
+// @Tags         org
+// @Param        id path int true "admin class id"
+// @Param        userId path int true "user id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "user is not in this class"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id}/students/{userId} [delete]
 func (h *Handler) deleteStudent(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

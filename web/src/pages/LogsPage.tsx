@@ -21,6 +21,8 @@ import {
   Tag,
   TextInput,
   Toggle,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -29,39 +31,34 @@ import { apiFetch } from '../auth/api'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import type { LogRetentionSettings, LogView } from '../types/api'
 
-// statusLabel/statusKind group HTTP status codes by class: the audit log
-// records the outcome of every mutating request, so a 4xx shows an attempted
-// (rejected) change, a 5xx a server-side failure.
-function statusClass(code) {
+// statusKind groups HTTP status codes by class: the audit log records the
+// outcome of every mutating request, so a 4xx shows an attempted (rejected)
+// change, a 5xx a server-side failure.
+function statusClass(code: number) {
   return Math.floor(code / 100)
 }
 
-const statusKind = {
+// Carbon tags have no 'yellow'; the old JSX value silently rendered the
+// default gray. Keep that exact look via a cast until a redesign picks a
+// real color for "attempted" rows.
+const STATUS_KIND: Record<number, TagProps<'div'>['type']> = {
   2: 'green',
   3: 'blue',
-  4: 'yellow',
+  4: 'yellow' as TagProps<'div'>['type'],
   5: 'red',
 }
 
-const headers = (t) => [
-  { key: 'createdAt', header: t('field.createdAt') },
-  { key: 'actorName', header: t('field.actorName') },
-  { key: 'summary', header: t('field.summary') },
-  { key: 'request', header: t('field.request') },
-  { key: 'statusCode', header: t('field.statusCode') },
-  { key: 'clientIp', header: t('field.clientIp') },
-]
-
-function pad(n) {
+function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-function fmt(d) {
+function fmt(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-const defaultSettings = { retentionEnabled: true, retentionDays: 180 }
+const DEFAULT_SETTINGS: LogRetentionSettings = { retentionEnabled: true, retentionDays: 180 }
 
 export default function LogsPage() {
   const { t } = useTranslation('logs')
@@ -69,13 +66,22 @@ export default function LogsPage() {
   const navigate = useNavigate()
   const canManage = can('log:manage')
 
+  const headers: DataTableHeader[] = [
+    { key: 'createdAt', header: t('field.createdAt') },
+    { key: 'actorName', header: t('field.actorName') },
+    { key: 'summary', header: t('field.summary') },
+    { key: 'request', header: t('field.request') },
+    { key: 'statusCode', header: t('field.statusCode') },
+    { key: 'clientIp', header: t('field.clientIp') },
+  ]
+
   // Date filters default to the last 30 days, the same window convention as
   // the bookings page.
   const today = new Date()
   const [from, setFrom] = useState(fmt(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)))
   const [to, setTo] = useState(fmt(today))
 
-  const list = usePagedList({
+  const list = usePagedList<LogView>({
     path: '/api/logs',
     token,
     extraParams: { from, to },
@@ -84,13 +90,13 @@ export default function LogsPage() {
   const [actionError, setActionError] = useState('')
   const error = list.error || actionError
 
-  const [settings, setSettings] = useState(defaultSettings)
+  const [settings, setSettings] = useState<LogRetentionSettings>(DEFAULT_SETTINGS)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveNotice, setSaveNotice] = useState('')
 
   useEffect(() => {
-    apiFetch('/api/logs/settings', { token })
+    apiFetch<LogRetentionSettings>('/api/logs/settings', { token })
       .then((data) => {
         setSettings({
           retentionEnabled: Boolean(data?.retentionEnabled),
@@ -98,29 +104,27 @@ export default function LogsPage() {
         })
         setSettingsLoaded(true)
       })
-      .catch((err) => setActionError(err.message))
+      .catch((err: Error) => setActionError(err.message))
   }, [token])
 
   const saveSettings = () => {
     setSaving(true)
     setSaveNotice('')
-    apiFetch('/api/logs/settings', {
-      method: 'PUT',
-      body: {
-        retentionEnabled: settings.retentionEnabled,
-        retentionDays: settings.retentionDays,
-      },
-      token,
-    })
+    const body: LogRetentionSettings = {
+      retentionEnabled: settings.retentionEnabled,
+      retentionDays: settings.retentionDays,
+    }
+    apiFetch('/api/logs/settings', { method: 'PUT', token, body })
       .then(() => {
         setSaveNotice(t('settings.savedNotice'))
         list.reload()
       })
-      .catch((err) => setActionError(err.message))
+      .catch((err: Error) => setActionError(err.message))
       .finally(() => setSaving(false))
   }
 
-  const tableHeaders = headers(t)
+  // Carbon DataTable keys rows by a string id.
+  const tableRows = list.items.map((l) => ({ ...l, id: String(l.id) }))
 
   return (
     <div className="logs-page">
@@ -175,7 +179,7 @@ export default function LogsPage() {
             </Button>
           </div>
 
-          <DataTable rows={list.items} headers={tableHeaders}>
+          <DataTable rows={tableRows} headers={headers}>
             {({ rows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps }) => (
               <TableContainer className="logs-page__table">
                 <TableToolbar>
@@ -191,7 +195,7 @@ export default function LogsPage() {
                   <TableHead>
                     <TableRow>
                       {renderedHeaders.map((h) => (
-                        <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
+                        <TableHeader {...getHeaderProps({ header: h })}>
                           {h.header}
                         </TableHeader>
                       ))}
@@ -200,20 +204,21 @@ export default function LogsPage() {
                   <TableBody>
                     {list.loading ? (
                       <TableRow>
-                        <TableCell colSpan={tableHeaders.length}>{t('empty.loading')}</TableCell>
+                        <TableCell colSpan={headers.length}>{t('empty.loading')}</TableCell>
                       </TableRow>
                     ) : rows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={tableHeaders.length}>
+                        <TableCell colSpan={headers.length}>
                           {list.q || from || to ? t('empty.search') : t('empty.none')}
                         </TableCell>
                       </TableRow>
                     ) : (
                       rows.map((row) => {
-                        const log = list.items.find((i) => String(i.id) === String(row.id)) ?? {}
+                        const log = list.items.find((i) => String(i.id) === String(row.id))
+                        if (!log) return null
                         const cls = statusClass(log.statusCode)
                         return (
-                          <TableRow key={row.id} {...getRowProps({ row })}>
+                          <TableRow {...getRowProps({ row })}>
                             <TableCell>{formatDate(log.createdAt)}</TableCell>
                             <TableCell>{log.actorName || '-'}</TableCell>
                             <TableCell>
@@ -221,7 +226,7 @@ export default function LogsPage() {
                             </TableCell>
                             <TableCell>{`${log.method ?? ''} ${log.path ?? ''}`.trim() || '-'}</TableCell>
                             <TableCell>
-                              <Tag type={statusKind[cls] || 'gray'} size="sm">
+                              <Tag type={STATUS_KIND[cls] || 'gray'} size="sm">
                                 {t('result.' + cls, { defaultValue: '' })} {log.statusCode ?? ''}
                               </Tag>
                             </TableCell>

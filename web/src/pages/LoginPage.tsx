@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -24,9 +24,15 @@ const icp = import.meta.env.VITE_ICP_NUMBER || ''
 const docsUrl = import.meta.env.VITE_DOCS_URL || ''
 const REMEMBER_KEY = 'ocm.remembered-id'
 
-const displayOnly = (event) => event.preventDefault()
+const displayOnly = (event: MouseEvent) => event.preventDefault()
 
-function WeChatIcon({ className }) {
+// Dropdown option shape for the sign-in realm picker.
+interface RealmItem {
+  id: string
+  label: string
+}
+
+function WeChatIcon({ className }: { className?: string }) {
   return (
     <img
       src={wechatIconUrl}
@@ -38,6 +44,9 @@ function WeChatIcon({ className }) {
   )
 }
 
+// Two-step sign-in: 'id' collects the account, 'password' unlocks it.
+type Step = 'id' | 'password'
+
 export default function LoginPage() {
   const { t } = useTranslation('login')
   const { languages, setLanguage } = useLanguage()
@@ -45,18 +54,18 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const realmItems = [{ id: 'Email', label: t('email') }]
+  const realmItems: RealmItem[] = [{ id: 'Email', label: t('email') }]
 
-  const [step, setStep] = useState('id')
+  const [step, setStep] = useState<Step>('id')
   const [username, setUsername] = useState(() => localStorage.getItem(REMEMBER_KEY) || '')
   const [password, setPassword] = useState('')
   const [rememberId, setRememberId] = useState(() => Boolean(localStorage.getItem(REMEMBER_KEY)))
   const [idError, setIdError] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const passwordRef = useRef(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (step === 'password') {
       passwordRef.current?.focus()
@@ -67,7 +76,7 @@ export default function LoginPage() {
     return <Navigate to="/" replace />
   }
 
-  const handleContinue = (event) => {
+  const handleContinue = (event: FormEvent) => {
     event.preventDefault()
     if (!username.trim()) {
       setIdError(t('enterId'))
@@ -84,7 +93,7 @@ export default function LoginPage() {
     setStep('id')
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (submitting) return
     if (!password) {
@@ -101,14 +110,19 @@ export default function LoginPage() {
         localStorage.removeItem(REMEMBER_KEY)
       }
       await login(username.trim(), password)
-      const target = location.state?.from?.pathname || '/'
+      const state = location.state as { from?: { pathname?: string } } | null
+      const target = state?.from?.pathname || '/'
       navigate(target, { replace: true })
     } catch (err) {
-      setError(err.message)
+      setError((err as Error).message)
     } finally {
       setSubmitting(false)
     }
   }
+
+  // The WeChat SSO button is decorative until the mini-program flow lands;
+  // renderIcon must return a component, so wrap the icon element.
+  const wechatRenderIcon = () => <WeChatIcon />
 
   return (
     <div className="login">
@@ -169,6 +183,10 @@ export default function LoginPage() {
                     <Dropdown
                       id="realm"
                       label={t('signInWith')}
+                      // DropdownProps requires titleText (it renders a visible
+                      // <label> when non-empty); pass an empty string — the
+                      // page already renders its own .login__label above.
+                      titleText=""
                       aria-label={t('signInWith')}
                       items={realmItems}
                       selectedItem={realmItems[0]}
@@ -217,7 +235,7 @@ export default function LoginPage() {
                 <Button
                   kind="tertiary"
                   size="lg"
-                  renderIcon={WeChatIcon}
+                  renderIcon={wechatRenderIcon}
                   className="login__sso-btn"
                   onClick={displayOnly}
                   tabIndex={step === 'password' ? -1 : 0}

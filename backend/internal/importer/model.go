@@ -1,6 +1,10 @@
 package importer
 
-import "time"
+import (
+	"time"
+
+	"ocm-backend/internal/importer/jwc"
+)
 
 // Controlled vocabulary for import job status.
 //
@@ -57,6 +61,43 @@ type Job struct {
 type RowError struct {
 	Row   int    `json:"row"`
 	Error string `json:"error"`
+}
+
+// JobAccepted documents the async-accepted body of upload/commit/reanalyze
+// (202 Accepted) and cancel (200 OK): the job id plus its new status.
+type JobAccepted struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"`
+}
+
+// SplitJobRef is one created import job in the jwc_split response.
+type SplitJobRef struct {
+	ID     int64  `json:"id"`
+	Type   string `json:"type"`
+	Status string `json:"status"`
+}
+
+// SplitResult documents the 202 body of POST /api/imports/jwc_split: the six
+// created jobs, the split statistics and human-readable warnings.
+type SplitResult struct {
+	Jobs     []SplitJobRef `json:"jobs"`
+	Stats    jwc.Stats     `json:"stats"`
+	Warnings []string      `json:"warnings"`
+}
+
+// PreviewRowsPage documents the GET /api/imports/{id}/rows body: one page of
+// dry-run preview rows.
+type PreviewRowsPage struct {
+	Rows     []map[string]any `json:"rows"`
+	Total    int64            `json:"total"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"pageSize"`
+}
+
+// JobErrors documents the GET /api/imports/{id}/errors body: per-row error
+// report of a processed job.
+type JobErrors struct {
+	Errors []RowError `json:"errors"`
 }
 
 // Result is the outcome of processing an import, persisted onto the job. Rows is

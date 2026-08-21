@@ -16,78 +16,90 @@ import {
   TableRow,
   TableToolbar,
   TableToolbarContent,
+  type DataTableHeader,
 } from '@carbon/react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
-import { STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi'
+import type { OfferingSummary, OfferingView, Paged, SummaryRow } from '../types/api'
+import { STATUS_KEYS, StatusTag, formatDateTime, type PickerOption } from './attendanceUi'
 
 // L2 整学期考勤报表: pick one offering → per-student × per-checkin matrix
 // with per-status subtotals, downloadable as a two-sheet xlsx.
 const TOTAL_KEYS = ['present', 'late', 'absent', 'leave']
+
+// One row of the matrix: fixed identity columns plus one dynamic cell per
+// checkin (key `c<checkinId>`, value the record status) and the totals text.
+type ReportRow = {
+  id: string
+  displayName: string
+  studentNo: string
+  adminClass: string
+  totals: string
+} & Record<string, string>
 
 export default function AttendanceReportPage() {
   const { t } = useTranslation('attendance')
   const { token } = useAuth()
   const navigate = useNavigate()
 
-  const [offerings, setOfferings] = useState([])
-  const [pickOffering, setPickOffering] = useState(null)
-  const [summary, setSummary] = useState(null)
+  const [offerings, setOfferings] = useState<PickerOption[]>([])
+  const [pickOffering, setPickOffering] = useState<PickerOption | null>(null)
+  const [summary, setSummary] = useState<OfferingSummary | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const loadOfferings = async () => {
     try {
-      const data = await apiFetch('/api/offerings?page_size=500', { token })
+      const data = await apiFetch<Paged<OfferingView>>('/api/offerings?page_size=500', { token })
       setOfferings(
-        ((data && data.items) || []).map((o) => ({
+        (Array.isArray(data?.items) ? data.items : []).map((o) => ({
           id: String(o.id),
           text: t('list.offeringOption', { catalogName: o.catalogName, teachingClassName: o.teachingClassName, semester: o.semester }),
-        }))
+        })),
       )
     } catch {
       setOfferings([])
     }
   }
 
-  const handlePickOffering = (e) => {
+  const handlePickOffering = (e: { selectedItem?: PickerOption | null }) => {
     setPickOffering(e.selectedItem ?? null)
     setSummary(null)
     setError('')
     if (e.selectedItem) loadSummary(e.selectedItem.id)
   }
 
-  const loadSummary = async (offeringId) => {
+  const loadSummary = async (offeringId: string) => {
     try {
       setLoading(true)
       setError('')
-      const data = await apiFetch(`/api/checkins/summary?offering_id=${offeringId}`, { token })
+      const data = await apiFetch<OfferingSummary>(`/api/checkins/summary?offering_id=${offeringId}`, { token })
       setSummary(data)
     } catch (err) {
-      setError(err.message)
+      setError((err as Error).message)
       setSummary(null)
     } finally {
       setLoading(false)
     }
   }
 
-  const baseHeaders = [
+  const baseHeaders: DataTableHeader[] = [
     { key: 'displayName', header: t('report.field.name') },
     { key: 'studentNo', header: t('report.field.studentNo') },
     { key: 'adminClass', header: t('report.field.adminClass') },
   ]
   const checkins = summary?.checkins ?? []
-  const headers = [
+  const headers: DataTableHeader[] = [
     ...baseHeaders,
     ...checkins.map((c) => ({ key: `c${c.id}`, header: c.startsAt.slice(0, 10) })),
     { key: 'totals', header: t('report.field.totals') },
   ]
 
-  const buildRow = (r) => {
-    const row = { id: r.userId, displayName: r.displayName, studentNo: r.studentNo, adminClass: r.adminClass }
+  const buildRow = (r: SummaryRow): ReportRow => {
+    const row: ReportRow = { id: String(r.userId), displayName: r.displayName, studentNo: r.studentNo, adminClass: r.adminClass, totals: '' }
     for (const c of checkins) {
       row[`c${c.id}`] = r.records[c.id] ?? ''
     }
@@ -197,7 +209,7 @@ export default function AttendanceReportPage() {
                   <TableHead>
                     <TableRow>
                       {tableHeaders.map((header) => (
-                        <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                        <TableHeader {...getHeaderProps({ header })}>
                           {header.header}
                         </TableHeader>
                       ))}
@@ -213,10 +225,8 @@ export default function AttendanceReportPage() {
                         <TableCell colSpan={headers.length}>{t('report.empty.none')}</TableCell>
                       </TableRow>
                     ) : (
-                      tableRows.map((row) => {
-                        const r = summary.rows.find((x) => String(x.userId) === String(row.id))
-                        return (
-                          <TableRow key={row.id} {...getRowProps({ row })}>
+                      tableRows.map((row) => (
+                        <TableRow {...getRowProps({ row })}>
                             {row.cells.map((cell) => {
                               if (cell.info.header === 'displayName' || cell.info.header === 'studentNo' || cell.info.header === 'adminClass') {
                                 return <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
@@ -224,7 +234,7 @@ export default function AttendanceReportPage() {
                               if (cell.info.header === 'totals') {
                                 return <TableCell key={cell.id}>{cell.value}</TableCell>
                               }
-                              const status = cell.value
+                              const status = cell.value as string
                               return (
                                 <TableCell key={cell.id}>
                                   {status ? <StatusTag status={status} /> : <span className="attendance-report__empty">—</span>}
@@ -232,8 +242,7 @@ export default function AttendanceReportPage() {
                               )
                             })}
                           </TableRow>
-                        )
-                      })
+                      ))
                     )}
                   </TableBody>
                 </Table>
@@ -254,7 +263,7 @@ export default function AttendanceReportPage() {
                 <StatusTag status={value} /> {t('status.' + value, { ns: 'common' })}
               </span>
             ))}{' '}
-            {t('report.lastStarted', { time: formatDateTime(checkins[0].startsAt) })}
+            {t('report.lastStarted', { time: formatDateTime(checkins[0]?.startsAt) })}
           </p>
         )}
       </Column>

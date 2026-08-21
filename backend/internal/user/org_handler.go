@@ -43,6 +43,16 @@ func (h *Handler) registerOrgRoutes(mux *http.ServeMux, authenticate func(http.H
 
 // ---- Admin classes ----
 
+// @Summary      List admin classes
+// @Tags         org
+// @Produce      json
+// @Param        q query string false "search by grade/name"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged admin classes"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes [get]
 func (h *Handler) listAdminClasses(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -76,6 +86,17 @@ func (h *Handler) exportAdminClasses(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create an admin class
+// @Tags         org
+// @Accept       json
+// @Produce      json
+// @Param        body body AdminClassInput true "admin class input"
+// @Success      201 {object} AdminClass "created admin class"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / grade and name required"
+// @Failure      409 {object} httpx.ErrorResponse "grade + name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes [post]
 func (h *Handler) createAdminClass(w http.ResponseWriter, r *http.Request) {
 	var in AdminClassInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -98,6 +119,16 @@ func (h *Handler) createAdminClass(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, c)
 }
 
+// @Summary      Get an admin class (with members)
+// @Tags         org
+// @Produce      json
+// @Param        id path int true "admin class id"
+// @Success      200 {object} AdminClass "admin class"
+// @Failure      400 {object} httpx.ErrorResponse "invalid admin class id"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id} [get]
 func (h *Handler) getAdminClass(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -116,6 +147,19 @@ func (h *Handler) getAdminClass(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
+// @Summary      Update an admin class
+// @Tags         org
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "admin class id"
+// @Param        body body AdminClassInput true "admin class input"
+// @Success      200 {object} AdminClass "updated admin class"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / grade and name required"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      409 {object} httpx.ErrorResponse "grade + name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id} [put]
 func (h *Handler) updateAdminClass(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -147,6 +191,16 @@ func (h *Handler) updateAdminClass(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
+// @Summary      Delete an admin class
+// @Tags         org
+// @Param        id path int true "admin class id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid admin class id"
+// @Failure      404 {object} httpx.ErrorResponse "admin class not found"
+// @Failure      409 {object} httpx.ErrorResponse "teaching classes still reference the admin class"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/admin-classes/{id} [delete]
 func (h *Handler) deleteAdminClass(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -185,6 +239,16 @@ func NormalizeAdminClass(in *AdminClassInput) (string, bool) {
 
 // ---- Teaching classes ----
 
+// @Summary      List teaching classes
+// @Tags         org
+// @Produce      json
+// @Param        q query string false "search by name"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged teaching classes"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/teaching-classes [get]
 func (h *Handler) listTeachingClasses(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -222,6 +286,17 @@ func (h *Handler) exportTeachingClasses(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// @Summary      Create a teaching class
+// @Tags         org
+// @Accept       json
+// @Produce      json
+// @Param        body body TeachingClassInput true "teaching class input"
+// @Success      201 {object} TeachingClassView "created teaching class"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / name required / member admin class not found"
+// @Failure      409 {object} httpx.ErrorResponse "name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/teaching-classes [post]
 func (h *Handler) createTeachingClass(w http.ResponseWriter, r *http.Request) {
 	var in TeachingClassInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -252,6 +327,16 @@ func (h *Handler) createTeachingClass(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
+// @Summary      Get a teaching class
+// @Tags         org
+// @Produce      json
+// @Param        id path int true "teaching class id"
+// @Success      200 {object} TeachingClassView "teaching class with member admin classes"
+// @Failure      400 {object} httpx.ErrorResponse "invalid teaching class id"
+// @Failure      404 {object} httpx.ErrorResponse "teaching class not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/teaching-classes/{id} [get]
 func (h *Handler) getTeachingClass(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -270,6 +355,19 @@ func (h *Handler) getTeachingClass(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Update a teaching class
+// @Tags         org
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "teaching class id"
+// @Param        body body TeachingClassInput true "teaching class input (classIds replace semantics)"
+// @Success      200 {object} TeachingClassView "updated teaching class"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / name required / member admin class not found"
+// @Failure      404 {object} httpx.ErrorResponse "teaching class not found"
+// @Failure      409 {object} httpx.ErrorResponse "name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/teaching-classes/{id} [put]
 func (h *Handler) updateTeachingClass(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -313,6 +411,16 @@ func (h *Handler) updateTeachingClass(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Delete a teaching class
+// @Tags         org
+// @Param        id path int true "teaching class id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid teaching class id"
+// @Failure      404 {object} httpx.ErrorResponse "teaching class not found"
+// @Failure      409 {object} httpx.ErrorResponse "offerings still reference the teaching class"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/teaching-classes/{id} [delete]
 func (h *Handler) deleteTeachingClass(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

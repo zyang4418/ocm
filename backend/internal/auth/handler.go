@@ -46,16 +46,16 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/auth/wx-unbind", Middleware(h.tokens)(http.HandlerFunc(h.wxUnbind)))
 }
 
-type loginRequest struct {
+type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-// userView is the identity shape returned by every endpoint that hands the
+// UserView is the identity shape returned by every endpoint that hands the
 // client a user: base account fields plus the resolved RBAC state, so the
 // console and the mini-program can gate UI immediately after login without a
 // follow-up /api/auth/me call.
-type userView struct {
+type UserView struct {
 	ID          int64            `json:"id"`
 	Username    string           `json:"username"`
 	DisplayName string           `json:"displayName"`
@@ -65,22 +65,22 @@ type userView struct {
 	Permissions []string         `json:"permissions"`
 }
 
-type loginResponse struct {
+type LoginResponse struct {
 	Token string   `json:"token"`
-	User  userView `json:"user"`
+	User  UserView `json:"user"`
 }
 
 // enrichUser resolves a user's effective permissions, roles and groups.
-func (h *Handler) enrichUser(ctx context.Context, u User) (userView, error) {
+func (h *Handler) enrichUser(ctx context.Context, u User) (UserView, error) {
 	eff, err := h.iam.EffectivePermissions(ctx, u.ID)
 	if err != nil {
-		return userView{}, err
+		return UserView{}, err
 	}
 	groups, err := h.iam.GroupBriefs(ctx, u.ID)
 	if err != nil {
-		return userView{}, err
+		return UserView{}, err
 	}
-	view := userView{
+	view := UserView{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Type: u.Type,
 		Roles: []iam.RoleBrief{}, Groups: groups, Permissions: []string{},
 	}
@@ -94,8 +94,17 @@ func (h *Handler) enrichUser(ctx context.Context, u User) (userView, error) {
 	return view, nil
 }
 
+// @Summary      Login with username/password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body LoginRequest true "credentials"
+// @Success      200 {object} LoginResponse "token + user view"
+// @Failure      401 {object} httpx.ErrorResponse "invalid credentials"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Router       /api/auth/login [post]
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
-	var req loginRequest
+	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -132,9 +141,16 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	h.record(r, systemlog.Entry{
 		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/login",
 		StatusCode: http.StatusOK, Summary: "用户登录成功"})
-	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
+	httpx.RespondJSON(w, http.StatusOK, LoginResponse{Token: token, User: view})
 }
 
+// @Summary      Get the current user's identity
+// @Tags         auth
+// @Produce      json
+// @Success      200 {object} UserView "user view with roles/groups/permissions"
+// @Failure      401 {object} httpx.ErrorResponse "not authenticated"
+// @Security     BearerAuth
+// @Router       /api/auth/me [get]
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	username, ok := UsernameFrom(r.Context())
 	if !ok {
@@ -160,15 +176,24 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 
 // ---- Mini-program (WeChat) login ----
 
-type wxLoginRequest struct {
+type WxLoginRequest struct {
 	Code string `json:"code"`
 }
 
 // wxLogin silently re-issues a JWT for a returning mini-program user whose
 // WeChat openid is already bound. The code comes from wx.login(); the openid is
 // resolved server-side via code2Session -- never trusted from a header.
+// @Summary      WeChat mini-program silent login (bound accounts only)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body WxLoginRequest true "wx.login() code"
+// @Success      200 {object} LoginResponse "token + user view"
+// @Failure      400 {object} httpx.ErrorResponse "code required / account not bound"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Router       /api/auth/wx-login [post]
 func (h *Handler) wxLogin(w http.ResponseWriter, r *http.Request) {
-	var req wxLoginRequest
+	var req WxLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -208,10 +233,10 @@ func (h *Handler) wxLogin(w http.ResponseWriter, r *http.Request) {
 	h.record(r, systemlog.Entry{
 		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/wx-login",
 		StatusCode: http.StatusOK, Summary: "微信小程序登录成功"})
-	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
+	httpx.RespondJSON(w, http.StatusOK, LoginResponse{Token: token, User: view})
 }
 
-type wxBindRequest struct {
+type WxBindRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Code     string `json:"code"`
@@ -220,8 +245,18 @@ type wxBindRequest struct {
 // wxBind verifies username/password, then binds the caller's WeChat openid
 // (resolved from code) to that account and issues a JWT. An account may only be
 // bound once; re-binding requires unbinding first.
+// @Summary      Bind a WeChat openid to an existing account
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body WxBindRequest true "credentials + wx.login() code"
+// @Success      200 {object} LoginResponse "token + user view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / already bound"
+// @Failure      401 {object} httpx.ErrorResponse "invalid credentials"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Router       /api/auth/wx-bind [post]
 func (h *Handler) wxBind(w http.ResponseWriter, r *http.Request) {
-	var req wxBindRequest
+	var req WxBindRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -275,11 +310,20 @@ func (h *Handler) wxBind(w http.ResponseWriter, r *http.Request) {
 	h.record(r, systemlog.Entry{
 		ActorID: user.ID, ActorName: user.DisplayName, Method: http.MethodPost, Path: "/api/auth/wx-bind",
 		StatusCode: http.StatusOK, Summary: "绑定微信账号"})
-	httpx.RespondJSON(w, http.StatusOK, loginResponse{Token: token, User: view})
+	httpx.RespondJSON(w, http.StatusOK, LoginResponse{Token: token, User: view})
 }
 
 // wxUnbind clears the WeChat openid bound to the authenticated account. After
 // this, the next mini-program entry must re-bind with credentials.
+// @Summary      Unbind the current user's WeChat openid
+// @Tags         auth
+// @Produce      json
+// @Success      200 {object} LoginResponse "fresh token + user view"
+// @Failure      400 {object} httpx.ErrorResponse "no binding to remove"
+// @Failure      401 {object} httpx.ErrorResponse "not authenticated"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/auth/wx-unbind [post]
 func (h *Handler) wxUnbind(w http.ResponseWriter, r *http.Request) {
 	username, ok := UsernameFrom(r.Context())
 	if !ok {

@@ -4,6 +4,1184 @@
  */
 
 export interface paths {
+    "/api/admin-classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List admin classes */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by grade/name */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged admin classes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create an admin class */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["user.AdminClassInput"];
+            responses: {
+                /** @description created admin class */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.AdminClass"];
+                    };
+                };
+                /** @description invalid body / grade and name required */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description grade + name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin-classes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an admin class (with members) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description admin class */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.AdminClass"];
+                    };
+                };
+                /** @description invalid admin class id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update an admin class */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["user.AdminClassInput"];
+            responses: {
+                /** @description updated admin class */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.AdminClass"];
+                    };
+                };
+                /** @description invalid body / grade and name required */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description grade + name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete an admin class */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid admin class id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description teaching classes still reference the admin class */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin-classes/{id}/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a class's roster */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description roster entries */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.StudentProfileView"][];
+                    };
+                };
+                /** @description invalid admin class id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Add a student to the roster */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["user.StudentProfileInput"];
+            responses: {
+                /** @description added roster entry */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.StudentProfileView"];
+                    };
+                };
+                /** @description invalid body / user is not a student */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description student already in a class */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin-classes/{id}/students/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a roster entry */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                    /** @description user id */
+                    userId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["user.StudentProfileInput"];
+            responses: {
+                /** @description updated roster entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.StudentProfileView"];
+                    };
+                };
+                /** @description invalid body / user is not in this class */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Remove a student from the roster */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description admin class id */
+                    id: number;
+                    /** @description user id */
+                    userId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description user is not in this class */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description admin class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login with username/password */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description credentials */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["auth.LoginRequest"];
+                };
+            };
+            responses: {
+                /** @description token + user view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["auth.LoginResponse"];
+                    };
+                };
+                /** @description invalid credentials */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current user's identity */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description user view with roles/groups/permissions */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["auth.UserView"];
+                    };
+                };
+                /** @description not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wx-bind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bind a WeChat openid to an existing account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description credentials + wx.login() code */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["auth.WxBindRequest"];
+                };
+            };
+            responses: {
+                /** @description token + user view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["auth.LoginResponse"];
+                    };
+                };
+                /** @description invalid body / already bound */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description invalid credentials */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wx-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** WeChat mini-program silent login (bound accounts only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description wx.login() code */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["auth.WxLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description token + user view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["auth.LoginResponse"];
+                    };
+                };
+                /** @description code required / account not bound */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wx-unbind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unbind the current user's WeChat openid */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description fresh token + user view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["auth.LoginResponse"];
+                    };
+                };
+                /** @description no binding to remove */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List classroom bookings */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by classroom id */
+                    classroom_id?: number;
+                    /** @description filter by status */
+                    status?: "pending" | "approved" | "rejected" | "cancelled";
+                    /** @description date range start (Y-M-D) */
+                    from?: string;
+                    /** @description date range end (Y-M-D) */
+                    to?: string;
+                    /** @description search */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged booking views */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description invalid filter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a classroom booking (pending approval) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description booking input */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["booking.BookingInput"];
+                };
+            };
+            responses: {
+                /** @description created booking view */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["booking.BookingView"];
+                    };
+                };
+                /** @description invalid body / classroom unavailable / period not in regime */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom already booked for this date and period */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a booking */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description booking id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description booking detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["booking.BookingView"];
+                    };
+                };
+                /** @description invalid booking id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description booking not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a booking (creator or admin) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description booking id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description cancelled booking view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["booking.BookingView"];
+                    };
+                };
+                /** @description invalid booking id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description you can only cancel your own bookings */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description booking not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description booking cannot be cancelled in its current status */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a pending booking */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description booking id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description decision */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["booking.ReviewInput"];
+                };
+            };
+            responses: {
+                /** @description reviewed booking view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["booking.BookingView"];
+                    };
+                };
+                /** @description invalid body / decision must be 'approve' or 'reject' */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description booking not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description booking is no longer pending / classroom no longer free */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/checkins": {
         parameters: {
             query?: never;
@@ -651,111 +1829,5629 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/classrooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List classrooms */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by name/building/campus */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged classrooms */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a classroom */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["classroom.ClassroomInput"];
+            responses: {
+                /** @description created classroom */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.Classroom"];
+                    };
+                };
+                /** @description invalid body / name required / capacity must be positive */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a classroom */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description classroom id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description classroom detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.Classroom"];
+                    };
+                };
+                /** @description invalid classroom id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a classroom */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description classroom id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["classroom.ClassroomInput"];
+            responses: {
+                /** @description updated classroom */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.Classroom"];
+                    };
+                };
+                /** @description invalid body / name required */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a classroom */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description classroom id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid classroom id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List course catalog entries */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by code/name */
+                    q?: string;
+                    /** @description filter by department */
+                    department?: string;
+                    /** @description filter by credit */
+                    credit?: number;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged catalog entries */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a course catalog entry */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["course.CatalogInput"];
+            responses: {
+                /** @description created catalog entry */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.CatalogCourse"];
+                    };
+                };
+                /** @description invalid body / required fields missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description catalog code already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a course catalog entry */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description catalog id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description catalog detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.CatalogCourse"];
+                    };
+                };
+                /** @description invalid catalog id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description catalog entry not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a course catalog entry */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description catalog id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["course.CatalogInput"];
+            responses: {
+                /** @description updated catalog entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.CatalogCourse"];
+                    };
+                };
+                /** @description invalid body / required fields missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description catalog entry not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description catalog code already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a course catalog entry */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description catalog id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid catalog id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description catalog entry not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description offerings still reference the catalog */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Console homepage summary (permission-gated sections)
+         * @description Each section is present only when the caller holds the
+         *     permission that gates it — absence means "hidden".
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description school day (Y-M-D) */
+                    date: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description sectioned summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["dashboard.Summary"];
+                    };
+                };
+                /** @description date must be YYYY-MM-DD */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description not authenticated */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List user groups */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description groups with member counts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.GroupView"][];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a user group */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["iam.GroupInput"];
+            responses: {
+                /** @description created group */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.GroupView"];
+                    };
+                };
+                /** @description invalid body / member does not exist */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description only administrators can grant the admin role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description group name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user group (edit form prefill) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description group id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description group detail with members and roles */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.GroupDetail"];
+                    };
+                };
+                /** @description invalid group id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description group not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a user group */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description group id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["iam.GroupInput"];
+            responses: {
+                /** @description updated group */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.GroupView"];
+                    };
+                };
+                /** @description invalid body / member does not exist */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description only administrators can grant the admin role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description group not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description group name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a user group */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description group id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid group id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description group not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List import jobs */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by filename */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged import jobs (metadata only) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/jwc_split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a JWC (教务处) master timetable and split it into six imports
+         * @description Accepts multipart/form-data with `file`, `semester` and
+         *     `week1Monday` fields. Splits the master xlsx into six typed
+         *     import jobs (classrooms, catalog, admin/teaching classes,
+         *     offerings, sessions, regimes) and processes them.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description JWC master xlsx
+                         */
+                        file: string;
+                        /** @description semester label, e.g. 2024-2025-2 */
+                        semester: string;
+                        /** @description first week's Monday (Y-M-D) */
+                        week1Monday: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description created jobs, split stats and warnings */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.SplitResult"];
+                    };
+                };
+                /** @description file/semester/week1Monday required / bad xlsx / week1Monday is not a Monday */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an import job's metadata */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description job id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description job metadata (no rows/payload/error report) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.Job"];
+                    };
+                };
+                /** @description invalid job id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description import job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a preview job */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description job id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description job cancelled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.JobAccepted"];
+                    };
+                };
+                /** @description invalid job id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description import job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description job cannot be cancelled in its current status */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit a preview job (async) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description job id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description commit started */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.JobAccepted"];
+                    };
+                };
+                /** @description invalid job id / job is not in preview */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description import job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description job is being processed by someone else */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{id}/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a job's per-row error report */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description job id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description per-row errors */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.JobErrors"];
+                    };
+                };
+                /** @description invalid job id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description import job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{id}/reanalyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-run analysis of a job (async) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description job id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description re-analysis started */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.JobAccepted"];
+                    };
+                };
+                /** @description invalid job id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description import job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description job is being processed by someone else */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{id}/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one page of a job's preview rows */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size (clamped 1..500) */
+                    pageSize?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description job id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description dry-run preview rows page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.PreviewRowsPage"];
+                    };
+                };
+                /** @description invalid job id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description import job not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a typed xlsx import file (async dry-run)
+         * @description Accepts multipart/form-data with a `file` field. The job is
+         *     parsed/validated in the background; poll GET /api/imports/{id}.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description import type */
+                    type: "classrooms" | "bookings" | "catalog" | "offerings" | "sessions" | "admin_classes" | "teaching_classes" | "regimes";
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description xlsx file
+                         */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description job accepted for processing */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["importer.JobAccepted"];
+                    };
+                };
+                /** @description invalid type / file required / bad xlsx */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List audit log entries */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description range start (Y-M-D) */
+                    from?: string;
+                    /** @description range end (Y-M-D) */
+                    to?: string;
+                    /** @description search */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged log views */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description invalid date filter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get log retention settings */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description retention settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["systemlog.Settings"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update log retention settings */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description retention settings */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["systemlog.Settings"];
+                };
+            };
+            responses: {
+                /** @description updated retention settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["systemlog.Settings"];
+                    };
+                };
+                /** @description invalid body / retentionDays out of range */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List observations */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by status */
+                    status?: "draft" | "submitted";
+                    /** @description filter by template type */
+                    template_type?: string;
+                    /** @description filter by offering id */
+                    course_id?: number;
+                    /** @description range start (Y-M-D) */
+                    start_date?: string;
+                    /** @description range end (Y-M-D) */
+                    end_date?: string;
+                    /** @description search */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged observation views (non-admins see only their own) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description invalid date filter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create an observation (draft) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["observation.ObservationInput"];
+            responses: {
+                /** @description created observation */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["observation.ObservationView"];
+                    };
+                };
+                /** @description invalid body / offering not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/observations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an observation */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description observation id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description observation detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["observation.ObservationView"];
+                    };
+                };
+                /** @description invalid observation id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description observation not found / not yours */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a draft observation */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description observation id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["observation.ObservationInput"];
+            responses: {
+                /** @description updated observation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["observation.ObservationView"];
+                    };
+                };
+                /** @description invalid body / not a draft / not yours */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description observation not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a draft observation */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description observation id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid id / not a draft / not yours */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description observation not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/observations/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit an observation (locks it) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description observation id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description submitted observation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["observation.ObservationView"];
+                    };
+                };
+                /** @description required form fields missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description observation not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offerings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List offerings */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by semester */
+                    semester?: string;
+                    /** @description filter by catalog id */
+                    catalog_id?: number;
+                    /** @description filter by teacher id */
+                    teacher_id?: number;
+                    /** @description search */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged offerings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create an offering */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["course.OfferingInput"];
+            responses: {
+                /** @description created offering */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.OfferingView"];
+                    };
+                };
+                /** @description invalid body / referenced catalog or teaching class not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description semester + catalog + teaching class already offered */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offerings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an offering */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description offering id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description offering detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.OfferingView"];
+                    };
+                };
+                /** @description invalid offering id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description offering not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update an offering */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description offering id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["course.OfferingInput"];
+            responses: {
+                /** @description updated offering */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.OfferingView"];
+                    };
+                };
+                /** @description invalid body / referenced catalog or teaching class not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description offering not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description semester + catalog + teaching class already offered */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete an offering */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description offering id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid offering id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description offering not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description sessions still exist for the offering */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the permission catalog */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description permission catalog */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["authz.Permission"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repairs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List repair tickets */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by classroom id */
+                    classroom_id?: number;
+                    /** @description filter by status */
+                    status?: "open" | "processing" | "completed" | "confirmed";
+                    /** @description search */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged repair views */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a repair ticket */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["classroom.RepairInput"];
+            responses: {
+                /** @description created repair view */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.RepairView"];
+                    };
+                };
+                /** @description invalid body / classroom not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description open ticket already exists for the classroom */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repairs/emergency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an emergency repair ticket (skips the open-ticket guard) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["classroom.RepairInput"];
+            responses: {
+                /** @description created repair view */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.RepairView"];
+                    };
+                };
+                /** @description invalid body / classroom not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repairs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a repair ticket */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description repair id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description repair detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.RepairView"];
+                    };
+                };
+                /** @description invalid repair id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description repair ticket not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Process a repair ticket (start/finish) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description repair id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description status transition */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["classroom.RepairUpdateInput"];
+                };
+            };
+            responses: {
+                /** @description updated repair view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.RepairView"];
+                    };
+                };
+                /** @description invalid body / invalid status transition */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description repair ticket not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repairs/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm a completed repair (creator only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description repair id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description confirmed repair view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["classroom.RepairView"];
+                    };
+                };
+                /** @description repair not completed yet */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description only the creator may confirm */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description repair ticket not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List roles */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description all roles with permissions */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.Role"][];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a role */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["iam.RoleInput"];
+            responses: {
+                /** @description created role */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.Role"];
+                    };
+                };
+                /** @description invalid body / unknown permission */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description role code already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a role (code immutable) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description role id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["iam.RoleInput"];
+            responses: {
+                /** @description updated role */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.Role"];
+                    };
+                };
+                /** @description invalid body / unknown permission */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description role not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description system role cannot be modified */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a role */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description role id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid role id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description role not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description system role cannot be deleted / role still in use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the regime active today */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description regime with periods */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["schedule.Regime"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/regimes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List bell-time regimes */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by name */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged regimes with periods */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a bell-time regime */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["schedule.RegimeInput"];
+            responses: {
+                /** @description created regime (no periods yet) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["schedule.Regime"];
+                    };
+                };
+                /** @description invalid body / name required / effective date invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description effective date already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/regimes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a bell-time regime */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description regime id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description regime with periods */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["schedule.Regime"];
+                    };
+                };
+                /** @description invalid regime id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description regime not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a bell-time regime */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description regime id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["schedule.RegimeInput"];
+            responses: {
+                /** @description updated regime with periods */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["schedule.Regime"];
+                    };
+                };
+                /** @description invalid body / name required / effective date invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description regime not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description effective date already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a bell-time regime */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description regime id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid regime id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description regime not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description cannot delete the last regime */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/regimes/{id}/periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a regime's periods (bell times) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description regime id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description full replacement set of periods */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["schedule.PeriodsInput"];
+                };
+            };
+            responses: {
+                /** @description regime with the new periods */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["schedule.Regime"];
+                    };
+                };
+                /** @description invalid body / period numbers must be contiguous */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description regime not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sessions */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter by offering id */
+                    offering_id?: number;
+                    /** @description filter by classroom id */
+                    classroom_id?: number;
+                    /** @description date range start (Y-M-D) */
+                    from?: string;
+                    /** @description date range end (Y-M-D) */
+                    to?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged sessions */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a session */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["course.SessionInput"];
+            responses: {
+                /** @description created session */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.SessionView"];
+                    };
+                };
+                /** @description invalid body / referenced offering or classroom not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom occupied in the same periods */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a session */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description session id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description session detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.SessionView"];
+                    };
+                };
+                /** @description invalid session id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description session not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a session */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description session id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["course.SessionInput"];
+            responses: {
+                /** @description updated session */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.SessionView"];
+                    };
+                };
+                /** @description invalid body / referenced offering or classroom not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description session not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description classroom occupied in the same periods */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a session */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description session id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid session id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description session not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/ai": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get AI assistant settings (API key masked) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description settings with the API key hidden */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ai.MaskedSettings"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * Update AI assistant settings
+         * @description An empty apiKey means "keep the stored one" — the key can
+         *     never be cleared through the API.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description AI settings */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ai.Settings"];
+                };
+            };
+            responses: {
+                /** @description updated settings (key masked) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ai.MaskedSettings"];
+                    };
+                };
+                /** @description invalid body / apiKey required when enabled */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get mail service settings (password masked) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description settings with the password hidden */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["mail.MaskedSettings"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * Update mail service settings
+         * @description An empty password means "keep the stored one" — the secret
+         *     can never be cleared through the API.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description mail settings */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["mail.Settings"];
+                };
+            };
+            responses: {
+                /** @description updated settings (password masked) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["mail.MaskedSettings"];
+                    };
+                };
+                /** @description invalid body / required fields missing when enabled */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get object storage settings (secret key masked) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description settings with the secret key hidden */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["storage.MaskedSettings"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * Update object storage settings
+         * @description An empty secretKey means "keep the stored one" — the secret
+         *     can never be cleared through the API.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description storage settings */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["storage.Settings"];
+                };
+            };
+            responses: {
+                /** @description updated settings (secret masked) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["storage.MaskedSettings"];
+                    };
+                };
+                /** @description invalid body / required fields missing when enabled */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teaching-classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List teaching classes */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by name */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged teaching classes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a teaching class */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description teaching class input */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.TeachingClassInput"];
+                };
+            };
+            responses: {
+                /** @description created teaching class */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.TeachingClassView"];
+                    };
+                };
+                /** @description invalid body / name required / member admin class not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teaching-classes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a teaching class */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description teaching class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description teaching class with member admin classes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.TeachingClassView"];
+                    };
+                };
+                /** @description invalid teaching class id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description teaching class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a teaching class */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description teaching class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description teaching class input (classIds replace semantics) */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.TeachingClassInput"];
+                };
+            };
+            responses: {
+                /** @description updated teaching class */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.TeachingClassView"];
+                    };
+                };
+                /** @description invalid body / name required / member admin class not found */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description teaching class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description name already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a teaching class */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description teaching class id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid teaching class id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description teaching class not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description offerings still reference the teaching class */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/timetable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Classroom timetable for a date range */
+        get: {
+            parameters: {
+                query: {
+                    /** @description classroom id */
+                    classroom_id: number;
+                    /** @description range start (Y-M-D) */
+                    from: string;
+                    /** @description range end (Y-M-D) */
+                    to: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description one entry per day in range */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["course.TimetableDay"][];
+                    };
+                };
+                /** @description classroom_id required / invalid date range */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by username/display name */
+                    q?: string;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged users with role/group summaries */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a user */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description create user input */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.CreateUserInput"];
+                };
+            };
+            responses: {
+                /** @description created user */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.User"];
+                    };
+                };
+                /** @description invalid body / required fields missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description username already taken */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description user detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.User"];
+                    };
+                };
+                /** @description invalid user id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a user */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description update user input */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.UpdateUserInput"];
+                };
+            };
+            responses: {
+                /** @description updated user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["user.User"];
+                    };
+                };
+                /** @description invalid body / displayName required */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a user */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid user id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description only administrators can delete an administrator's account */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description cannot delete your own account */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user's grants (roles / permissions / groups) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description grant view incl. expired rows */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.UserGrantView"];
+                    };
+                };
+                /** @description invalid user id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reset a user's password */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description new password */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.ChangePasswordInput"];
+                };
+            };
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid body / password required */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description only administrators can change an administrator's password */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/users/{id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a user's permission grants */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description whole-set permission grants */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.UserPermissionsInput"];
+                };
+            };
+            responses: {
+                /** @description updated grant view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.UserGrantView"];
+                    };
+                };
+                /** @description invalid body / unknown permission */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a user's role grants */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description whole-set role grants */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["user.UserRolesInput"];
+                };
+            };
+            responses: {
+                /** @description updated grant view */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iam.UserGrantView"];
+                    };
+                };
+                /** @description invalid body / unknown role code */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description only administrators can grant the admin role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        "ai.MaskedSettings": {
+            apiKey: string;
+            apiKeySet: boolean;
+            baseUrl: string;
+            enabled: boolean;
+            model: string;
+        };
+        "ai.Settings": {
+            apiKey: string;
+            baseUrl: string;
+            enabled: boolean;
+            model: string;
+        };
         "attendance.CheckinInput": {
-            durationMinute?: number;
-            lateMinutes?: number;
-            offeringId?: number;
-            sessionId?: number;
-            title?: string;
+            durationMinute: number;
+            lateMinutes: number;
+            offeringId: number;
+            sessionId: number;
+            title: string;
         };
         "attendance.CheckinRecordView": {
             /** @description "grade name", "" when unknown */
-            adminClass?: string;
+            adminClass: string;
             checkedAt?: string;
-            checkinId?: number;
-            displayName?: string;
-            inRoster?: boolean;
+            checkinId: number;
+            displayName: string;
+            inRoster: boolean;
             modifiedAt?: string;
-            status?: string;
-            studentNo?: string;
-            userId?: number;
+            status: string;
+            studentNo: string;
+            userId: number;
         };
         "attendance.CheckinView": {
             closedAt?: string;
-            code?: string;
-            counts?: components["schemas"]["attendance.Counts"];
-            courseName?: string;
-            createdAt?: string;
-            createdBy?: number;
+            code: string;
+            counts: components["schemas"]["attendance.Counts"];
+            courseName: string;
+            createdAt: string;
+            createdBy: number;
             expiresAt?: string;
-            id?: number;
-            lateMinutes?: number;
-            offeringId?: number;
-            semester?: string;
-            sessionId?: number;
-            sessionText?: string;
-            startsAt?: string;
+            id: number;
+            lateMinutes: number;
+            offeringId: number;
+            semester: string;
+            sessionId: number;
+            sessionText: string;
+            startsAt: string;
             /** @description active | closed */
-            status?: string;
-            teacher?: string;
-            teachingClassName?: string;
-            title?: string;
+            status: string;
+            teacher: string;
+            teachingClassName: string;
+            title: string;
         };
         "attendance.Counts": {
-            absent?: number;
-            expected?: number;
-            late?: number;
-            leave?: number;
-            present?: number;
+            absent: number;
+            expected: number;
+            late: number;
+            leave: number;
+            present: number;
         };
         "attendance.OfferingSummary": {
-            checkins?: components["schemas"]["attendance.CheckinView"][];
-            courseName?: string;
-            offeringId?: number;
-            rows?: components["schemas"]["attendance.SummaryRow"][];
-            semester?: string;
-            teacher?: string;
-            teachingClassName?: string;
+            checkins: components["schemas"]["attendance.CheckinView"][];
+            courseName: string;
+            offeringId: number;
+            rows: components["schemas"]["attendance.SummaryRow"][];
+            semester: string;
+            teacher: string;
+            teachingClassName: string;
         };
         "attendance.RecordUpdateInput": {
             /**
              * @example present
              * @enum {string}
              */
-            status?: "present" | "late" | "absent" | "leave";
+            status: "present" | "late" | "absent" | "leave";
         };
         "attendance.ScanRequest": {
             /** @example 123456 */
-            code?: string;
+            code: string;
         };
         "attendance.ScanResult": {
-            checkinId?: number;
-            inRoster?: boolean;
-            isNew?: boolean;
-            status?: string;
-            title?: string;
+            checkinId: number;
+            inRoster: boolean;
+            isNew: boolean;
+            status: string;
+            title: string;
         };
         "attendance.SummaryRow": {
-            adminClass?: string;
-            displayName?: string;
-            inRoster?: boolean;
-            records?: {
+            adminClass: string;
+            displayName: string;
+            inRoster: boolean;
+            records: {
                 [key: string]: string;
             };
-            studentNo?: string;
-            totals?: {
+            studentNo: string;
+            totals: {
                 [key: string]: number;
             };
-            userId?: number;
+            userId: number;
+        };
+        "auth.LoginRequest": {
+            password: string;
+            username: string;
+        };
+        "auth.LoginResponse": {
+            token: string;
+            user: components["schemas"]["auth.UserView"];
+        };
+        "auth.UserView": {
+            displayName: string;
+            groups: components["schemas"]["iam.GroupBrief"][];
+            id: number;
+            permissions: string[];
+            roles: components["schemas"]["iam.RoleBrief"][];
+            type: string;
+            username: string;
+        };
+        "auth.WxBindRequest": {
+            code: string;
+            password: string;
+            username: string;
+        };
+        "auth.WxLoginRequest": {
+            code: string;
+        };
+        "authz.Permission": {
+            category: string;
+            categoryName: string;
+            code: string;
+            description: string;
+            name: string;
+        };
+        "booking.BookingInput": {
+            classroomId: number;
+            date: string;
+            periodEnd: number;
+            periodStart: number;
+            purpose: string;
+        };
+        "booking.BookingView": {
+            classroomId: number;
+            classroomName: string;
+            createdAt: string;
+            /** @description "YYYY-MM-DD" */
+            date: string;
+            displayName: string;
+            id: number;
+            periodEnd: number;
+            periodStart: number;
+            purpose: string;
+            reviewedAt?: string;
+            status: string;
+            userId: number;
+            username: string;
+        };
+        "booking.DailyCount": {
+            count: number;
+            date: string;
+        };
+        "booking.ReviewInput": {
+            /** @description "approve" or "reject" */
+            decision: string;
+        };
+        "classroom.Classroom": {
+            building: string;
+            campus: string;
+            capacity: number;
+            createdAt: string;
+            description: string;
+            floor: string;
+            id: number;
+            name: string;
+            status: string;
+            type: string;
+        };
+        "classroom.ClassroomInput": {
+            building: string;
+            campus: string;
+            capacity: number;
+            description: string;
+            floor: string;
+            name: string;
+            status: string;
+            type: string;
+        };
+        "classroom.RepairInput": {
+            classroomId: number;
+            description: string;
+            images: string[];
+        };
+        "classroom.RepairUpdateInput": {
+            remark: string;
+            status: string;
+        };
+        "classroom.RepairView": {
+            assigneeId?: number;
+            assigneeName: string;
+            building: string;
+            classroomId: number;
+            classroomName: string;
+            createdAt: string;
+            creatorId: number;
+            creatorName: string;
+            description: string;
+            id: number;
+            images: string[];
+            remark: string;
+            status: string;
+            updatedAt: string;
+        };
+        "course.CatalogCourse": {
+            /** @description 课程类别二：专业基础课/专业课/学科基础课/通识教育课 */
+            category: string;
+            code: string;
+            createdAt: string;
+            credits: number;
+            description: string;
+            /** @description 考核方式：考试/考查 */
+            examType: string;
+            id: number;
+            name: string;
+            totalHours: number;
+        };
+        "course.CatalogInput": {
+            category: string;
+            code: string;
+            credits: number;
+            description: string;
+            examType: string;
+            name: string;
+            totalHours: number;
+        };
+        "course.OfferingInput": {
+            catalogId: number;
+            college: string;
+            courseSeq: string;
+            maxStudents: number;
+            note: string;
+            requirement: string;
+            semester: string;
+            teacher: string;
+            teacherId: string;
+            teacherTitle: string;
+            teachingClassId: number;
+            weeklyHours: number;
+        };
+        "course.OfferingView": {
+            catalogCode: string;
+            catalogId: number;
+            catalogName: string;
+            classNames: string[];
+            /** @description 开课学院 */
+            college: string;
+            /** @description 课程序号，如 113130004.68 */
+            courseSeq: string;
+            createdAt: string;
+            id: number;
+            /** @description 人数上限 */
+            maxStudents: number;
+            note: string;
+            /** @description 课程类别一：必修/限选/任选 */
+            requirement: string;
+            semester: string;
+            teacher: string;
+            /** @description 教师工号（合上课逗号合并） */
+            teacherId: string;
+            /** @description 教师职称 */
+            teacherTitle: string;
+            teachingClassId: number;
+            teachingClassName: string;
+            /** @description 周学时 */
+            weeklyHours: number;
+        };
+        "course.SessionInput": {
+            classroomId: number;
+            date: string;
+            note: string;
+            offeringId: number;
+            periodEnd: number;
+            periodStart: number;
+        };
+        "course.SessionView": {
+            catalogCode: string;
+            classNames: string[];
+            classroomId: number;
+            classroomName: string;
+            courseName: string;
+            createdAt: string;
+            /** @description "YYYY-MM-DD" */
+            date: string;
+            id: number;
+            note: string;
+            offeringId: number;
+            periodEnd: number;
+            periodStart: number;
+            semester: string;
+            teacher: string;
+            teachingClassName: string;
+        };
+        "course.TimetableDay": {
+            date: string;
+            /** @description 1=Mon .. 7=Sun */
+            dayOfWeek: number;
+            regimeName: string;
+            slots: components["schemas"]["course.TimetableSlot"][];
+        };
+        "course.TimetableSlot": {
+            endTime: string;
+            periodIndex: number;
+            /** @description nil when the slot is free */
+            session?: components["schemas"]["course.SessionView"];
+            startTime: string;
+        };
+        "dashboard.BookingsSection": {
+            items: components["schemas"]["booking.BookingView"][];
+            total: number;
+        };
+        "dashboard.PeriodCount": {
+            count: number;
+            period: number;
+        };
+        "dashboard.RepairsSection": {
+            items: components["schemas"]["classroom.RepairView"][];
+            total: number;
+        };
+        "dashboard.SessionsSection": {
+            items: components["schemas"]["course.SessionView"][];
+            total: number;
+        };
+        "dashboard.Summary": {
+            /**
+             * @description BookingLoad is approved booking counts per day over the next 14 days,
+             *     zero-filled. Scope matches the caller: booking:approve sees every
+             *     booking, everyone else only their own. Visible to every authenticated
+             *     subject.
+             */
+            bookingLoad?: components["schemas"]["booking.DailyCount"][];
+            /** @description ClassroomTotal is the number of managed classrooms (classroom:read). */
+            classroomTotal?: number;
+            /**
+             * @description Date is the echoed "YYYY-MM-DD" school day the figures refer to
+             *     (supplied by the client so server/client timezone skew cannot shift
+             *     "today").
+             */
+            date: string;
+            /**
+             * @description MyBookings is the caller's own approved bookings starting at Date,
+             *     soonest first. Visible to every authenticated subject: a booking's
+             *     creator can always see their own reservation.
+             */
+            myBookings?: components["schemas"]["booking.BookingView"][];
+            /**
+             * @description OpenRepairs is the unresolved ticket queue, open or processing,
+             *     scoped like the repair list itself: repair:assign sees every ticket,
+             *     a plain repair:create only their own (repair:create OR repair:assign).
+             */
+            openRepairs?: components["schemas"]["dashboard.RepairsSection"];
+            /** @description PendingBookings is the pending-approval queue (booking:approve). */
+            pendingBookings?: components["schemas"]["dashboard.BookingsSection"];
+            /** @description RecentLogs is the latest audit trail entries (log:read). */
+            recentLogs?: components["schemas"]["systemlog.LogView"][];
+            /**
+             * @description SessionPeriods is today's occupancy histogram: for each period index
+             *     1..max, how many sessions are running (a session spanning periods 1-2
+             *     counts in both slots). Filled alongside TodaySessions from the same
+             *     query, so it carries the same course:read gate (course:read).
+             */
+            sessionPeriods?: components["schemas"]["dashboard.PeriodCount"][];
+            /**
+             * @description TodaySessions is the day's course session count plus a preview of the
+             *     first sessions by period (course:read).
+             */
+            todaySessions?: components["schemas"]["dashboard.SessionsSection"];
         };
         "httpx.ErrorResponse": {
             /** @example invalid request body */
-            error?: string;
+            error: string;
         };
         "httpx.Paged": {
-            items?: unknown;
-            page?: number;
-            pageSize?: number;
-            total?: number;
+            items: unknown;
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        "iam.GroupBrief": {
+            id: number;
+            name: string;
+        };
+        "iam.GroupDetail": {
+            createdAt: string;
+            description: string;
+            id: number;
+            memberCount: number;
+            members: components["schemas"]["iam.GroupMemberView"][];
+            name: string;
+            roles: components["schemas"]["iam.RoleBrief"][];
+        };
+        "iam.GroupInput": {
+            description: string;
+            members: number[];
+            name: string;
+            roles: number[];
+        };
+        "iam.GroupMemberView": {
+            displayName: string;
+            id: number;
+            username: string;
+        };
+        "iam.GroupView": {
+            createdAt: string;
+            description: string;
+            id: number;
+            memberCount: number;
+            name: string;
+        };
+        "iam.PermGrantInput": {
+            expiresAt?: string;
+            permission: string;
+        };
+        "iam.PermGrantView": {
+            expiresAt?: string;
+            permission: string;
+        };
+        "iam.Role": {
+            code: string;
+            description: string;
+            id: number;
+            isSystem: boolean;
+            name: string;
+            permissions: string[];
+        };
+        "iam.RoleBrief": {
+            code: string;
+            id: number;
+            name: string;
+        };
+        "iam.RoleGrantInput": {
+            expiresAt?: string;
+            roleCode: string;
+        };
+        "iam.RoleGrantView": {
+            code: string;
+            expiresAt?: string;
+            name: string;
+            roleId: number;
+        };
+        "iam.RoleInput": {
+            code: string;
+            description: string;
+            name: string;
+            permissions: string[];
+        };
+        "iam.UserGrantView": {
+            groups: components["schemas"]["iam.GroupBrief"][];
+            permissions: components["schemas"]["iam.PermGrantView"][];
+            roles: components["schemas"]["iam.RoleGrantView"][];
+        };
+        "importer.Job": {
+            createdAt: string;
+            errorReport: string;
+            failedRows: number;
+            filename: string;
+            finishedAt?: string;
+            id: number;
+            rows?: {
+                [key: string]: unknown;
+            }[];
+            startedAt?: string;
+            status: string;
+            succeededRows: number;
+            totalRows: number;
+            type: string;
+            userId: number;
+        };
+        "importer.JobAccepted": {
+            id: number;
+            status: string;
+        };
+        "importer.JobErrors": {
+            errors: components["schemas"]["importer.RowError"][];
+        };
+        "importer.PreviewRowsPage": {
+            page: number;
+            pageSize: number;
+            rows: {
+                [key: string]: unknown;
+            }[];
+            total: number;
+        };
+        "importer.RowError": {
+            error: string;
+            row: number;
+        };
+        "importer.SplitJobRef": {
+            id: number;
+            status: string;
+            type: string;
+        };
+        "importer.SplitResult": {
+            jobs: components["schemas"]["importer.SplitJobRef"][];
+            stats: components["schemas"]["jwc.Stats"];
+            warnings: string[];
+        };
+        "jwc.Stats": {
+            /** @description 去重后行政班数 */
+            adminClasses: number;
+            /** @description 去重后课程数 */
+            catalogCourses: number;
+            /** @description 去重后教室数 */
+            classrooms: number;
+            /** @description 无教师已填「未安排」的开课数 */
+            noTeacherFilled: number;
+            /** @description 开课数 */
+            offerings: number;
+            /** @description 源表数据行数 */
+            rows: number;
+            /** @description 展开后课次数 */
+            sessions: number;
+            /** @description 空行政班跳过的开课数 */
+            skippedEmptyAdmin: number;
+            /** @description 平行教学班跳过的开课数 */
+            skippedParallel: number;
+            /** @description 教学班数 */
+            teachingClasses: number;
+            /** @description 人类可读告警 */
+            warnings: string[];
+        };
+        "mail.MaskedSettings": {
+            enabled: boolean;
+            encryption: string;
+            fromAddress: string;
+            fromName: string;
+            host: string;
+            password: string;
+            passwordSet: boolean;
+            port: number;
+            username: string;
+        };
+        "mail.Settings": {
+            enabled: boolean;
+            encryption: string;
+            fromAddress: string;
+            fromName: string;
+            host: string;
+            password: string;
+            port: number;
+            username: string;
+        };
+        "observation.ObservationInput": {
+            classroomId?: number;
+            courseId: number;
+            formData: Record<string, never>;
+            isAnonymous: boolean;
+            observeDate: string;
+            occurrenceId?: number;
+            sections: number[];
+            templateType: string;
+        };
+        "observation.ObservationView": {
+            /** @description nullable FK -> classrooms */
+            classroomId?: number;
+            classroomName: string;
+            content: string;
+            courseCode: string;
+            /** @description FK -> course_offerings */
+            courseId: number;
+            courseName: string;
+            courseSnapshot: Record<string, never>;
+            createdAt: string;
+            exportedAt?: string;
+            formData: Record<string, never>;
+            id: number;
+            isAnonymous: boolean;
+            /** @description "YYYY-MM-DD" */
+            observeDate: string;
+            /** @description FK -> users */
+            observerId: number;
+            observerName: string;
+            /** @description nullable FK -> course_sessions */
+            occurrenceId?: number;
+            remark: string;
+            scores: Record<string, never>;
+            /** @description normalized period indices */
+            sections: number[];
+            /** @description draft | submitted */
+            status: string;
+            teacher: string;
+            teachingClassName: string;
+            templateType: string;
+            totalScore?: number;
+            updatedAt: string;
+        };
+        "schedule.Period": {
+            /** @description "HH:MM" */
+            endTime: string;
+            id: number;
+            periodIndex: number;
+            regimeId: number;
+            /** @description "HH:MM" */
+            startTime: string;
+        };
+        "schedule.PeriodInput": {
+            endTime: string;
+            periodIndex: number;
+            startTime: string;
+        };
+        "schedule.PeriodsInput": {
+            periods: components["schemas"]["schedule.PeriodInput"][];
+        };
+        "schedule.Regime": {
+            createdAt: string;
+            effectiveDay: number;
+            effectiveMonth: number;
+            id: number;
+            name: string;
+            periods: components["schemas"]["schedule.Period"][];
+        };
+        "schedule.RegimeInput": {
+            effectiveDay: number;
+            effectiveMonth: number;
+            name: string;
+        };
+        "storage.MaskedSettings": {
+            accessKey: string;
+            bucket: string;
+            enabled: boolean;
+            endpoint: string;
+            publicBaseUrl: string;
+            region: string;
+            secretKey: string;
+            secretKeySet: boolean;
+            usePathStyle: boolean;
+            useSsl: boolean;
+        };
+        "storage.Settings": {
+            accessKey: string;
+            bucket: string;
+            enabled: boolean;
+            endpoint: string;
+            publicBaseUrl: string;
+            region: string;
+            secretKey: string;
+            usePathStyle: boolean;
+            useSsl: boolean;
+        };
+        "systemlog.LogView": {
+            /** @description null when the row has no actor */
+            actorId?: number;
+            actorName: string;
+            clientIp: string;
+            createdAt: string;
+            id: number;
+            method: string;
+            path: string;
+            statusCode: number;
+            summary: string;
+        };
+        "systemlog.Settings": {
+            retentionDays: number;
+            retentionEnabled: boolean;
+        };
+        "user.AdminClass": {
+            createdAt: string;
+            grade: string;
+            id: number;
+            name: string;
+            note: string;
+        };
+        "user.AdminClassInput": {
+            grade: string;
+            name: string;
+            note: string;
+        };
+        "user.ChangePasswordInput": {
+            password: string;
+        };
+        "user.ClassRef": {
+            /** @description Grade is included so the UI can render the full "2024级/计算机244" label. */
+            grade: string;
+            id: number;
+            name: string;
+        };
+        "user.CreateUserInput": {
+            displayName: string;
+            password: string;
+            type: string;
+            username: string;
+        };
+        "user.StudentProfileInput": {
+            note: string;
+            studentNo: string;
+            userId: number;
+        };
+        "user.StudentProfileView": {
+            adminClassId: number;
+            displayName: string;
+            note: string;
+            studentNo: string;
+            userId: number;
+            username: string;
+        };
+        "user.TeachingClassInput": {
+            classIds: number[];
+            name: string;
+            note: string;
+        };
+        "user.TeachingClassView": {
+            classes: components["schemas"]["user.ClassRef"][];
+            createdAt: string;
+            id: number;
+            name: string;
+            note: string;
+        };
+        "user.UpdateUserInput": {
+            displayName: string;
+            type: string;
+        };
+        "user.User": {
+            createdAt: string;
+            displayName: string;
+            groups?: components["schemas"]["iam.GroupBrief"][];
+            id: number;
+            roles?: components["schemas"]["iam.RoleBrief"][];
+            type: string;
+            username: string;
+        };
+        "user.UserPermissionsInput": {
+            permissions: components["schemas"]["iam.PermGrantInput"][];
+        };
+        "user.UserRolesInput": {
+            roles: components["schemas"]["iam.RoleGrantInput"][];
         };
     };
     responses: never;
     parameters: never;
-    requestBodies: never;
+    requestBodies: {
+        /** @description catalog input */
+        "course.CatalogInput": {
+            content: {
+                "application/json": components["schemas"]["course.CatalogInput"];
+            };
+        };
+        /** @description session input */
+        "course.SessionInput": {
+            content: {
+                "application/json": components["schemas"]["course.SessionInput"];
+            };
+        };
+        /** @description observation input */
+        "observation.ObservationInput": {
+            content: {
+                "application/json": components["schemas"]["observation.ObservationInput"];
+            };
+        };
+        /** @description offering input */
+        "course.OfferingInput": {
+            content: {
+                "application/json": components["schemas"]["course.OfferingInput"];
+            };
+        };
+        /** @description regime input */
+        "schedule.RegimeInput": {
+            content: {
+                "application/json": components["schemas"]["schedule.RegimeInput"];
+            };
+        };
+        /** @description admin class input */
+        "user.AdminClassInput": {
+            content: {
+                "application/json": components["schemas"]["user.AdminClassInput"];
+            };
+        };
+        /** @description roster entry input */
+        "user.StudentProfileInput": {
+            content: {
+                "application/json": components["schemas"]["user.StudentProfileInput"];
+            };
+        };
+        /** @description classroom input */
+        "classroom.ClassroomInput": {
+            content: {
+                "application/json": components["schemas"]["classroom.ClassroomInput"];
+            };
+        };
+        /** @description group input */
+        "iam.GroupInput": {
+            content: {
+                "application/json": components["schemas"]["iam.GroupInput"];
+            };
+        };
+        /** @description repair input */
+        "classroom.RepairInput": {
+            content: {
+                "application/json": components["schemas"]["classroom.RepairInput"];
+            };
+        };
+        /** @description role input */
+        "iam.RoleInput": {
+            content: {
+                "application/json": components["schemas"]["iam.RoleInput"];
+            };
+        };
+    };
     headers: never;
     pathItems: never;
 }

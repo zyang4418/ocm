@@ -45,11 +45,17 @@ Classroom management system: Go backend + WeChat mini-program (小程序) + web 
 
 ## OpenAPI 契约(swaggo)
 
-- handler 注释用 swaggo 注解(`@Summary/@Param/@Success/@Router`,试点见 `backend/internal/attendance/handler.go`);`backend/docs/` 为生成产物勿手改。
-- 改 handler/model 后须 `go -C backend tool swag init -o docs --parseDependency --parseInternal` 并提交;前端 `npm --prefix web run gen:types` 重生成 `web/src/types/api.d.ts`(链路:swagger 2.0 -> swagger2openapi 转 OpenAPI 3 -> openapi-typescript)。Swagger UI 挂在 `/swagger/`。
+- handler 注释用 swaggo 注解(`@Summary/@Param/@Success/@Router`,试点见 `backend/internal/attendance/handler.go`);`backend/docs/` 为生成产物勿手改。**全部业务模块已注解**(导出 xlsx/docx 的端点除外——二进制响应无 schema 意义)。
+- 改 handler/model 后须 `go -C backend tool swag init -o docs --parseDependency --parseInternal --requiredByDefault` 并提交;前端 `npm --prefix web run gen:types` 重生成 `web/src/types/api.d.ts`(链路:swagger 2.0 -> swagger2openapi 转 OpenAPI 3 -> openapi-typescript)。Swagger UI 仅在 `APP_ENV=development`(或显式设 `SWAGGER_ENABLED=true`)时挂载在 `/swagger/`,生产默认关闭(未设 APP_ENV 按 production 处理)。CI 有双侧漂移门禁(backend.yml 重生成 `docs/` 无 diff;web.yml 重生成 `api.d.ts` 无 diff)。
+- `--requiredByDefault` 把非 omitempty 字段标为必填(TS 端必到字段不再是全可选);**可空指针字段**(如 `*time.Time`)须加 `validate:"optional"` 标签豁免(后端无 validator 库,该标签仅 swaggo 消费),否则会被误标必填。
+- `json.RawMessage` 字段须加 `swaggertype` 覆盖,否则 swaggo 渲染成 `number[]`(底层 []byte):任意 JSON 对象用 `swaggertype:"object"`,字符串数组用 `swaggertype:"array,string"`(见 observation/model.go、classroom/repair.go)。
+- 注解引用的请求/响应类型须为**导出类型**(swaggo 限制);未导出的先导出化(先例:auth 的 `LoginRequest/UserView/LoginResponse`、ai/mail/storage 的 `MaskedSettings`),或新建命名类型(先例:attendance `ScanRequest`、user `UserRolesInput`、importer `SplitResult`)。
 
 ## 网页端(web/)
 
-- TypeScript strict;过渡期 `allowJs + checkJs:false`,存量 `.jsx` 分批迁 `.tsx`,全部迁完后关闭。类型源自 OpenAPI 契约(见上),手写补集在 `web/src/types/api.ts`(`ApiError`/`Paged<T>`/`Permission`)。
+- **TypeScript strict 全量落地**:src 下无 `.js/.jsx`(`allowJs` 已关),新文件一律 `.ts/.tsx`。
+- 页面数据类型一律引 `web/src/types/api.ts` 的导出别名(生成 schema 的 re-export);手写补集仅限 `ApiError`/`Paged<T>`/`Permission`(前端 `can()` 的联合类型,比生成的 `string[]` 严)与极少数非 Go 源头的类型(如 observations 模板 schema——Python 衍生,见 ObservationsPage 本地类型)。
+- Carbon DataTable 行必须有 string `id`:wire 无 id 的记录显式派生(`{...r, id: String(r.userId)}`),这是类型锁死的模式。`getHeaderProps`/`getRowProps` spread 自带 key,勿再传显式 `key`(TS2783)。
+- Carbon 组件常见坑:Tag 无 `yellow` 色;`DatePickerInput` 不收 `value`(受控值放父 `DatePicker`);`MultiSelect` 无 `selection` prop,弹窗内表单回显必须用受控 `selectedItems`——Carbon Modal 的 children 常驻挂载(仅切 `is-visible` class,不随 open 重挂载),`initialSelectedItems` 仅组件挂载时生效,弹窗打开后异步加载的数据它不感知;`Dropdown` 的 `titleText` 为必填 prop,非空会渲染可见 `<label>`(页面已有自定义 label 时传 `""`,组件默认即空串、空值短路不渲染);`InlineNotification` 无 `actions` prop(用 `ActionableNotification`);charts 的 `scaleType` 须用 `ScaleTypes` 枚举(字符串字面量不过检)。
 - `npm --prefix web run typecheck` 为类型门禁;`build` 已含 `tsc --noEmit`。
 - 本地无 MySQL:后端业务路由等 DB 连通后才注册,冒烟看 `/healthz` 与 `/swagger/`;本地启动后端需 `APP_ENV=development`(注意不是 dev)。

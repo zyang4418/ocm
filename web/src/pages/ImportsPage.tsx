@@ -20,6 +20,8 @@ import {
   TableToolbarContent,
   TableToolbarSearch,
   Tag,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { Upload } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -30,8 +32,9 @@ import { IMPORT_TYPES } from '../components/ImportPreviewTable'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import type { ImportJob } from '../types/api'
 
-const statusKind = {
+const STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   pending: 'blue',
   processing: 'blue',
   preview: 'purple',
@@ -39,16 +42,6 @@ const statusKind = {
   failed: 'red',
   cancelled: 'gray',
 }
-
-const headers = (t) => [
-  { key: 'type', header: t('field.type') },
-  { key: 'filename', header: t('field.filename') },
-  { key: 'status', header: t('field.status') },
-  { key: 'totalRows', header: t('field.totalRows') },
-  { key: 'succeededRows', header: t('field.succeededRows') },
-  { key: 'failedRows', header: t('field.failedRows') },
-  { key: 'createdAt', header: t('field.createdAt') },
-]
 
 // ImportsPage (/imports) is the regular single-file import: pick a type, upload
 // an xlsx, then track the resulting jobs in the list. The 教务处 split flow
@@ -59,13 +52,23 @@ export default function ImportsPage() {
   const { t } = useTranslation('imports')
   const { token } = useAuth()
   const navigate = useNavigate()
-  const fileRef = useRef(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  const list = usePagedList({ path: '/api/imports', token })
+  const headers: DataTableHeader[] = [
+    { key: 'type', header: t('field.type') },
+    { key: 'filename', header: t('field.filename') },
+    { key: 'status', header: t('field.status') },
+    { key: 'totalRows', header: t('field.totalRows') },
+    { key: 'succeededRows', header: t('field.succeededRows') },
+    { key: 'failedRows', header: t('field.failedRows') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
+
+  const list = usePagedList<ImportJob>({ path: '/api/imports', token })
   const { loading } = list
 
   const [importType, setImportType] = useState('sessions')
-  const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
 
@@ -78,7 +81,7 @@ export default function ImportsPage() {
     return () => clearInterval(timer)
   }, [list.items, list.reload])
 
-  const typeLabel = (type) => (type ? t('types.' + type + '.label', { defaultValue: type }) : '-')
+  const typeLabel = (type: string) => (type ? t('types.' + type + '.label', { defaultValue: type }) : '-')
 
   const handleUpload = async () => {
     if (!selectedFile) return
@@ -90,13 +93,12 @@ export default function ImportsPage() {
       if (fileRef.current) fileRef.current.value = ''
       list.reload()
     } catch (err) {
-      setUploadError(err.message)
+      setUploadError((err as Error).message)
     } finally {
       setUploading(false)
     }
   }
 
-  const tableHeaders = headers(t)
   const rows = list.items.map((j) => ({
     id: String(j.id),
     type: j.type,
@@ -108,7 +110,7 @@ export default function ImportsPage() {
     createdAt: j.createdAt,
   }))
 
-  const colSpan = tableHeaders.length + 1
+  const colSpan = headers.length + 1
   const typeCfg = IMPORT_TYPES[importType]
 
   return (
@@ -117,7 +119,10 @@ export default function ImportsPage() {
         <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
-            onClick={(e) => { e.preventDefault(); navigate('/') }}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/')
+            }}
           >
             {t('breadcrumb.home')}
           </BreadcrumbItem>
@@ -147,7 +152,7 @@ export default function ImportsPage() {
             onChange={(e) => setImportType(e.target.value)}
             size="sm"
           >
-            {Object.entries(IMPORT_TYPES).map(([value]) => (
+            {Object.keys(IMPORT_TYPES).map((value) => (
               <SelectItem key={value} value={value} text={t('types.' + value + '.label')} />
             ))}
           </Select>
@@ -172,15 +177,16 @@ export default function ImportsPage() {
           )}
         </div>
         <p className="imports-page__schema">
-          <strong>{typeLabel(importType)}</strong>{t('schemaIntroTail')}
-          <code>{typeCfg.schema}</code>
+          <strong>{typeLabel(importType)}</strong>
+          {t('schemaIntroTail')}
+          <code>{typeCfg?.schema}</code>
         </p>
         <p className="imports-page__note">{t('types.' + importType + '.note')}</p>
       </Column>
 
       <Column sm={4} md={8} lg={16}>
-        <DataTable rows={rows} headers={tableHeaders}>
-          {({ rows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
+        <DataTable rows={rows} headers={headers}>
+          {({ rows: tableRows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
                 <TableToolbarContent>
@@ -191,7 +197,7 @@ export default function ImportsPage() {
                 <TableHead>
                   <TableRow>
                     {renderedHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -203,36 +209,37 @@ export default function ImportsPage() {
                     <TableRow>
                       <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
-                  ) : rows.length === 0 ? (
+                  ) : tableRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>{list.q ? t('empty.search') : t('empty.none')}</TableCell>
                     </TableRow>
                   ) : (
-                    rows.map((row) => {
+                    tableRows.map((row) => {
                       const j = list.items.find((x) => String(x.id) === String(row.id))
                       const viewable = j && j.status !== 'pending' && j.status !== 'processing'
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'type') {
-                              return <TableCell key={cell.id}>{typeLabel(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{typeLabel(cell.value as string)}</TableCell>
                             }
                             if (cell.info.header === 'status') {
+                              const value = cell.value as string
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {t('status.' + cell.value, { defaultValue: cell.value })}
+                                  <Tag type={STATUS_KIND[value] ?? 'gray'} size="sm">
+                                    {t('status.' + value, { defaultValue: value })}
                                   </Tag>
                                 </TableCell>
                               )
                             }
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string | number}</TableCell>
                           })}
                           <TableCell>
-                            {viewable ? (
+                            {j && viewable ? (
                               <Button kind="ghost" size="sm" onClick={() => navigate(`/imports/${j.id}`)}>
                                 {j.status === 'preview' ? t('action.viewPreview') : t('action.viewDetail')}
                               </Button>

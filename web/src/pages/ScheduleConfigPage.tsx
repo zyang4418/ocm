@@ -20,8 +20,25 @@ import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
+import type { PeriodInput, Regime, RegimeInput } from '../types/api'
 
-const emptyRegime = { name: '', effectiveMonth: 5, effectiveDay: 1 }
+// Regime form: the day field is a text input, so it holds a string while
+// editing (converted on submit).
+interface RegimeForm {
+  name: string
+  effectiveMonth: number
+  effectiveDay: string
+}
+
+const emptyRegime: RegimeForm = { name: '', effectiveMonth: 5, effectiveDay: '1' }
+
+// One editable period row in the periods modal: periodIndex stays a string
+// while the number input is being edited (converted on submit).
+interface PeriodRow {
+  periodIndex: string
+  startTime: string
+  endTime: string
+}
 
 export default function ScheduleConfigPage() {
   const { t } = useTranslation('scheduleConfig')
@@ -29,26 +46,26 @@ export default function ScheduleConfigPage() {
   const navigate = useNavigate()
   const canManage = can('course:manage')
 
-  const months = t('months', { returnObjects: true })
+  const months = t('months', { returnObjects: true }) as string[]
 
-  const list = usePagedList({ path: '/api/schedule/regimes', token })
+  const list = usePagedList<Regime>({ path: '/api/schedule/regimes', token })
   const { loading } = list
   // Export errors are separate from the list fetch (the hook owns its error).
   const [exportError, setExportError] = useState('')
   const error = list.error || exportError
 
   const [regimeOpen, setRegimeOpen] = useState(false)
-  const [regimeForm, setRegimeForm] = useState(emptyRegime)
-  const [regimeEditId, setRegimeEditId] = useState(null)
+  const [regimeForm, setRegimeForm] = useState<RegimeForm>(emptyRegime)
+  const [regimeEditId, setRegimeEditId] = useState<number | null>(null)
   const [regimeError, setRegimeError] = useState('')
   const [regimeSaving, setRegimeSaving] = useState(false)
 
-  const [periodsTarget, setPeriodsTarget] = useState(null) // regime being edited
-  const [periodRows, setPeriodRows] = useState([])
+  const [periodsTarget, setPeriodsTarget] = useState<Regime | null>(null) // regime being edited
+  const [periodRows, setPeriodRows] = useState<PeriodRow[]>([])
   const [periodsError, setPeriodsError] = useState('')
   const [periodsSaving, setPeriodsSaving] = useState(false)
 
-  const [delTarget, setDelTarget] = useState(null)
+  const [delTarget, setDelTarget] = useState<Regime | null>(null)
   const [delError, setDelError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
@@ -59,8 +76,8 @@ export default function ScheduleConfigPage() {
     setRegimeOpen(true)
   }
 
-  const openEditRegime = (r) => {
-    setRegimeForm({ name: r.name, effectiveMonth: r.effectiveMonth, effectiveDay: r.effectiveDay })
+  const openEditRegime = (r: Regime) => {
+    setRegimeForm({ name: r.name, effectiveMonth: r.effectiveMonth, effectiveDay: String(r.effectiveDay) })
     setRegimeEditId(r.id)
     setRegimeError('')
     setRegimeOpen(true)
@@ -71,7 +88,7 @@ export default function ScheduleConfigPage() {
       setRegimeError(t('validation.nameRequired'))
       return
     }
-    const body = {
+    const body: RegimeInput = {
       name: regimeForm.name.trim(),
       effectiveMonth: Number(regimeForm.effectiveMonth),
       effectiveDay: Number(regimeForm.effectiveDay),
@@ -87,41 +104,48 @@ export default function ScheduleConfigPage() {
       setRegimeOpen(false)
       list.reload()
     } catch (err) {
-      setRegimeError(err.message)
+      setRegimeError((err as Error).message)
     } finally {
       setRegimeSaving(false)
     }
   }
 
-  const openEditPeriods = (r) => {
+  const openEditPeriods = (r: Regime) => {
     setPeriodsTarget(r)
     setPeriodRows(
       r.periods && r.periods.length
-        ? r.periods.map((p) => ({ periodIndex: p.periodIndex, startTime: p.startTime, endTime: p.endTime }))
-        : [{ periodIndex: 1, startTime: '08:00', endTime: '08:45' }],
+        ? r.periods.map((p) => ({ periodIndex: String(p.periodIndex), startTime: p.startTime, endTime: p.endTime }))
+        : [{ periodIndex: '1', startTime: '08:00', endTime: '08:45' }],
     )
     setPeriodsError('')
   }
 
   const submitPeriods = async () => {
+    if (!periodsTarget) return
     try {
       setPeriodsSaving(true)
       setPeriodsError('')
+      const periods: PeriodInput[] = periodRows.map((p) => ({
+        periodIndex: Number(p.periodIndex),
+        startTime: p.startTime,
+        endTime: p.endTime,
+      }))
       await apiFetch(`/api/schedule/regimes/${periodsTarget.id}/periods`, {
         method: 'PUT',
         token,
-        body: { periods: periodRows.map((p) => ({ ...p, periodIndex: Number(p.periodIndex) })) },
+        body: { periods },
       })
       setPeriodsTarget(null)
       list.reload()
     } catch (err) {
-      setPeriodsError(err.message)
+      setPeriodsError((err as Error).message)
     } finally {
       setPeriodsSaving(false)
     }
   }
 
   const handleDelete = async () => {
+    if (!delTarget) return
     try {
       setDeleting(true)
       setDelError('')
@@ -129,16 +153,23 @@ export default function ScheduleConfigPage() {
       setDelTarget(null)
       list.reload()
     } catch (err) {
-      setDelError(err.message)
+      setDelError((err as Error).message)
     } finally {
       setDeleting(false)
     }
   }
 
-  const updateRow = (i, field, value) => {
-    const next = [...periodRows]
-    next[i] = { ...next[i], [field]: value }
-    setPeriodRows(next)
+  const updateRow = (i: number, field: keyof PeriodRow, value: string) => {
+    // Explicit per-field mapping keeps the row type concrete (a computed
+    // [field] key would widen the object to a Partial).
+    setPeriodRows((rows) =>
+      rows.map((row, j) => {
+        if (j !== i) return row
+        if (field === 'periodIndex') return { ...row, periodIndex: value }
+        if (field === 'startTime') return { ...row, startTime: value }
+        return { ...row, endTime: value }
+      }),
+    )
   }
 
   return (
@@ -347,7 +378,7 @@ export default function ScheduleConfigPage() {
             onClick={() =>
               setPeriodRows([
                 ...periodRows,
-                { periodIndex: periodRows.length + 1, startTime: '08:00', endTime: '08:45' },
+                { periodIndex: String(periodRows.length + 1), startTime: '08:00', endTime: '08:45' },
               ])
             }
           >

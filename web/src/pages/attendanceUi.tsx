@@ -10,6 +10,13 @@ import { formatDate } from '../i18n/formatters'
 export const STATUS_KEYS = ['present', 'late', 'absent', 'leave'] as const
 export type RecordStatus = (typeof STATUS_KEYS)[number]
 
+// ComboBox option shape shared by the attendance pages' offering/session
+// pickers: id is the stringified entity id (ComboBox rows key by string).
+export interface PickerOption {
+  id: string
+  text: string
+}
+
 // Carbon Tag types per record status: present positive, absent warning-red,
 // leave neutral. Carbon Tag has no 'yellow' kind (bx--tag--yellow has no CSS),
 // so 'late' uses purple to stay distinguishable from the gray leave tag.

@@ -22,6 +22,7 @@ import {
   TableToolbarContent,
   TableToolbarSearch,
   TextInput,
+  type DataTableHeader,
 } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -30,7 +31,8 @@ import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
-import { CheckinStatusTag, formatDateTime } from './attendanceUi'
+import type { Checkin, OfferingView, Paged, SessionView } from '../types/api'
+import { CheckinStatusTag, formatDateTime, type PickerOption } from './attendanceUi'
 
 export default function AttendancePage() {
   const { t } = useTranslation('attendance')
@@ -38,7 +40,7 @@ export default function AttendancePage() {
   const navigate = useNavigate()
   const canManage = can('attendance:manage')
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'title', header: t('list.field.title') },
     { key: 'offering', header: t('list.field.offering') },
     { key: 'sessionText', header: t('list.field.sessionText') },
@@ -50,32 +52,36 @@ export default function AttendancePage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const list = usePagedList({
+  const list = usePagedList<Checkin>({
     path: '/api/checkins',
     token,
     extraParams: { status: statusFilter, from, to },
   })
   const { loading } = list
 
+  // Carbon DataTable keys rows by a string id; the API's numeric id becomes
+  // its string form so the original item can be found again per row.
+  const tableRows = list.items.map((c) => ({ ...c, id: String(c.id) }))
+
   const [createOpen, setCreateOpen] = useState(false)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
-  const [offerings, setOfferings] = useState([])
-  const [pickOffering, setPickOffering] = useState(null)
-  const [sessions, setSessions] = useState([])
-  const [pickSession, setPickSession] = useState(null)
+  const [offerings, setOfferings] = useState<PickerOption[]>([])
+  const [pickOffering, setPickOffering] = useState<PickerOption | null>(null)
+  const [sessions, setSessions] = useState<PickerOption[]>([])
+  const [pickSession, setPickSession] = useState<PickerOption | null>(null)
   const [form, setForm] = useState({ title: '', lateMinutes: '0', durationMinute: '' })
 
   const [closeError, setCloseError] = useState('')
 
   const loadOfferings = async () => {
     try {
-      const data = await apiFetch('/api/offerings?page_size=500', { token })
+      const data = await apiFetch<Paged<OfferingView>>('/api/offerings?page_size=500', { token })
       setOfferings(
-        ((data && data.items) || []).map((o) => ({
+        (Array.isArray(data?.items) ? data.items : []).map((o) => ({
           id: String(o.id),
           text: t('list.offeringOption', { catalogName: o.catalogName, teachingClassName: o.teachingClassName, semester: o.semester }),
-        }))
+        })),
       )
     } catch {
       setOfferings([])
@@ -92,21 +98,21 @@ export default function AttendancePage() {
     loadOfferings()
   }
 
-  const handlePickOffering = (e) => {
+  const handlePickOffering = (e: { selectedItem?: PickerOption | null }) => {
     setPickOffering(e.selectedItem ?? null)
     setPickSession(null)
     setSessions([])
     if (e.selectedItem) loadSessions(e.selectedItem.id)
   }
 
-  const loadSessions = async (offeringId) => {
+  const loadSessions = async (offeringId: string) => {
     try {
-      const data = await apiFetch(`/api/sessions?offering_id=${offeringId}&page_size=500`, { token })
+      const data = await apiFetch<Paged<SessionView>>(`/api/sessions?offering_id=${offeringId}&page_size=500`, { token })
       setSessions(
-        ((data && data.items) || []).map((s) => ({
+        (Array.isArray(data?.items) ? data.items : []).map((s) => ({
           id: String(s.id),
           text: t('list.sessionOption', { date: s.date, start: s.periodStart, end: s.periodEnd, classroom: s.classroomName }),
-        }))
+        })),
       )
     } catch {
       setSessions([])
@@ -131,7 +137,7 @@ export default function AttendancePage() {
     try {
       setCreating(true)
       setCreateError('')
-      const v = await apiFetch('/api/checkins', {
+      const v = await apiFetch<Checkin>('/api/checkins', {
         method: 'POST',
         token,
         body: {
@@ -145,23 +151,23 @@ export default function AttendancePage() {
       setCreateOpen(false)
       navigate(`/attendance/${v.id}`)
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const handleClose = async (c) => {
+  const handleClose = async (c: Checkin) => {
     try {
       setCloseError('')
       await apiFetch(`/api/checkins/${c.id}/close`, { method: 'POST', token })
       list.reload()
     } catch (err) {
-      setCloseError(err.message)
+      setCloseError((err as Error).message)
     }
   }
 
-  const countsText = (c) =>
+  const countsText = (c: Checkin) =>
     `${c.counts.expected} / ${c.counts.present} / ${c.counts.late} / ${c.counts.absent} / ${c.counts.leave}`
 
   return (
@@ -205,7 +211,7 @@ export default function AttendancePage() {
           />
         )}
 
-        <DataTable rows={list.items} headers={headers}>
+        <DataTable rows={tableRows} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('list.table.title')} description={t('list.table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
@@ -235,7 +241,7 @@ export default function AttendancePage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -256,8 +262,9 @@ export default function AttendancePage() {
                   ) : (
                     rows.map((row) => {
                       const c = list.items.find((x) => String(x.id) === String(row.id))
+                      if (!c) return null
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           <TableCell>{c.title}</TableCell>
                           <TableCell>
                             {c.courseName ? `${c.courseName} / ${c.teachingClassName}` : t('list.noOffering')}

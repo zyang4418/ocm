@@ -20,6 +20,7 @@ import {
   TableToolbarContent,
   TableToolbarSearch,
   TextInput,
+  type DataTableHeader,
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -30,8 +31,22 @@ import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import type { AdminClass, AdminClassInput, Paged, StudentProfileInput, StudentProfileView, User } from '../types/api'
 
 const emptyForm = { grade: '', name: '', note: '' }
+
+// ComboBox option for the student picker: id is the stringified user id.
+interface StudentOption {
+  id: string
+  text: string
+}
+
+// Edit-member form state (studentNo/note editable, userId immutable).
+interface MemberEditForm {
+  userId: number
+  studentNo: string
+  note: string
+}
 
 export default function AdminClassesPage() {
   const { t } = useTranslation('adminClasses')
@@ -43,7 +58,7 @@ export default function AdminClassesPage() {
   const canRoster = can('attendance:read')
   const canRosterManage = can('attendance:manage')
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'id', header: t('field.id') },
     { key: 'grade', header: t('field.grade') },
     { key: 'name', header: t('field.name') },
@@ -51,7 +66,7 @@ export default function AdminClassesPage() {
     { key: 'createdAt', header: t('field.createdAt') },
   ]
 
-  const list = usePagedList({ path: '/api/admin-classes', token })
+  const list = usePagedList<AdminClass>({ path: '/api/admin-classes', token })
   const { loading } = list
   // Export errors are separate from the list fetch (the hook owns its error).
   const [exportError, setExportError] = useState('')
@@ -62,46 +77,46 @@ export default function AdminClassesPage() {
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const [editTarget, setEditTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState<AdminClass | null>(null)
   const [editForm, setEditForm] = useState(emptyForm)
   const [editError, setEditError] = useState('')
   const [editing, setEditing] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminClass | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   // Roster modal (成员) state.
-  const [membersTarget, setMembersTarget] = useState(null)
-  const [members, setMembers] = useState([])
+  const [membersTarget, setMembersTarget] = useState<AdminClass | null>(null)
+  const [members, setMembers] = useState<StudentProfileView[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState('')
-  const [studentOptions, setStudentOptions] = useState([])
-  const [pickStudent, setPickStudent] = useState(null) // { id, text } of the ComboBox selection
+  const [studentOptions, setStudentOptions] = useState<StudentOption[]>([])
+  const [pickStudent, setPickStudent] = useState<StudentOption | null>(null)
   const [pickNo, setPickNo] = useState('')
   const [addError, setAddError] = useState('')
   const [adding, setAdding] = useState(false)
-  const [editMember, setEditMember] = useState(null) // { userId, studentNo, note }
+  const [editMember, setEditMember] = useState<MemberEditForm | null>(null)
   const [editMemberError, setEditMemberError] = useState('')
   const [savingMember, setSavingMember] = useState(false)
-  const [removeMember, setRemoveMember] = useState(null)
+  const [removeMember, setRemoveMember] = useState<StudentProfileView | null>(null)
   const [removeError, setRemoveError] = useState('')
   const [removing, setRemoving] = useState(false)
 
-  const loadMembers = async (id) => {
+  const loadMembers = async (id: number) => {
     try {
       setMembersLoading(true)
       setMembersError('')
-      const data = await apiFetch(`/api/admin-classes/${id}/students`, { token })
-      setMembers(data || [])
+      const data = await apiFetch<StudentProfileView[]>(`/api/admin-classes/${id}/students`, { token })
+      setMembers(Array.isArray(data) ? data : [])
     } catch (err) {
-      setMembersError(err.message)
+      setMembersError((err as Error).message)
     } finally {
       setMembersLoading(false)
     }
   }
 
-  const openMembers = (c) => {
+  const openMembers = (c: AdminClass) => {
     setMembersTarget(c)
     setMembers([])
     setMembersError('')
@@ -114,13 +129,13 @@ export default function AdminClassesPage() {
 
   // ComboBox search: query users and keep only student accounts. The backend
   // validates the type again on add.
-  const searchStudents = async (q) => {
+  const searchStudents = async (q: string) => {
     try {
-      const data = await apiFetch(`/api/users?q=${encodeURIComponent(q)}&page_size=50`, { token })
+      const data = await apiFetch<Paged<User>>(`/api/users?q=${encodeURIComponent(q)}&page_size=50`, { token })
       setStudentOptions(
         ((data && data.items) || [])
           .filter((u) => u.type === 'student')
-          .map((u) => ({ id: String(u.id), text: t('picker.userOption', { name: u.displayName, username: u.username }) }))
+          .map((u) => ({ id: String(u.id), text: t('picker.userOption', { name: u.displayName, username: u.username }) })),
       )
     } catch {
       setStudentOptions([])
@@ -128,58 +143,70 @@ export default function AdminClassesPage() {
   }
 
   const handleAddMember = async () => {
-    if (!pickStudent) {
+    if (!pickStudent || !membersTarget) {
       setAddError(t('validation.selectStudent'))
       return
     }
     try {
       setAdding(true)
       setAddError('')
+      const body: StudentProfileInput = {
+        userId: Number(pickStudent.id),
+        studentNo: pickNo.trim(),
+        note: '',
+      }
       await apiFetch(`/api/admin-classes/${membersTarget.id}/students`, {
         method: 'POST',
         token,
-        body: { userId: Number(pickStudent.id), studentNo: pickNo.trim(), note: '' },
+        body,
       })
       setPickStudent(null)
       setPickNo('')
       setStudentOptions([])
       await loadMembers(membersTarget.id)
     } catch (err) {
-      setAddError(err.message)
+      setAddError((err as Error).message)
     } finally {
       setAdding(false)
     }
   }
 
-  const openEditMember = (m) => {
+  const openEditMember = (m: StudentProfileView) => {
     setEditMember({ userId: m.userId, studentNo: m.studentNo, note: m.note })
     setEditMemberError('')
   }
 
   const handleSaveMember = async () => {
+    if (!editMember || !membersTarget) return
     try {
       setSavingMember(true)
       setEditMemberError('')
+      const body: StudentProfileInput = {
+        userId: editMember.userId,
+        studentNo: editMember.studentNo.trim(),
+        note: editMember.note.trim(),
+      }
       await apiFetch(`/api/admin-classes/${membersTarget.id}/students/${editMember.userId}`, {
         method: 'PUT',
         token,
-        body: { studentNo: editMember.studentNo.trim(), note: editMember.note.trim() },
+        body,
       })
       setEditMember(null)
       await loadMembers(membersTarget.id)
     } catch (err) {
-      setEditMemberError(err.message)
+      setEditMemberError((err as Error).message)
     } finally {
       setSavingMember(false)
     }
   }
 
-  const openRemoveMember = (m) => {
+  const openRemoveMember = (m: StudentProfileView) => {
     setRemoveMember(m)
     setRemoveError('')
   }
 
   const handleRemoveMember = async () => {
+    if (!removeMember || !membersTarget) return
     try {
       setRemoving(true)
       setRemoveError('')
@@ -190,18 +217,18 @@ export default function AdminClassesPage() {
       setRemoveMember(null)
       await loadMembers(membersTarget.id)
     } catch (err) {
-      setRemoveError(err.message)
+      setRemoveError((err as Error).message)
     } finally {
       setRemoving(false)
     }
   }
 
-  const validate = (form) => {
+  const validate = (form: typeof emptyForm) => {
     if (!form.name.trim()) return t('validation.nameRequired')
     return ''
   }
 
-  const buildBody = (form) => ({
+  const buildBody = (form: typeof emptyForm): AdminClassInput => ({
     grade: form.grade.trim(),
     name: form.name.trim(),
     note: form.note.trim(),
@@ -221,19 +248,20 @@ export default function AdminClassesPage() {
       setCreateForm(emptyForm)
       list.reload()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const openEdit = (c) => {
+  const openEdit = (c: AdminClass) => {
     setEditTarget(c)
     setEditForm({ grade: c.grade, name: c.name, note: c.note })
     setEditError('')
   }
 
   const handleEdit = async () => {
+    if (!editTarget) return
     const msg = validate(editForm)
     if (msg) {
       setEditError(msg)
@@ -246,18 +274,19 @@ export default function AdminClassesPage() {
       setEditTarget(null)
       list.reload()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setEditing(false)
     }
   }
 
-  const openDelete = (c) => {
+  const openDelete = (c: AdminClass) => {
     setDeleteTarget(c)
     setDeleteError('')
   }
 
   const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
@@ -265,7 +294,7 @@ export default function AdminClassesPage() {
       setDeleteTarget(null)
       list.reload()
     } catch (err) {
-      setDeleteError(err.message)
+      setDeleteError((err as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -305,7 +334,7 @@ export default function AdminClassesPage() {
           />
         )}
 
-        <DataTable rows={list.items} headers={headers}>
+        <DataTable rows={list.items.map((c) => ({ ...c, id: String(c.id) }))} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
@@ -327,7 +356,7 @@ export default function AdminClassesPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -348,13 +377,14 @@ export default function AdminClassesPage() {
                   ) : (
                     rows.map((row) => {
                       const c = list.items.find((x) => String(x.id) === String(row.id))
+                      if (!c) return null
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
+                            return <TableCell key={cell.id}>{(cell.value as string) || '-'}</TableCell>
                           })}
                           {canAdmin && (
                             <TableCell>
@@ -513,7 +543,7 @@ export default function AdminClassesPage() {
           <p className="courses-page__subtitle">{t('membersSubtitle')}</p>
           {canRosterManage && (
             <div className="courses-page__member-add">
-              <ComboBox
+              <ComboBox<StudentOption>
                 id="member-pick"
                 titleText={t('memberAdd.title')}
                 placeholder={t('memberAdd.placeholder')}
@@ -608,13 +638,13 @@ export default function AdminClassesPage() {
             id="member-edit-no"
             labelText={t('memberEditForm.studentNo')}
             value={editMember?.studentNo ?? ''}
-            onChange={(e) => setEditMember({ ...editMember, studentNo: e.target.value })}
+            onChange={(e) => setEditMember(editMember ? { ...editMember, studentNo: e.target.value } : null)}
           />
           <TextInput
             id="member-edit-note"
             labelText={t('memberEditForm.note')}
             value={editMember?.note ?? ''}
-            onChange={(e) => setEditMember({ ...editMember, note: e.target.value })}
+            onChange={(e) => setEditMember(editMember ? { ...editMember, note: e.target.value } : null)}
           />
           {editMemberError && (
             <InlineNotification kind="error" title={t('error.saveMember')} subtitle={editMemberError} lowContrast hideCloseButton />

@@ -56,6 +56,16 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	h.registerOrgRoutes(mux, authenticate)
 }
 
+// @Summary      List users
+// @Tags         users
+// @Produce      json
+// @Param        q query string false "search by username/display name"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged users with role/group summaries"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -92,6 +102,17 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, users, total, p)
 }
 
+// @Summary      Create a user
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        body body CreateUserInput true "create user input"
+// @Success      201 {object} User "created user"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / required fields missing"
+// @Failure      409 {object} httpx.ErrorResponse "username already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users [post]
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	var in CreateUserInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -125,6 +146,16 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, u)
 }
 
+// @Summary      Get a user
+// @Tags         users
+// @Produce      json
+// @Param        id path int true "user id"
+// @Success      200 {object} User "user detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid user id"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id} [get]
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -143,6 +174,18 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, u)
 }
 
+// @Summary      Update a user
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "user id"
+// @Param        body body UpdateUserInput true "update user input"
+// @Success      200 {object} User "updated user"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / displayName required"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id} [put]
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -177,6 +220,18 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, u)
 }
 
+// @Summary      Reset a user's password
+// @Tags         users
+// @Accept       json
+// @Param        id path int true "user id"
+// @Param        body body ChangePasswordInput true "new password"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / password required"
+// @Failure      403 {object} httpx.ErrorResponse "only administrators can change an administrator's password"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id}/password [patch]
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -224,6 +279,17 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// @Summary      Delete a user
+// @Tags         users
+// @Param        id path int true "user id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid user id"
+// @Failure      403 {object} httpx.ErrorResponse "only administrators can delete an administrator's account"
+// @Failure      409 {object} httpx.ErrorResponse "cannot delete your own account"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id} [delete]
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -280,8 +346,16 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 
 // ---- Grants (roles / permissions / groups) ----
 
-// getGrants returns the full grant picture of a user, including
-// already-expired rows so the console can mark them.
+// @Summary      Get a user's grants (roles / permissions / groups)
+// @Tags         users
+// @Produce      json
+// @Param        id path int true "user id"
+// @Success      200 {object} iam.UserGrantView "grant view incl. expired rows"
+// @Failure      400 {object} httpx.ErrorResponse "invalid user id"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id}/grants [get]
 func (h *Handler) getGrants(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -311,6 +385,20 @@ type putRolesRequest struct {
 // putRoles replaces the whole set of direct role grants. Granting the admin
 // role requires the wildcard (admin only), so a role manager cannot escalate
 // themselves.
+//
+// @Summary      Replace a user's role grants
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "user id"
+// @Param        body body UserRolesInput true "whole-set role grants"
+// @Success      200 {object} iam.UserGrantView "updated grant view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / unknown role code"
+// @Failure      403 {object} httpx.ErrorResponse "only administrators can grant the admin role"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id}/roles [put]
 func (h *Handler) putRoles(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -370,6 +458,19 @@ type putPermissionsRequest struct {
 
 // putPermissions replaces the whole set of direct permission grants. The
 // wildcard is rejected by the catalog check (it is not a catalog entry).
+//
+// @Summary      Replace a user's permission grants
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "user id"
+// @Param        body body UserPermissionsInput true "whole-set permission grants"
+// @Success      200 {object} iam.UserGrantView "updated grant view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / unknown permission"
+// @Failure      404 {object} httpx.ErrorResponse "user not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/users/{id}/permissions [put]
 func (h *Handler) putPermissions(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
