@@ -39,8 +39,6 @@ services:
       - DB_NAME=ocm
       - JWT_SECRET=${JWT_SECRET:-}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      - SM2_PRIVATE_KEY=${SM2_PRIVATE_KEY:?set SM2_PRIVATE_KEY}
-      - SM2_PUBLIC_KEY=${SM2_PUBLIC_KEY:?set SM2_PUBLIC_KEY}
       - WX_APP_ID=${WX_APP_ID:-}
       - WX_APP_SECRET=${WX_APP_SECRET:-}
     depends_on:
@@ -69,8 +67,6 @@ services:
       - VITE_ICP_NUMBER=${ICP_NUMBER:-}
       # External docs site origin; when set the in-app docs links are shown.
       - VITE_DOCS_URL=${DOCS_URL:-}
-      # Pinned public key fingerprint (for testing pinning in development).
-      - VITE_SM2_PUBLIC_KEY_FINGERPRINT=${SM2_PUBLIC_KEY_FINGERPRINT:-${VITE_SM2_PUBLIC_KEY_FINGERPRINT:-}}
     command: npm run dev -- --host 0.0.0.0
 
 volumes:

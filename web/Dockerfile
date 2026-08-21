@@ -13,9 +13,6 @@ ENV VITE_ICP_NUMBER=${VITE_ICP_NUMBER}
 # External docs site origin; inlined into the bundle by vite build.
 ARG VITE_DOCS_URL=
 ENV VITE_DOCS_URL=${VITE_DOCS_URL}
-# Public key fingerprint pinned at build time for login password encryption.
-ARG VITE_SM2_PUBLIC_KEY_FINGERPRINT=
-ENV VITE_SM2_PUBLIC_KEY_FINGERPRINT=${VITE_SM2_PUBLIC_KEY_FINGERPRINT}
 RUN npm run build
 
 # --- Runtime stage ---

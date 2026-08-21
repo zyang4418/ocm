@@ -1,7 +1,7 @@
 # Production compose. Provide credentials via a .env file or the real
 # environment, e.g.:
-#   MYSQL_ROOT_PASSWORD=...  DB_PASSWORD=...  JWT_SECRET=...  ADMIN_PASSWORD=...  SM2_PRIVATE_KEY=...  SM2_PUBLIC_KEY=...  SM2_PUBLIC_KEY_FINGERPRINT=...
-# DB_PASSWORD, MYSQL_ROOT_PASSWORD, JWT_SECRET, ADMIN_PASSWORD, the SM2 keypair and the Web public-key pin are required and fail fast if unset.
+#   MYSQL_ROOT_PASSWORD=...  DB_PASSWORD=...  JWT_SECRET=...  ADMIN_PASSWORD=...
+# DB_PASSWORD, MYSQL_ROOT_PASSWORD, JWT_SECRET and ADMIN_PASSWORD are required and will fail fast if unset.
 services:
   mysql:
     image: mysql:8.0
@@ -39,8 +39,6 @@ services:
       - DB_NAME=${DB_NAME:-ocm}
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
-      - SM2_PRIVATE_KEY=${SM2_PRIVATE_KEY:?set SM2_PRIVATE_KEY}
-      - SM2_PUBLIC_KEY=${SM2_PUBLIC_KEY:?set SM2_PUBLIC_KEY}
       - WX_APP_ID=${WX_APP_ID:-}
       - WX_APP_SECRET=${WX_APP_SECRET:-}
     depends_on:
@@ -55,7 +53,6 @@ services:
         # Baked into the static bundle at image build time.
         VITE_ICP_NUMBER: ${ICP_NUMBER:-}
         VITE_DOCS_URL: ${DOCS_URL:-}
-        VITE_SM2_PUBLIC_KEY_FINGERPRINT: ${SM2_PUBLIC_KEY_FINGERPRINT:?set SM2_PUBLIC_KEY_FINGERPRINT}
     container_name: ocm-web-prod
     ports:
       - "80:80"
