@@ -38,7 +38,7 @@ backend/
    ├─ db/ dbutil/ httpx/   基础设施(DSN/连接池、1062 helper、panic→500)
 ```
 
-`net/http` ServeMux(Go 1.22+ 方法路由),无第三方 web 框架。无独立迁移工具——各 store `Migrate(ctx)` 幂等(`CREATE TABLE IF NOT EXISTS` + ALTER 忽略 1060/1061)。详见 [后端](/guide/backend)。
+`net/http` ServeMux(Go 1.22+ 方法路由),无第三方 web 框架。无独立迁移工具——各 store `Migrate(ctx)` 幂等(`CREATE TABLE IF NOT EXISTS` 完整建表)。详见 [后端](/guide/backend)。
 
 ## `miniapp/` — 微信小程序
 

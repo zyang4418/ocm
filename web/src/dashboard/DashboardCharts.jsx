@@ -2,11 +2,18 @@ import '@carbon/charts-react/styles.css'
 import { Column, Grid, Tile } from '@carbon/react'
 import { SimpleBarChart, LineChart } from '@carbon/charts-react'
 import { useTranslation } from 'react-i18next'
+import { useTheme } from '../theme/ThemeContext'
 
-// The app's brand color lives in --color-primary / --cds-link-color, but d3
-// fills resolve to literal strings (no CSS var support), so the chart series
-// pin the same hex here. Keep in sync with app.wxss / app.scss tokens.
-const BRAND = '#2B5FF6'
+// d3 fills resolve to literal color strings (no CSS var support), so the chart
+// series pin each Carbon theme's interactive color: #0f62fe on the light
+// themes, and the lighter #4589ff on the dark themes for contrast.
+//
+// Charts also needs the theme passed via options.theme: it writes the value to
+// data-carbon-theme on the chart holder, which scopes charts-specific tokens
+// (--cds-grid-bg backdrop, the dataviz palettes, color-scheme). Those do NOT
+// inherit from the cds--g100 class on <html>, so without this the backdrop
+// stays white in every theme.
+const SERIES_COLORS = { white: '#0f62fe', g10: '#0f62fe', g90: '#4589ff', g100: '#4589ff' }
 
 // DashboardCharts renders the homepage's two @carbon/charts panels as one
 // band. It is lazy-loaded from DashboardPage so the ~600KB d3/charts bundle
@@ -16,6 +23,8 @@ const BRAND = '#2B5FF6'
 // a field for a low-privilege user or an empty day.
 export default function DashboardCharts({ periods, load, loadAll }) {
   const { t } = useTranslation('dashboard')
+  const { theme } = useTheme()
+  const seriesColor = SERIES_COLORS[theme] ?? '#0f62fe'
 
   // Series group names double as the color-scale keys, so the translated
   // string must be reused consistently for both data and options.
@@ -38,9 +47,10 @@ export default function DashboardCharts({ periods, load, loadAll }) {
 
   const barOptions = {
     resizable: true,
+    theme,
     toolbar: { enabled: false },
     legend: { enabled: false }, // single series - the axis labels say it all
-    color: { scale: { [barGroup]: BRAND } },
+    color: { scale: { [barGroup]: seriesColor } },
     axes: {
       left: { mapsTo: 'value', includeZero: true },
       bottom: { mapsTo: 'key', scaleType: 'labels' },
@@ -49,9 +59,10 @@ export default function DashboardCharts({ periods, load, loadAll }) {
 
   const lineOptions = {
     resizable: true,
+    theme,
     toolbar: { enabled: false },
     legend: { enabled: false },
-    color: { scale: { [lineGroup]: BRAND } },
+    color: { scale: { [lineGroup]: seriesColor } },
     curve: 'curveMonotoneX',
     points: { radius: 3, enabled: true },
     axes: {

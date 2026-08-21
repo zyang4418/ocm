@@ -6,6 +6,11 @@
   "saveButton": "保存配置",
   "placeholder": { "set": "已设置，留空保持不变", "unset": "未设置" },
   "secret": { "show": "显示密钥", "hide": "隐藏密钥" },
+  "appearance": {
+    "heading": "外观",
+    "hint": "选择界面的 Carbon 色彩主题，或跟随操作系统的深浅色偏好。仅保存在本浏览器。",
+    "label": "主题"
+  },
   "mail": {
     "heading": "邮件服务",
     "hint": "SMTP 发信配置。当前仅保存配置，尚未接入实际发送流程。",

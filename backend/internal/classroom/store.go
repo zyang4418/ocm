@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-sql-driver/mysql"
 	"ocm-backend/internal/dbutil"
 )
 
@@ -48,10 +47,11 @@ func NewStore(db *sql.DB) *Store {
 }
 
 // Migrate creates the classrooms table. It is idempotent and safe to run on
-// every startup. The floor/campus columns are added via idempotent ALTERs
-// (ignoring MySQL 1060 duplicate-column) so pre-existing tables are upgraded
-// in place -- these columns back the 教务处 楼层/校区 fields.
+// every startup.
 func (s *Store) Migrate(ctx context.Context) error {
+	// idx_room_status_cap is the leading-scan index for the availability query
+	// (ListAvailable filters on status + capacity before the per-classroom NOT
+	// EXISTS checks).
 	_, err := s.db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS classrooms (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -63,34 +63,11 @@ CREATE TABLE IF NOT EXISTS classrooms (
     campus      VARCHAR(32)  NOT NULL DEFAULT '',
     status      VARCHAR(32)  NOT NULL DEFAULT 'available',
     description VARCHAR(255) NOT NULL DEFAULT '',
-    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_room_status_cap (status, capacity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 	if err != nil {
 		return fmt.Errorf("create classrooms table: %w", err)
-	}
-	// Upgrade pre-existing tables: add floor/campus if absent. MySQL has no
-	// "ADD COLUMN IF NOT EXISTS", so ignore the duplicate-column error (1060).
-	for _, col := range []struct{ name, def string }{
-		{"floor", "VARCHAR(16) NOT NULL DEFAULT '' AFTER type"},
-		{"campus", "VARCHAR(32) NOT NULL DEFAULT '' AFTER floor"},
-	} {
-		if _, err := s.db.ExecContext(ctx,
-			`ALTER TABLE classrooms ADD COLUMN `+col.name+` `+col.def); err != nil {
-			var mysqlErr *mysql.MySQLError
-			if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1060 {
-				return fmt.Errorf("add classrooms column %s: %w", col.name, err)
-			}
-		}
-	}
-	// Leading-scan index for the availability query (ListAvailable filters on
-	// status + capacity before the per-classroom NOT EXISTS checks). Ignore the
-	// duplicate-index error (1061) on re-runs.
-	if _, err := s.db.ExecContext(ctx,
-		`ALTER TABLE classrooms ADD INDEX idx_room_status_cap (status, capacity)`); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1061 {
-			return fmt.Errorf("add classrooms index idx_room_status_cap: %w", err)
-		}
 	}
 	return nil
 }

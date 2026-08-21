@@ -28,6 +28,10 @@ const (
 	CodeStudent = "student"
 )
 
+// bootstrapAdminUsername is the account seeded by auth.Store.Migrate. Keep in
+// sync with the seed there.
+const bootstrapAdminUsername = "admin"
+
 // Store manages the RBAC tables: roles, role permissions, user/group role
 // grants, direct permission grants and user groups.
 type Store struct {
@@ -38,10 +42,11 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-// Migrate creates the RBAC tables, seeds the system roles and migrates the
-// legacy users.role column into user_roles grants. Idempotent and safe to
-// run on every startup. Must run after auth.Store.Migrate (users table) and
-// before any route serves traffic.
+// Migrate creates the RBAC tables, seeds the system roles and grants the
+// bootstrap admin account the admin role. Idempotent and safe to run on
+// every startup. Must run after auth.Store.Migrate (the users table must
+// exist so the bootstrap grant can resolve the seeded account) and before
+// any route serves traffic.
 func (s *Store) Migrate(ctx context.Context) error {
 	for _, stmt := range []string{
 		`CREATE TABLE IF NOT EXISTS roles (
@@ -98,7 +103,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 	if err := s.seedSystemRoles(ctx); err != nil {
 		return err
 	}
-	return s.migrateLegacyRoleColumn(ctx)
+	return s.ensureBootstrapAdmin(ctx)
 }
 
 // seedSystemRoles inserts the built-in roles and (re)applies their canonical
@@ -148,40 +153,25 @@ func (s *Store) seedSystemRoles(ctx context.Context) error {
 	return nil
 }
 
-// migrateLegacyRoleColumn moves the legacy users.role values into user_roles
-// grants (role='admin' → admin role, role='user' → teacher role) and drops
-// the column. Fresh databases never have the column; the information_schema
-// probe makes the whole step a no-op for them.
-func (s *Store) migrateLegacyRoleColumn(ctx context.Context) error {
-	var hasRoleCol bool
-	if err := s.db.QueryRowContext(ctx, `
-SELECT COUNT(*) FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'role'`,
-	).Scan(&hasRoleCol); err != nil {
-		return fmt.Errorf("iam migrate probe users.role: %w", err)
-	}
-	if !hasRoleCol {
-		return nil
-	}
-
-	// Best-effort copy; NOT EXISTS keeps re-runs from duplicating grants, and
-	// existing grants are never overwritten.
+// ensureBootstrapAdmin grants the system admin role to the bootstrap admin
+// account when it holds no direct role grants at all. Fresh databases need
+// this: the seeded account starts with zero grants and, without the wildcard,
+// could not even reach the user management UI to grant itself anything — a
+// chicken-and-egg lock-out. The zero-grants condition keeps it hands-off:
+// once the account has any role grant (seeded here or edited via the
+// console), startup never touches its grants again. It doubles as a lock-out
+// escape hatch: stripping every role from the admin account is undone by the
+// next restart.
+func (s *Store) ensureBootstrapAdmin(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `
 INSERT INTO user_roles (user_id, role_id, granted_by, granted_at)
-SELECT u.id, r.id, NULL, NOW() FROM users u
-JOIN roles r ON (u.role = 'admin' AND r.code = 'admin')
-            OR (u.role = 'user'  AND r.code = 'teacher')
-WHERE NOT EXISTS (SELECT 1 FROM user_roles x WHERE x.user_id = u.id AND x.role_id = r.id)`); err != nil {
-		return fmt.Errorf("iam migrate copy users.role: %w", err)
-	}
-
-	// MySQL has no "DROP COLUMN IF EXISTS", so ignore the unknown-column
-	// error (1091) for idempotency.
-	if _, err := s.db.ExecContext(ctx, `ALTER TABLE users DROP COLUMN role`); err != nil {
-		var mysqlErr *mysql.MySQLError
-		if !errors.As(err, &mysqlErr) || mysqlErr.Number != 1091 {
-			return fmt.Errorf("iam migrate drop users.role: %w", err)
-		}
+SELECT u.id, r.id, NULL, NOW()
+FROM users u
+JOIN roles r ON r.code = ?
+WHERE u.username = ?
+  AND NOT EXISTS (SELECT 1 FROM user_roles x WHERE x.user_id = u.id)`,
+		CodeAdmin, bootstrapAdminUsername); err != nil {
+		return fmt.Errorf("grant bootstrap admin role: %w", err)
 	}
 	return nil
 }

@@ -1,0 +1,49 @@
+name: Docs
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # onBrokenLinks: throw 已在 docusaurus.config.ts 开启，构建即校验死链。
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -f build/index.html
+          test -n "$(find build -name '*.html' -print -quit)"
+          echo "docs build artifacts present"

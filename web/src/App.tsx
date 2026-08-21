@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import LanguageProvider from './i18n/LanguageProvider'
+import { ThemeProvider } from './theme/ThemeContext'
 import AppShell from './components/AppShell'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -48,7 +49,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <LanguageProvider>
-      <AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
         <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -87,6 +89,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ThemeProvider>
     </LanguageProvider>
   )
 }
