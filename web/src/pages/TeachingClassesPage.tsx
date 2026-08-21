@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,6 +20,7 @@ import {
   TableToolbarContent,
   TableToolbarSearch,
   TextInput,
+  type DataTableHeader,
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -30,11 +31,20 @@ import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import type { AdminClass, Paged, TeachingClassInput, TeachingClassView } from '../types/api'
 
 // classLabel formats an admin class as "grade/name" (or just name when the
 // grade is empty). grade/name are backend data, so the format is locale-neutral.
-const classLabel = (c) => (c.grade ? `${c.grade}/${c.name}` : c.name)
-const emptyForm = { name: '', note: '', classIds: [] }
+const classLabel = (c: Pick<AdminClass, 'grade' | 'name'>) => (c.grade ? `${c.grade}/${c.name}` : c.name)
+
+// Form state: classIds holds the selected member admin-class ids (numbers).
+interface ClassForm {
+  name: string
+  note: string
+  classIds: number[]
+}
+
+const emptyForm: ClassForm = { name: '', note: '', classIds: [] }
 
 export default function TeachingClassesPage() {
   const { t, i18n } = useTranslation('teachingClasses')
@@ -42,7 +52,7 @@ export default function TeachingClassesPage() {
   const navigate = useNavigate()
   const canManage = can('teaching_class:manage')
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'id', header: t('field.id') },
     { key: 'name', header: t('field.name') },
     { key: 'members', header: t('field.members') },
@@ -50,31 +60,31 @@ export default function TeachingClassesPage() {
     { key: 'createdAt', header: t('field.createdAt') },
   ]
 
-  const list = usePagedList({ path: '/api/teaching-classes', token })
+  const list = usePagedList<TeachingClassView>({ path: '/api/teaching-classes', token })
   const { loading } = list
-  const [adminClasses, setAdminClasses] = useState([])
+  const [adminClasses, setAdminClasses] = useState<AdminClass[]>([])
   // Export errors are separate from the list fetch (the hook owns its error).
   const [exportError, setExportError] = useState('')
   const error = list.error || exportError
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyForm)
+  const [createForm, setCreateForm] = useState<ClassForm>(emptyForm)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const [editTarget, setEditTarget] = useState(null)
-  const [editForm, setEditForm] = useState(emptyForm)
+  const [editTarget, setEditTarget] = useState<TeachingClassView | null>(null)
+  const [editForm, setEditForm] = useState<ClassForm>(emptyForm)
   const [editError, setEditError] = useState('')
   const [editing, setEditing] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState<TeachingClassView | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   // The admin-class dropdown needs the full option list; pull the maximum page.
   useEffect(() => {
     let cancelled = false
-    apiFetch('/api/admin-classes?page_size=500', { token })
+    apiFetch<Paged<AdminClass>>('/api/admin-classes?page_size=500', { token })
       .then((data) => {
         if (cancelled) return
         setAdminClasses(Array.isArray(data?.items) ? data.items : [])
@@ -87,13 +97,13 @@ export default function TeachingClassesPage() {
     }
   }, [token])
 
-  const validate = (form) => {
+  const validate = (form: ClassForm) => {
     if (!form.name.trim()) return t('validation.nameRequired')
     if (form.classIds.length === 0) return t('validation.selectClass')
     return ''
   }
 
-  const buildBody = (form) => ({
+  const buildBody = (form: ClassForm): TeachingClassInput => ({
     name: form.name.trim(),
     note: form.note.trim(),
     classIds: form.classIds,
@@ -113,13 +123,13 @@ export default function TeachingClassesPage() {
       setCreateForm(emptyForm)
       list.reload()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const openEdit = (tc) => {
+  const openEdit = (tc: TeachingClassView) => {
     setEditTarget(tc)
     setEditForm({
       name: tc.name,
@@ -130,6 +140,7 @@ export default function TeachingClassesPage() {
   }
 
   const handleEdit = async () => {
+    if (!editTarget) return
     const msg = validate(editForm)
     if (msg) {
       setEditError(msg)
@@ -142,18 +153,19 @@ export default function TeachingClassesPage() {
       setEditTarget(null)
       list.reload()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setEditing(false)
     }
   }
 
-  const openDelete = (tc) => {
+  const openDelete = (tc: TeachingClassView) => {
     setDeleteTarget(tc)
     setDeleteError('')
   }
 
   const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
@@ -161,7 +173,7 @@ export default function TeachingClassesPage() {
       setDeleteTarget(null)
       list.reload()
     } catch (err) {
-      setDeleteError(err.message)
+      setDeleteError((err as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -170,12 +182,12 @@ export default function TeachingClassesPage() {
   // Derive MultiSelect selection (item objects) from stored IDs so the dropdown
   // check state stays in sync. Items come from adminClasses state, so the
   // object references match what MultiSelect holds.
-  const selectionFor = (ids) => adminClasses.filter((a) => ids.includes(a.id))
+  const selectionFor = (ids: number[]) => adminClasses.filter((a) => ids.includes(a.id))
 
   // Members column joins admin-class labels with a locale-appropriate separator
-  // (zh: "、", en: ", ") via Intl.ListFormat narrow style.
+  // (zh: "、" with en: ", ") via Intl.ListFormat narrow style.
   const listFmt = new Intl.ListFormat(i18n.language, { style: 'narrow' })
-  const formatMembers = (classes) => {
+  const formatMembers = (classes: TeachingClassView['classes']) => {
     const labels = (classes || []).map(classLabel)
     return labels.length ? listFmt.format(labels) : '-'
   }
@@ -189,14 +201,17 @@ export default function TeachingClassesPage() {
 
   const colSpan = headers.length + (canManage ? 1 : 0)
 
-  const renderMemberSelect = (form, setForm) => (
-    <MultiSelect
+  const renderMemberSelect = (form: ClassForm, setForm: Dispatch<SetStateAction<ClassForm>>) => (
+    <MultiSelect<AdminClass>
       id="tc-classes"
       titleText={t('form.classes')}
       items={adminClasses}
       itemToString={classLabel}
-      selection={selectionFor(form.classIds)}
-      onChange={({ selectedItems }) => setForm({ ...form, classIds: selectedItems.map((i) => i.id) })}
+      // Controlled: Carbon Modal keeps its children mounted (the content does
+      // NOT remount on open), so the edit form's preselected members only
+      // take effect via the controlled selectedItems prop.
+      selectedItems={selectionFor(form.classIds)}
+      onChange={({ selectedItems }) => setForm({ ...form, classIds: (selectedItems ?? []).map((i) => i.id) })}
       label={t('classesPicker.label')}
       disabled={adminClasses.length === 0}
     />
@@ -265,7 +280,7 @@ export default function TeachingClassesPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -286,13 +301,14 @@ export default function TeachingClassesPage() {
                   ) : (
                     rows.map((row) => {
                       const tc = list.items.find((x) => String(x.id) === String(row.id))
+                      if (!tc) return null
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value || '-'}</TableCell>
+                            return <TableCell key={cell.id}>{(cell.value as string) || '-'}</TableCell>
                           })}
                           {canManage && (
                             <TableCell>

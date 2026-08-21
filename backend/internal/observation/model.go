@@ -40,18 +40,18 @@ var (
 type Observation struct {
 	ID             int64           `json:"id"`
 	TemplateType   string          `json:"templateType"`
-	OccurrenceID   *int64          `json:"occurrenceId"` // nullable FK -> course_sessions
-	CourseID       int64           `json:"courseId"`     // FK -> course_offerings
-	ClassroomID    *int64          `json:"classroomId"`  // nullable FK -> classrooms
+	OccurrenceID   *int64          `json:"occurrenceId" validate:"optional"` // nullable FK -> course_sessions
+	CourseID       int64           `json:"courseId"`                        // FK -> course_offerings
+	ClassroomID    *int64          `json:"classroomId" validate:"optional"` // nullable FK -> classrooms
 	ObserverID     int64           `json:"observerId"`   // FK -> users
 	ObserveDate    string          `json:"observeDate"`  // "YYYY-MM-DD"
 	Sections       []int           `json:"sections"`     // normalized period indices
 	Status         string          `json:"status"`       // draft | submitted
-	Scores         json.RawMessage `json:"scores"`
-	TotalScore     *float64        `json:"totalScore"`
+	Scores         json.RawMessage `json:"scores" swaggertype:"object"`
+	TotalScore     *float64        `json:"totalScore" validate:"optional"`
 	Content        string          `json:"content"`
-	FormData       json.RawMessage `json:"formData"`
-	CourseSnapshot json.RawMessage `json:"courseSnapshot"`
+	FormData       json.RawMessage `json:"formData" swaggertype:"object"`
+	CourseSnapshot json.RawMessage `json:"courseSnapshot" swaggertype:"object"`
 	IsAnonymous    bool            `json:"isAnonymous"`
 	Remark         string          `json:"remark"`
 	ExportedAt     *time.Time      `json:"exportedAt,omitempty"`
@@ -76,12 +76,12 @@ type ObservationView struct {
 // never trusted from the client.
 type ObservationInput struct {
 	TemplateType string          `json:"templateType"`
-	OccurrenceID *int64          `json:"occurrenceId"`
+	OccurrenceID *int64          `json:"occurrenceId" validate:"optional"`
 	CourseID     int64           `json:"courseId"`
-	ClassroomID  *int64          `json:"classroomId"`
+	ClassroomID  *int64          `json:"classroomId" validate:"optional"`
 	ObserveDate  string          `json:"observeDate"`
 	Sections     []int           `json:"sections"`
-	FormData     json.RawMessage `json:"formData"`
+	FormData     json.RawMessage `json:"formData" swaggertype:"object"`
 	IsAnonymous  bool            `json:"isAnonymous"`
 }
 

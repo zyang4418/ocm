@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -6,11 +6,12 @@ import {
   ClickableTile,
   Column,
   Grid,
-  InlineNotification,
+  ActionableNotification,
   Link,
   SkeletonText,
   Tag,
   Tile,
+  type TagProps,
 } from '@carbon/react'
 import {
   Activity,
@@ -27,32 +28,60 @@ import { useAuth } from '../auth/AuthContext'
 import { openAiChat } from '../ai/chatInstance'
 import useDashboardSummary from '../hooks/useDashboardSummary'
 import { formatDateTime } from '../i18n/formatters'
+import type { BookingView, RepairView } from '../types/api'
+import type { Permission } from '../types/api'
 
 // The @carbon/charts band is code-split: the d3/charts bundle (~600KB) loads
 // only when the homepage actually renders charts, keeping every other route's
 // chunk lean.
-const DashboardCharts = lazy(() => import('../dashboard/DashboardCharts.jsx'))
+const DashboardCharts = lazy(() => import('../dashboard/DashboardCharts'))
 
 // Status tag colors match the bookings / repairs pages so every page reads the
 // same semantics the same way.
-const bookingStatusKind = {
+const BOOKING_STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   pending: 'blue',
   approved: 'green',
   rejected: 'red',
   cancelled: 'gray',
 }
 
-const repairStatusKind = {
+// Mirrors RepairsPage's status colors ('processing' → blue; Carbon tags have
+// no 'yellow', which the old JSX silently ignored).
+const REPAIR_STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   open: 'red',
-  processing: 'yellow',
+  processing: 'blue',
   completed: 'gray',
   confirmed: 'green',
+}
+
+// Each quick link carries a key into dashboard.quickLinks.* for its title
+// and description; the action (href or openChat) and permission gate stay.
+interface QuickLink {
+  key: string
+  title: string
+  description: string
+  href?: string
+  openChat?: boolean
+  perm?: Permission
+  adminOnly?: boolean
+}
+
+// KPI tile descriptor (built from the permission-gated summary fields). The
+// icon is a Carbon icon component (e.g. Calendar).
+interface Kpi {
+  key: string
+  icon: typeof Calendar
+  label: string
+  value: number
+  unit: string
+  href: string
+  alert?: boolean
 }
 
 // Panel is the shared frame for every dashboard section: a Tile with a
 // heading, an optional trailing "view all" link (AppShell-style href +
 // navigate) and a padded body.
-function Panel({ title, viewAll, children }) {
+function Panel({ title, viewAll, children }: { title: string; viewAll?: { to: string; label: string }; children: ReactNode }) {
   const navigate = useNavigate()
   return (
     <Tile className="dashboard__panel">
@@ -76,7 +105,7 @@ function Panel({ title, viewAll, children }) {
   )
 }
 
-function EmptyRow({ text }) {
+function EmptyRow({ text }: { text: string }) {
   return <p className="dashboard__empty">{text}</p>
 }
 
@@ -91,32 +120,42 @@ function ChartPanelSkeleton() {
   )
 }
 
+// periodLabel renders "N节" / "N-M节" for a session or booking.
+function usePeriodLabel() {
+  const { t } = useTranslation('dashboard')
+  return (it: { periodStart: number; periodEnd: number } | null | undefined) => {
+    if (!it) return ''
+    if (it.periodStart === it.periodEnd) return t('periodLabel.single', { period: it.periodStart })
+    return t('periodLabel.range', { start: it.periodStart, end: it.periodEnd })
+  }
+}
+
 export default function DashboardPage() {
   const { t } = useTranslation('dashboard')
   const { user, token, can } = useAuth()
   const navigate = useNavigate()
   const { date, data, loading, error, reload } = useDashboardSummary(token)
+  const periodLabel = usePeriodLabel()
 
-  const go = (path) => (e) => {
+  const go = (path: string) => (e: { preventDefault: () => void }) => {
     e.preventDefault()
     navigate(path)
   }
 
-  const weekdays = t('weekdays', { returnObjects: true })
+  const weekdays = t('weekdays', { returnObjects: true }) as string[]
   const weekday = weekdays[new Date(`${date}T00:00:00`).getDay()]
   const month = Number(date.slice(5, 7))
   const day = Number(date.slice(8, 10))
   const dateLabel = t('dateLabel', { month, day })
 
-  // Each quick link carries a key into dashboard.quickLinks.* for its title
-  // and description; the action (href or openChat) and permission gate stay.
-  const quickLinks = [
+  const quickLinkDefs: Array<Pick<QuickLink, 'key' | 'href' | 'openChat' | 'perm' | 'adminOnly'>> = [
     { key: 'aiAssistant', openChat: true, perm: 'ai:chat' },
     { key: 'userManagement', href: '/users', perm: 'user:read' },
     { key: 'roleManagement', href: '/roles', perm: 'role:manage' },
     { key: 'parameters', href: '/settings', adminOnly: true },
     { key: 'auditLogs', href: '/logs', perm: 'log:read' },
-  ].map((l) => ({
+  ]
+  const quickLinks: QuickLink[] = quickLinkDefs.map((l) => ({
     ...l,
     title: t(`quickLinks.${l.key}.title`),
     description: t(`quickLinks.${l.key}.description`),
@@ -125,7 +164,7 @@ export default function DashboardPage() {
   // KPI row: built from the fields the backend actually returned - each entry
   // is permission-gated server side, so the row collapses naturally for
   // low-privilege users instead of showing forbidden modules.
-  const kpis = []
+  const kpis: Kpi[] = []
   if (data?.todaySessions)
     kpis.push({ key: 'sessions', icon: Calendar, label: t('kpi.todaySessions'), value: data.todaySessions.total, unit: t('unit.session'), href: '/timetable' })
   if (data?.classroomTotal !== undefined)
@@ -137,16 +176,10 @@ export default function DashboardPage() {
   if (data?.myBookings)
     kpis.push({ key: 'mine', icon: Event, label: t('kpi.myBookings'), value: data.myBookings.length, unit: t('unit.item'), href: '/bookings' })
 
-  const periodLabel = (it) => {
-    if (!it) return ''
-    if (it.periodStart === it.periodEnd) return t('periodLabel.single', { period: it.periodStart })
-    return t('periodLabel.range', { start: it.periodStart, end: it.periodEnd })
-  }
-
   const sessions = data?.todaySessions?.items ?? []
   const pending = data?.pendingBookings?.items ?? []
   const repairs = data?.openRepairs?.items ?? []
-  const mine = data?.myBookings ?? []
+  const mine: BookingView[] = data?.myBookings ?? []
   const logs = data?.recentLogs ?? []
 
   return (
@@ -164,12 +197,18 @@ export default function DashboardPage() {
 
       {error && (
         <Column sm={4} md={8} lg={16}>
-          <InlineNotification
+          {/* ActionableNotification: the old JSX passed an `actions` prop to
+              InlineNotification, which it does not support — the retry button
+              never rendered. This restores the intended retry affordance. */}
+          <ActionableNotification
             kind="error"
+            lowContrast
             title={t('error.title')}
             subtitle={error}
-            actions={<Button size="sm" kind="tertiary" onClick={reload}>{t('error.retry')}</Button>}
+            actionButtonLabel={t('error.retry')}
+            onActionButtonClick={reload}
             className="dashboard__error"
+            hideCloseButton
           />
         </Column>
       )}
@@ -207,17 +246,17 @@ export default function DashboardPage() {
 
       {/* Charts band: same omitempty semantics as the sections - a chart with
           no server data (permission or an empty day) collapses its column */}
-      {!loading && (data?.sessionPeriods?.length > 0 || data?.bookingLoad?.length > 0) && (
+      {!loading && (data?.sessionPeriods?.length || 0) + (data?.bookingLoad?.length || 0) > 0 && (
         <Column sm={4} md={8} lg={16} className="dashboard__charts-col">
           <Suspense
             fallback={
               <Grid className="dashboard__charts">
-                {data?.sessionPeriods?.length > 0 && (
+                {(data?.sessionPeriods?.length || 0) > 0 && (
                   <Column md={4} lg={8}>
                     <ChartPanelSkeleton />
                   </Column>
                 )}
-                {data?.bookingLoad?.length > 0 && (
+                {(data?.bookingLoad?.length || 0) > 0 && (
                   <Column md={4} lg={8}>
                     <ChartPanelSkeleton />
                   </Column>
@@ -296,7 +335,7 @@ export default function DashboardPage() {
                             {b.purpose ? ` · ${b.purpose}` : ''}
                           </span>
                         </div>
-                        <Tag size="sm" type={bookingStatusKind[b.status] ?? 'gray'}>{t('bookingStatus.pending')}</Tag>
+                        <Tag size="sm" type={BOOKING_STATUS_KIND[b.status] ?? 'gray'}>{t('bookingStatus.pending')}</Tag>
                       </li>
                     ))}
                   </ul>
@@ -309,7 +348,7 @@ export default function DashboardPage() {
                   <EmptyRow text={t('empty.noOpenRepairs')} />
                 ) : (
                   <ul className="dashboard__list">
-                    {repairs.map((rp) => (
+                    {repairs.map((rp: RepairView) => (
                       <li key={rp.id} className="dashboard__list-row">
                         <div className="dashboard__list-main">
                           <span className="dashboard__list-title" title={rp.description}>
@@ -317,7 +356,7 @@ export default function DashboardPage() {
                           </span>
                           <span className="dashboard__list-meta">{rp.creatorName}</span>
                         </div>
-                        <Tag size="sm" type={repairStatusKind[rp.status] ?? 'gray'}>
+                        <Tag size="sm" type={REPAIR_STATUS_KIND[rp.status] ?? 'gray'}>
                           {t(`repairStatus.${rp.status}`, { defaultValue: rp.status })}
                         </Tag>
                       </li>
@@ -337,7 +376,7 @@ export default function DashboardPage() {
                         </span>
                         <span className="dashboard__list-meta">{b.purpose}</span>
                       </div>
-                      <Tag size="sm" type={bookingStatusKind[b.status] ?? 'gray'}>{t('bookingStatus.approved')}</Tag>
+                      <Tag size="sm" type={BOOKING_STATUS_KIND[b.status] ?? 'gray'}>{t('bookingStatus.approved')}</Tag>
                     </li>
                   ))}
                 </ul>

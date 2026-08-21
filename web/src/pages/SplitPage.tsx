@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiUpload } from '../auth/api'
 import SplitWizard from '../components/SplitWizard'
+import type { SplitResult } from '../types/api'
 
 // SplitPage (/imports/split) is the 教务处课表拆分 entry: upload the aggregated
 // schedule + semester + week-1 Monday, the backend splits it into 6 import jobs,
@@ -15,16 +16,16 @@ export default function SplitPage() {
   const { t } = useTranslation('imports')
   const { token } = useAuth()
   const navigate = useNavigate()
-  const fileRef = useRef(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  const [splitFile, setSplitFile] = useState(null)
+  const [splitFile, setSplitFile] = useState<File | null>(null)
   const [splitSemester, setSplitSemester] = useState('')
   const [splitWeek1, setSplitWeek1] = useState('')
   const [splitting, setSplitting] = useState(false)
   const [splitError, setSplitError] = useState('')
   // SplitWizard session: holds the 6 jobs (dependency order) + stats/warnings
   // returned by jwc_split. Null = show the split form; set = show the wizard.
-  const [wizard, setWizard] = useState(null)
+  const [wizard, setWizard] = useState<SplitResult | null>(null)
 
   const handleSplit = async () => {
     if (!splitFile || !splitSemester || !splitWeek1) return
@@ -32,7 +33,7 @@ export default function SplitPage() {
       setSplitting(true)
       setSplitError('')
       setWizard(null)
-      const data = await apiUpload('/api/imports/jwc_split', {
+      const data = await apiUpload<SplitResult>('/api/imports/jwc_split', {
         file: splitFile,
         token,
         fields: { semester: splitSemester, week1_monday: splitWeek1 },
@@ -41,7 +42,7 @@ export default function SplitPage() {
       if (fileRef.current) fileRef.current.value = ''
       setWizard({ jobs: data.jobs, stats: data.stats, warnings: data.warnings })
     } catch (err) {
-      setSplitError(err.message)
+      setSplitError((err as Error).message)
     } finally {
       setSplitting(false)
     }
@@ -53,13 +54,19 @@ export default function SplitPage() {
         <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
-            onClick={(e) => { e.preventDefault(); navigate('/') }}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/')
+            }}
           >
             {t('breadcrumb.home')}
           </BreadcrumbItem>
           <BreadcrumbItem
             href="/imports"
-            onClick={(e) => { e.preventDefault(); navigate('/imports') }}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/imports')
+            }}
           >
             {t('breadcrumb.current')}
           </BreadcrumbItem>

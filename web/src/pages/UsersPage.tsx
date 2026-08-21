@@ -27,6 +27,8 @@ import {
   TableToolbarSearch,
   Tag,
   TextInput,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { Add, Edit, Password as PasswordIcon, TrashCan, UserSettings } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -37,17 +39,52 @@ import usePagedList from '../hooks/usePagedList'
 import ListPagination from '../components/ListPagination'
 import { formatDate } from '../i18n/formatters'
 import { datePickerLocale } from '../i18n/carbonLocale'
+import type {
+  CatalogPermission,
+  GroupBrief,
+  Role,
+  RoleBrief,
+  User,
+  UserGrantView,
+  UserRolesInput,
+  UserPermissionsInput,
+} from '../types/api'
 
 // User type enum values (not translatable text — labels come from i18n).
-const TYPE_KEYS = ['student', 'teacher', 'staff']
+const TYPE_KEYS = ['student', 'teacher', 'staff'] as const
 
-const typeKind = (type) => ({ student: 'teal', teacher: 'blue', staff: 'gray' }[type] ?? 'gray')
+const TYPE_KIND: Record<string, TagProps<'div'>['type']> = {
+  student: 'teal',
+  teacher: 'blue',
+  staff: 'gray',
+}
 
-const emptyCreate = { username: '', password: '', displayName: '', type: 'staff' }
+const typeKind = (type: string): TagProps<'div'>['type'] => TYPE_KIND[type] ?? 'gray'
+
+interface CreateForm {
+  username: string
+  password: string
+  displayName: string
+  type: string
+}
+
+const emptyCreate: CreateForm = { username: '', password: '', displayName: '', type: 'staff' }
+
+// One grant checkbox row: a role with optional expiry, or a catalog permission.
+interface RoleGrantEntry {
+  checked: boolean
+  expiresAt: string
+}
 
 // Grants modal state: one entry per role (with optional expiry) and one per
 // catalog permission. Groups are display-only.
-const emptyGrantForm = { roles: {}, permissions: {}, groups: [] }
+interface GrantForm {
+  roles: Record<string, RoleGrantEntry>
+  permissions: Record<string, boolean>
+  groups: GroupBrief[]
+}
+
+const emptyGrantForm: GrantForm = { roles: {}, permissions: {}, groups: [] }
 
 export default function UsersPage() {
   const { t } = useTranslation('users')
@@ -55,7 +92,7 @@ export default function UsersPage() {
   const canManage = can('user:manage')
   const navigate = useNavigate()
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'id', header: t('field.id') },
     { key: 'username', header: t('field.username') },
     { key: 'displayName', header: t('field.displayName') },
@@ -65,32 +102,35 @@ export default function UsersPage() {
     { key: 'createdAt', header: t('field.createdAt') },
   ]
 
-  const list = usePagedList({ path: '/api/users', token })
+  const list = usePagedList<User>({ path: '/api/users', token })
   const { loading } = list
 
+  // Carbon DataTable keys rows by a string id.
+  const tableRows = list.items.map((u) => ({ ...u, id: String(u.id) }))
+
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyCreate)
+  const [createForm, setCreateForm] = useState<CreateForm>(emptyCreate)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const [editTarget, setEditTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState<User | null>(null)
   const [editForm, setEditForm] = useState({ displayName: '', type: 'staff' })
   const [editError, setEditError] = useState('')
   const [editing, setEditing] = useState(false)
 
-  const [pwdTarget, setPwdTarget] = useState(null)
+  const [pwdTarget, setPwdTarget] = useState<User | null>(null)
   const [pwdForm, setPwdForm] = useState({ password: '', confirm: '' })
   const [pwdError, setPwdError] = useState('')
   const [pwdSaving, setPwdSaving] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  const [grantTarget, setGrantTarget] = useState(null)
-  const [grantRoles, setGrantRoles] = useState([])
-  const [grantCatalog, setGrantCatalog] = useState([])
-  const [grantForm, setGrantForm] = useState(emptyGrantForm)
+  const [grantTarget, setGrantTarget] = useState<User | null>(null)
+  const [grantRoles, setGrantRoles] = useState<Role[]>([])
+  const [grantCatalog, setGrantCatalog] = useState<CatalogPermission[]>([])
+  const [grantForm, setGrantForm] = useState<GrantForm>(emptyGrantForm)
   const [grantError, setGrantError] = useState('')
   const [grantLoading, setGrantLoading] = useState(false)
   const [grantSaving, setGrantSaving] = useState(false)
@@ -117,19 +157,20 @@ export default function UsersPage() {
       setCreateOpen(false)
       list.reload()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const openEdit = (u) => {
+  const openEdit = (u: User) => {
     setEditTarget(u)
     setEditForm({ displayName: u.displayName, type: u.type })
     setEditError('')
   }
 
   const handleEdit = async () => {
+    if (!editTarget) return
     if (!editForm.displayName.trim()) {
       setEditError(t('validation.displayNameRequired'))
       return
@@ -148,19 +189,20 @@ export default function UsersPage() {
       setEditTarget(null)
       list.reload()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setEditing(false)
     }
   }
 
-  const openPassword = (u) => {
+  const openPassword = (u: User) => {
     setPwdTarget(u)
     setPwdForm({ password: '', confirm: '' })
     setPwdError('')
   }
 
   const handlePassword = async () => {
+    if (!pwdTarget) return
     if (!pwdForm.password) {
       setPwdError(t('validation.passwordRequired'))
       return
@@ -179,18 +221,19 @@ export default function UsersPage() {
       })
       setPwdTarget(null)
     } catch (err) {
-      setPwdError(err.message)
+      setPwdError((err as Error).message)
     } finally {
       setPwdSaving(false)
     }
   }
 
-  const openDelete = (u) => {
+  const openDelete = (u: User) => {
     setDeleteTarget(u)
     setDeleteError('')
   }
 
   const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
@@ -198,7 +241,7 @@ export default function UsersPage() {
       setDeleteTarget(null)
       list.reload()
     } catch (err) {
-      setDeleteError(err.message)
+      setDeleteError((err as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -206,19 +249,19 @@ export default function UsersPage() {
 
   // ---- Grants modal ----
 
-  const openGrants = async (u) => {
+  const openGrants = async (u: User) => {
     setGrantTarget(u)
     setGrantError('')
     setGrantLoading(true)
     try {
       const [grants, roles, catalog] = await Promise.all([
-        apiFetch(`/api/users/${u.id}/grants`, { token }),
-        apiFetch('/api/roles', { token }),
-        apiFetch('/api/permissions', { token }),
+        apiFetch<UserGrantView>(`/api/users/${u.id}/grants`, { token }),
+        apiFetch<Role[]>('/api/roles', { token }),
+        apiFetch<CatalogPermission[]>('/api/permissions', { token }),
       ])
       setGrantRoles(roles)
       setGrantCatalog(catalog)
-      const form = { roles: {}, permissions: {}, groups: grants.groups }
+      const form: GrantForm = { roles: {}, permissions: {}, groups: grants.groups }
       for (const role of roles) {
         const existing = grants.roles.find((g) => g.code === role.code)
         form.roles[role.code] = existing ? { checked: true, expiresAt: toDateInput(existing.expiresAt) } : { checked: false, expiresAt: '' }
@@ -228,25 +271,29 @@ export default function UsersPage() {
       }
       setGrantForm(form)
     } catch (err) {
-      setGrantError(err.message)
+      setGrantError((err as Error).message)
     } finally {
       setGrantLoading(false)
     }
   }
 
   const handleGrantSave = async () => {
+    if (!grantTarget) return
     try {
       setGrantSaving(true)
       setGrantError('')
-      const roles = Object.entries(grantForm.roles)
+      // Optional expiresAt: undefined drops the key on JSON.stringify, which
+      // the Go side decodes as a nil pointer (never expires) — same wire
+      // behavior as the explicit null the JS version sent.
+      const roles: UserRolesInput['roles'] = Object.entries(grantForm.roles)
         .filter(([, v]) => v.checked)
         .map(([code, v]) => ({
           roleCode: code,
-          expiresAt: v.expiresAt ? localMidnightUTC(v.expiresAt) : null,
+          expiresAt: v.expiresAt ? localMidnightUTC(v.expiresAt) : undefined,
         }))
-      const permissions = Object.entries(grantForm.permissions)
+      const permissions: UserPermissionsInput['permissions'] = Object.entries(grantForm.permissions)
         .filter(([, checked]) => checked)
-        .map(([permission]) => ({ permission, expiresAt: null }))
+        .map(([permission]) => ({ permission }))
       await apiFetch(`/api/users/${grantTarget.id}/roles`, {
         method: 'PUT',
         token,
@@ -260,13 +307,13 @@ export default function UsersPage() {
       setGrantTarget(null)
       list.reload()
     } catch (err) {
-      setGrantError(err.message)
+      setGrantError((err as Error).message)
     } finally {
       setGrantSaving(false)
     }
   }
 
-  const isSelf = (u) => Boolean(u) && String(u.id) === String(currentUser?.id)
+  const isSelf = (u: User | null | undefined) => Boolean(u) && String(u!.id) === String(currentUser?.id)
 
   const catalogGroups = groupCatalog(grantCatalog)
 
@@ -301,7 +348,7 @@ export default function UsersPage() {
           />
         )}
 
-        <DataTable rows={list.items} headers={headers}>
+        <DataTable rows={tableRows} headers={headers}>
           {({
             rows,
             headers: tableHeaders,
@@ -325,7 +372,7 @@ export default function UsersPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -346,20 +393,22 @@ export default function UsersPage() {
                   ) : (
                     rows.map((row) => {
                       const u = list.items.find((x) => String(x.id) === String(row.id))
+                      if (!u) return null
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'type') {
+                              const value = cell.value as string
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={typeKind(cell.value)} size="sm">
-                                    {t('type.' + cell.value, { defaultValue: cell.value })}
+                                  <Tag type={typeKind(value)} size="sm">
+                                    {t('type.' + value, { defaultValue: value })}
                                   </Tag>
                                 </TableCell>
                               )
                             }
                             if (cell.info.header === 'roles' || cell.info.header === 'groups') {
-                              const items = cell.value ?? []
+                              const items = (cell.value ?? []) as Array<RoleBrief | GroupBrief>
                               return (
                                 <TableCell key={cell.id}>
                                   {items.length === 0 ? (
@@ -377,9 +426,9 @@ export default function UsersPage() {
                               )
                             }
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string}</TableCell>
                           })}
                           <TableCell>
                             <div className="users-page__actions">
@@ -622,12 +671,13 @@ export default function UsersPage() {
                           datePickerType="single"
                           dateFormat="Y-m-d"
                           locale={datePickerLocale()}
-                          onChange={(dates) =>
+                          value={entry.expiresAt}
+                          onChange={(_dates, dateStr) =>
                             setGrantForm({
                               ...grantForm,
                               roles: {
                                 ...grantForm.roles,
-                                [role.code]: { ...entry, expiresAt: dates[0] ?? '' },
+                                [role.code]: { ...entry, expiresAt: dateStr },
                               },
                             })
                           }
@@ -636,7 +686,6 @@ export default function UsersPage() {
                             id={`grant-role-${role.id}-expiry`}
                             placeholder={t('grants.expiryPlaceholder')}
                             labelText={t('grants.expiryLabel')}
-                            value={entry.expiresAt}
                             size="sm"
                           />
                         </DatePicker>
@@ -721,31 +770,35 @@ export default function UsersPage() {
 }
 
 // toDateInput renders a nullable expiry as a Y-M-D string for the picker.
-function toDateInput(value) {
+function toDateInput(value: string | null | undefined): string {
   if (!value) return ''
   const d = new Date(value)
-  const pad = (n) => String(n).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // localMidnightUTC converts a Y-M-D picker value to a UTC RFC3339 instant of
 // local midnight, matching the backend's server-side comparison.
-function localMidnightUTC(value) {
+function localMidnightUTC(value: string): string {
   return new Date(`${value}T00:00:00`).toISOString()
 }
 
-function startOfToday() {
+function startOfToday(): Date {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
 // groupCatalog buckets the permission catalog by categoryName, preserving
 // the catalog's sorted order within each bucket.
-function groupCatalog(catalog) {
-  const groups = new Map()
+function groupCatalog(catalog: CatalogPermission[]): Array<{ name: string; items: CatalogPermission[] }> {
+  const groups = new Map<string, CatalogPermission[]>()
   for (const perm of catalog) {
-    if (!groups.has(perm.categoryName)) groups.set(perm.categoryName, [])
-    groups.get(perm.categoryName).push(perm)
+    const bucket = groups.get(perm.categoryName)
+    if (bucket) {
+      bucket.push(perm)
+    } else {
+      groups.set(perm.categoryName, [perm])
+    }
   }
   return Array.from(groups, ([name, items]) => ({ name, items }))
 }

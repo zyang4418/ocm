@@ -44,6 +44,16 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	mux.Handle("GET /api/schedule/active", read(h.activeRegime))
 }
 
+// @Summary      List bell-time regimes
+// @Tags         schedule
+// @Produce      json
+// @Param        q query string false "search by name"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged regimes with periods"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/regimes [get]
 func (h *Handler) listRegimes(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -80,6 +90,17 @@ func (h *Handler) exportRegimes(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create a bell-time regime
+// @Tags         schedule
+// @Accept       json
+// @Produce      json
+// @Param        body body RegimeInput true "regime input"
+// @Success      201 {object} Regime "created regime (no periods yet)"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / name required / effective date invalid"
+// @Failure      409 {object} httpx.ErrorResponse "effective date already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/regimes [post]
 func (h *Handler) createRegime(w http.ResponseWriter, r *http.Request) {
 	var in RegimeInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -103,6 +124,16 @@ func (h *Handler) createRegime(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, regime)
 }
 
+// @Summary      Get a bell-time regime
+// @Tags         schedule
+// @Produce      json
+// @Param        id path int true "regime id"
+// @Success      200 {object} Regime "regime with periods"
+// @Failure      400 {object} httpx.ErrorResponse "invalid regime id"
+// @Failure      404 {object} httpx.ErrorResponse "regime not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/regimes/{id} [get]
 func (h *Handler) getRegime(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -121,6 +152,19 @@ func (h *Handler) getRegime(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, regime)
 }
 
+// @Summary      Update a bell-time regime
+// @Tags         schedule
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "regime id"
+// @Param        body body RegimeInput true "regime input"
+// @Success      200 {object} Regime "updated regime with periods"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / name required / effective date invalid"
+// @Failure      404 {object} httpx.ErrorResponse "regime not found"
+// @Failure      409 {object} httpx.ErrorResponse "effective date already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/regimes/{id} [put]
 func (h *Handler) updateRegime(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -153,6 +197,16 @@ func (h *Handler) updateRegime(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, regime)
 }
 
+// @Summary      Delete a bell-time regime
+// @Tags         schedule
+// @Param        id path int true "regime id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid regime id"
+// @Failure      404 {object} httpx.ErrorResponse "regime not found"
+// @Failure      409 {object} httpx.ErrorResponse "cannot delete the last regime"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/regimes/{id} [delete]
 func (h *Handler) deleteRegime(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -180,6 +234,18 @@ func (h *Handler) deleteRegime(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// @Summary      Replace a regime's periods (bell times)
+// @Tags         schedule
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "regime id"
+// @Param        body body PeriodsInput true "full replacement set of periods"
+// @Success      200 {object} Regime "regime with the new periods"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / period numbers must be contiguous"
+// @Failure      404 {object} httpx.ErrorResponse "regime not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/regimes/{id}/periods [put]
 func (h *Handler) replacePeriods(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -214,6 +280,13 @@ func (h *Handler) replacePeriods(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, regime)
 }
 
+// @Summary      Get the regime active today
+// @Tags         schedule
+// @Produce      json
+// @Success      200 {object} Regime "regime with periods"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/schedule/active [get]
 func (h *Handler) activeRegime(w http.ResponseWriter, r *http.Request) {
 	date := time.Now()
 	if v := r.URL.Query().Get("date"); v != "" {

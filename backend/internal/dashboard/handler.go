@@ -87,6 +87,18 @@ func visibilityFor(s authz.Subject) visibility {
 	}
 }
 
+// @Summary      Console homepage summary (permission-gated sections)
+// @Description  Each section is present only when the caller holds the
+// @Description  permission that gates it — absence means "hidden".
+// @Tags         dashboard
+// @Produce      json
+// @Param        date query string true "school day (Y-M-D)"
+// @Success      200 {object} Summary "sectioned summary"
+// @Failure      400 {object} httpx.ErrorResponse "date must be YYYY-MM-DD"
+// @Failure      401 {object} httpx.ErrorResponse "not authenticated"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/dashboard/summary [get]
 func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
 	if !datePattern.MatchString(date) {

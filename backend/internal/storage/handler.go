@@ -30,7 +30,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 // masked is the response shape: the secret key is never returned — callers
 // only learn whether one is set, so an admin editing the form leaves it blank
 // to keep the stored value.
-type maskedSettings struct {
+type MaskedSettings struct {
 	Enabled       bool   `json:"enabled"`
 	Endpoint      string `json:"endpoint"`
 	Region        string `json:"region"`
@@ -43,8 +43,8 @@ type maskedSettings struct {
 	PublicBaseURL string `json:"publicBaseUrl"`
 }
 
-func masked(s Settings) maskedSettings {
-	return maskedSettings{
+func masked(s Settings) MaskedSettings {
+	return MaskedSettings{
 		Enabled:       s.Enabled,
 		Endpoint:      s.Endpoint,
 		Region:        s.Region,
@@ -58,6 +58,13 @@ func masked(s Settings) maskedSettings {
 	}
 }
 
+// @Summary      Get object storage settings (secret key masked)
+// @Tags         settings
+// @Produce      json
+// @Success      200 {object} MaskedSettings "settings with the secret key hidden"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/settings/storage [get]
 func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.store.Get(r.Context())
 	if err != nil {
@@ -67,6 +74,18 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, masked(settings))
 }
 
+// @Summary      Update object storage settings
+// @Description  An empty secretKey means "keep the stored one" — the secret
+// @Description  can never be cleared through the API.
+// @Tags         settings
+// @Accept       json
+// @Produce      json
+// @Param        body body Settings true "storage settings"
+// @Success      200 {object} MaskedSettings "updated settings (secret masked)"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / required fields missing when enabled"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/settings/storage [put]
 func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) {
 	var in Settings
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {

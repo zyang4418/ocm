@@ -32,9 +32,9 @@ type Repair struct {
 	ID          int64           `json:"id"`
 	ClassroomID int64           `json:"classroomId"`
 	CreatorID   int64           `json:"creatorId"`
-	AssigneeID  *int64          `json:"assigneeId"`
+	AssigneeID  *int64          `json:"assigneeId" validate:"optional"`
 	Description string          `json:"description"`
-	Images      json.RawMessage `json:"images"`
+	Images      json.RawMessage `json:"images" swaggertype:"array,string"`
 	Status      string          `json:"status"`
 	Remark      string          `json:"remark"`
 	CreatedAt   time.Time       `json:"createdAt"`
@@ -54,7 +54,7 @@ type RepairView struct {
 type RepairInput struct {
 	ClassroomID int64           `json:"classroomId"`
 	Description string          `json:"description"`
-	Images      json.RawMessage `json:"images"`
+	Images      json.RawMessage `json:"images" swaggertype:"array,string"`
 }
 
 // RepairUpdateInput carries the assignee-owned status transition. Status is

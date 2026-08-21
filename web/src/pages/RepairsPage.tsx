@@ -22,6 +22,8 @@ import {
   TableToolbarSearch,
   Tag,
   TextArea,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { Add, CheckmarkOutline } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -31,25 +33,27 @@ import { apiFetch } from '../auth/api'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import type { Classroom, Paged, RepairInput, RepairUpdateInput, RepairView } from '../types/api'
 
-const statusKind = {
+const STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   open: 'red',
   processing: 'blue',
   completed: 'purple',
   confirmed: 'green',
 }
 
-const headers = (t) => [
-  { key: 'classroom', header: t('field.classroom') },
-  { key: 'description', header: t('field.description') },
-  { key: 'creatorName', header: t('field.creatorName') },
-  { key: 'assigneeName', header: t('field.assigneeName') },
-  { key: 'status', header: t('field.status') },
-  { key: 'createdAt', header: t('field.createdAt') },
-]
-
-function classroomLabel(r) {
+function classroomLabel(r: Pick<RepairView, 'building' | 'classroomName'>) {
   return r.building ? `${r.building} ${r.classroomName}` : r.classroomName
+}
+
+// The create body intentionally omits `images`: the original JS version did
+// too, and the backend stores an absent json.RawMessage as NULL (vs '[]'), so
+// keeping the key absent preserves the wire behavior.
+type RepairCreateInput = Omit<RepairInput, 'images'>
+
+// Process dialog state: the ticket under transition and its next status.
+interface ProcessTarget extends RepairView {
+  nextStatus: 'processing' | 'completed'
 }
 
 export default function RepairsPage() {
@@ -59,17 +63,27 @@ export default function RepairsPage() {
   const canSubmit = can('repair:create')
   const canAssign = can('repair:assign')
 
+  const headers: DataTableHeader[] = [
+    { key: 'classroom', header: t('field.classroom') },
+    { key: 'description', header: t('field.description') },
+    { key: 'creatorName', header: t('field.creatorName') },
+    { key: 'assigneeName', header: t('field.assigneeName') },
+    { key: 'status', header: t('field.status') },
+    { key: 'createdAt', header: t('field.createdAt') },
+  ]
+
   const [filterStatus, setFilterStatus] = useState('')
-  const list = usePagedList({
+  const list = usePagedList<RepairView>({
     path: '/api/repairs',
     token,
     extraParams: { status: filterStatus },
   })
   const { loading } = list
+  // Action errors are separate from the list fetch (the hook owns its error).
   const [actionError, setActionError] = useState('')
   const error = list.error || actionError
 
-  const [classrooms, setClassrooms] = useState([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
 
   // Submit form.
   const [formOpen, setFormOpen] = useState(false)
@@ -78,16 +92,16 @@ export default function RepairsPage() {
   const [saving, setSaving] = useState(false)
 
   // Process (start / complete) dialog.
-  const [processTarget, setProcessTarget] = useState(null)
+  const [processTarget, setProcessTarget] = useState<ProcessTarget | null>(null)
   const [processRemark, setProcessRemark] = useState('')
   const [processError, setProcessError] = useState('')
   const [processing, setProcessing] = useState(false)
 
-  const [actingId, setActingId] = useState(null)
+  const [actingId, setActingId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!canSubmit) return
-    apiFetch('/api/classrooms?page_size=500', { token })
+    apiFetch<Paged<Classroom>>('/api/classrooms?page_size=500', { token })
       .then((data) => setClassrooms(Array.isArray(data?.items) ? data.items : []))
       .catch(() => setClassrooms([]))
   }, [token, canSubmit])
@@ -104,21 +118,21 @@ export default function RepairsPage() {
     try {
       setSaving(true)
       setFormError('')
-      await apiFetch('/api/repairs', {
-        method: 'POST',
-        token,
-        body: { classroomId: Number(form.classroomId), description: form.description.trim() },
-      })
+      const body: RepairCreateInput = {
+        classroomId: Number(form.classroomId),
+        description: form.description.trim(),
+      }
+      await apiFetch('/api/repairs', { method: 'POST', token, body })
       setFormOpen(false)
       list.reload()
     } catch (err) {
-      setFormError(err.message)
+      setFormError((err as Error).message)
     } finally {
       setSaving(false)
     }
   }
 
-  const openProcess = (row, nextStatus) => {
+  const openProcess = (row: RepairView, nextStatus: ProcessTarget['nextStatus']) => {
     setProcessTarget({ ...row, nextStatus })
     setProcessRemark('')
     setProcessError('')
@@ -129,28 +143,25 @@ export default function RepairsPage() {
     try {
       setProcessing(true)
       setProcessError('')
-      await apiFetch(`/api/repairs/${processTarget.id}`, {
-        method: 'PUT',
-        token,
-        body: { status: processTarget.nextStatus, remark: processRemark.trim() },
-      })
+      const body: RepairUpdateInput = { status: processTarget.nextStatus, remark: processRemark.trim() }
+      await apiFetch(`/api/repairs/${processTarget.id}`, { method: 'PUT', token, body })
       setProcessTarget(null)
       list.reload()
     } catch (err) {
-      setProcessError(err.message)
+      setProcessError((err as Error).message)
     } finally {
       setProcessing(false)
     }
   }
 
-  const handleConfirm = async (row) => {
+  const handleConfirm = async (row: RepairView) => {
     try {
       setActingId(row.id)
       setActionError('')
       await apiFetch(`/api/repairs/${row.id}/confirm`, { method: 'POST', token })
       list.reload()
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     } finally {
       setActingId(null)
     }
@@ -166,8 +177,7 @@ export default function RepairsPage() {
     createdAt: formatDate(r.createdAt),
   }))
 
-  const tableHeaders = headers(t)
-  const colSpan = tableHeaders.length + 1
+  const colSpan = headers.length + 1
 
   return (
     <Grid fullWidth className="classrooms-page">
@@ -215,8 +225,10 @@ export default function RepairsPage() {
             <SelectItem value="confirmed" text={t('status.confirmed')} />
           </Select>
         </div>
+      </Column>
 
-        <DataTable rows={rows} headers={tableHeaders}>
+      <Column sm={4} md={8} lg={16}>
+        <DataTable rows={rows} headers={headers}>
           {({ rows: tableRows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
@@ -233,7 +245,7 @@ export default function RepairsPage() {
                 <TableHead>
                   <TableRow>
                     {renderedHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -245,44 +257,45 @@ export default function RepairsPage() {
                     <TableRow>
                       <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
-                  ) : rows.length === 0 ? (
+                  ) : tableRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>{list.q ? t('empty.search') : t('empty.none')}</TableCell>
                     </TableRow>
                   ) : (
                     tableRows.map((row) => {
                       const r = list.items.find((x) => String(x.id) === String(row.id))
-                      const isCreator = Number(currentUser?.id) === r?.creatorId
+                      const isCreator = r && Number(currentUser?.id) === r.creatorId
                       const canStart = canAssign && r?.status === 'open'
                       const canFinish = canAssign && r?.status === 'processing'
                       const canConfirm = isCreator && r?.status === 'completed'
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'status') {
+                              const value = cell.value as string
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {t('status.' + cell.value, { defaultValue: cell.value })}
+                                  <Tag type={STATUS_KIND[value] ?? 'gray'} size="sm">
+                                    {t('status.' + value, { defaultValue: value })}
                                   </Tag>
                                 </TableCell>
                               )
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string}</TableCell>
                           })}
                           <TableCell>
                             <div className="classrooms-page__actions">
-                              {canStart && (
+                              {r && canStart && (
                                 <Button kind="ghost" size="sm" onClick={() => openProcess(r, 'processing')} disabled={actingId === r.id}>
                                   {t('action.start')}
                                 </Button>
                               )}
-                              {canFinish && (
+                              {r && canFinish && (
                                 <Button kind="ghost" size="sm" onClick={() => openProcess(r, 'completed')} disabled={actingId === r.id}>
                                   {t('action.finish')}
                                 </Button>
                               )}
-                              {canConfirm && (
+                              {r && canConfirm && (
                                 <Button kind="ghost" size="sm" renderIcon={CheckmarkOutline} onClick={() => handleConfirm(r)} disabled={actingId === r.id}>
                                   {t('action.confirm')}
                                 </Button>

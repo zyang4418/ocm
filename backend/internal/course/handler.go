@@ -71,6 +71,18 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 
 // ---- Catalog ----
 
+// @Summary      List course catalog entries
+// @Tags         courses
+// @Produce      json
+// @Param        q query string false "search by code/name"
+// @Param        department query string false "filter by department"
+// @Param        credit query number false "filter by credit"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged catalog entries"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/courses [get]
 func (h *Handler) listCatalog(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -104,6 +116,17 @@ func (h *Handler) exportCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create a course catalog entry
+// @Tags         courses
+// @Accept       json
+// @Produce      json
+// @Param        body body CatalogInput true "catalog input"
+// @Success      201 {object} CatalogCourse "created catalog entry"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / required fields missing"
+// @Failure      409 {object} httpx.ErrorResponse "catalog code already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/courses [post]
 func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
 	var in CatalogInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -131,6 +154,16 @@ func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, c)
 }
 
+// @Summary      Get a course catalog entry
+// @Tags         courses
+// @Produce      json
+// @Param        id path int true "catalog id"
+// @Success      200 {object} CatalogCourse "catalog detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid catalog id"
+// @Failure      404 {object} httpx.ErrorResponse "catalog entry not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/courses/{id} [get]
 func (h *Handler) getCatalog(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -149,6 +182,19 @@ func (h *Handler) getCatalog(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
+// @Summary      Update a course catalog entry
+// @Tags         courses
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "catalog id"
+// @Param        body body CatalogInput true "catalog input"
+// @Success      200 {object} CatalogCourse "updated catalog entry"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / required fields missing"
+// @Failure      404 {object} httpx.ErrorResponse "catalog entry not found"
+// @Failure      409 {object} httpx.ErrorResponse "catalog code already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/courses/{id} [put]
 func (h *Handler) updateCatalog(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -185,6 +231,16 @@ func (h *Handler) updateCatalog(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
+// @Summary      Delete a course catalog entry
+// @Tags         courses
+// @Param        id path int true "catalog id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid catalog id"
+// @Failure      404 {object} httpx.ErrorResponse "catalog entry not found"
+// @Failure      409 {object} httpx.ErrorResponse "offerings still reference the catalog"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/courses/{id} [delete]
 func (h *Handler) deleteCatalog(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -208,6 +264,19 @@ func (h *Handler) deleteCatalog(w http.ResponseWriter, r *http.Request) {
 
 // ---- Offerings ----
 
+// @Summary      List offerings
+// @Tags         offerings
+// @Produce      json
+// @Param        semester query string false "filter by semester"
+// @Param        catalog_id query int false "filter by catalog id"
+// @Param        teacher_id query int false "filter by teacher id"
+// @Param        q query string false "search"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged offerings"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/offerings [get]
 func (h *Handler) listOfferings(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -241,6 +310,17 @@ func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create an offering
+// @Tags         offerings
+// @Accept       json
+// @Produce      json
+// @Param        body body OfferingInput true "offering input"
+// @Success      201 {object} OfferingView "created offering"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / referenced catalog or teaching class not found"
+// @Failure      409 {object} httpx.ErrorResponse "semester + catalog + teaching class already offered"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/offerings [post]
 func (h *Handler) createOffering(w http.ResponseWriter, r *http.Request) {
 	var in OfferingInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -264,6 +344,16 @@ func (h *Handler) createOffering(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
+// @Summary      Get an offering
+// @Tags         offerings
+// @Produce      json
+// @Param        id path int true "offering id"
+// @Success      200 {object} OfferingView "offering detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid offering id"
+// @Failure      404 {object} httpx.ErrorResponse "offering not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/offerings/{id} [get]
 func (h *Handler) getOffering(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -282,6 +372,19 @@ func (h *Handler) getOffering(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Update an offering
+// @Tags         offerings
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "offering id"
+// @Param        body body OfferingInput true "offering input"
+// @Success      200 {object} OfferingView "updated offering"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / referenced catalog or teaching class not found"
+// @Failure      404 {object} httpx.ErrorResponse "offering not found"
+// @Failure      409 {object} httpx.ErrorResponse "semester + catalog + teaching class already offered"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/offerings/{id} [put]
 func (h *Handler) updateOffering(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -314,6 +417,16 @@ func (h *Handler) updateOffering(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Delete an offering
+// @Tags         offerings
+// @Param        id path int true "offering id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid offering id"
+// @Failure      404 {object} httpx.ErrorResponse "offering not found"
+// @Failure      409 {object} httpx.ErrorResponse "sessions still exist for the offering"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/offerings/{id} [delete]
 func (h *Handler) deleteOffering(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -337,6 +450,19 @@ func (h *Handler) deleteOffering(w http.ResponseWriter, r *http.Request) {
 
 // ---- Sessions ----
 
+// @Summary      List sessions
+// @Tags         sessions
+// @Produce      json
+// @Param        offering_id query int false "filter by offering id"
+// @Param        classroom_id query int false "filter by classroom id"
+// @Param        from query string false "date range start (Y-M-D)"
+// @Param        to query string false "date range end (Y-M-D)"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged sessions"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/sessions [get]
 func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -391,6 +517,17 @@ func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create a session
+// @Tags         sessions
+// @Accept       json
+// @Produce      json
+// @Param        body body SessionInput true "session input"
+// @Success      201 {object} SessionView "created session"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / referenced offering or classroom not found"
+// @Failure      409 {object} httpx.ErrorResponse "classroom occupied in the same periods"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/sessions [post]
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	var in SessionInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -414,6 +551,16 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
+// @Summary      Get a session
+// @Tags         sessions
+// @Produce      json
+// @Param        id path int true "session id"
+// @Success      200 {object} SessionView "session detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid session id"
+// @Failure      404 {object} httpx.ErrorResponse "session not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/sessions/{id} [get]
 func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -432,6 +579,19 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Update a session
+// @Tags         sessions
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "session id"
+// @Param        body body SessionInput true "session input"
+// @Success      200 {object} SessionView "updated session"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / referenced offering or classroom not found"
+// @Failure      404 {object} httpx.ErrorResponse "session not found"
+// @Failure      409 {object} httpx.ErrorResponse "classroom occupied in the same periods"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/sessions/{id} [put]
 func (h *Handler) updateSession(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -464,6 +624,15 @@ func (h *Handler) updateSession(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Delete a session
+// @Tags         sessions
+// @Param        id path int true "session id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid session id"
+// @Failure      404 {object} httpx.ErrorResponse "session not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/sessions/{id} [delete]
 func (h *Handler) deleteSession(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -503,6 +672,17 @@ func parseTimetableParams(w http.ResponseWriter, r *http.Request) (classroomID i
 	return classroomID, from, to, true
 }
 
+// @Summary      Classroom timetable for a date range
+// @Tags         sessions
+// @Produce      json
+// @Param        classroom_id query int true "classroom id"
+// @Param        from query string true "range start (Y-M-D)"
+// @Param        to query string true "range end (Y-M-D)"
+// @Success      200 {array} TimetableDay "one entry per day in range"
+// @Failure      400 {object} httpx.ErrorResponse "classroom_id required / invalid date range"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/timetable [get]
 func (h *Handler) timetable(w http.ResponseWriter, r *http.Request) {
 	classroomID, from, to, ok := parseTimetableParams(w, r)
 	if !ok {

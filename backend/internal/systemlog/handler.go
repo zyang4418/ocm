@@ -40,6 +40,19 @@ func parseDay(raw string) (string, bool) {
 	return raw, true
 }
 
+// @Summary      List audit log entries
+// @Tags         logs
+// @Produce      json
+// @Param        from query string false "range start (Y-M-D)"
+// @Param        to query string false "range end (Y-M-D)"
+// @Param        q query string false "search"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged log views"
+// @Failure      400 {object} httpx.ErrorResponse "invalid date filter"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/logs [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	from, ok := parseDay(q.Get("from"))
@@ -62,6 +75,13 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, items, total, p)
 }
 
+// @Summary      Get log retention settings
+// @Tags         logs
+// @Produce      json
+// @Success      200 {object} Settings "retention settings"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/logs/settings [get]
 func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.store.GetSettings(r.Context())
 	if err != nil {
@@ -71,6 +91,16 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, settings)
 }
 
+// @Summary      Update log retention settings
+// @Tags         logs
+// @Accept       json
+// @Produce      json
+// @Param        body body Settings true "retention settings"
+// @Success      200 {object} Settings "updated retention settings"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / retentionDays out of range"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/logs/settings [put]
 func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) {
 	var in Settings
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {

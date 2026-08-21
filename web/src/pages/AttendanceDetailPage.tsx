@@ -20,6 +20,7 @@ import {
   TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
+  type DataTableHeader,
 } from '@carbon/react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -29,6 +30,7 @@ import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
+import type { Checkin, CheckinRecord } from '../types/api'
 import { CheckinStatusTag, STATUS_KEYS, StatusTag, formatDateTime } from './attendanceUi'
 
 export default function AttendanceDetailPage() {
@@ -38,7 +40,7 @@ export default function AttendanceDetailPage() {
   const { token, can } = useAuth()
   const canManage = can('attendance:manage')
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'displayName', header: t('detail.field.name') },
     { key: 'studentNo', header: t('detail.field.studentNo') },
     { key: 'adminClass', header: t('detail.field.adminClass') },
@@ -47,21 +49,23 @@ export default function AttendanceDetailPage() {
     { key: 'inRoster', header: t('detail.field.inRoster') },
   ]
 
-  const [checkin, setCheckin] = useState(null)
+  const [checkin, setCheckin] = useState<Checkin | null>(null)
   const [detailError, setDetailError] = useState('')
   const [now, setNow] = useState(() => new Date())
 
   const [statusFilter, setStatusFilter] = useState('')
-  const list = usePagedList({ path: `/api/checkins/${id}/records`, token, extraParams: { status: statusFilter } })
+  const list = usePagedList<CheckinRecord>({ path: `/api/checkins/${id}/records`, token, extraParams: { status: statusFilter } })
   const { loading } = list
 
-  // Carbon DataTable requires a unique `id` on each row; checkin records are
-  // keyed by userId (no `id` field from the API), so derive it here. Without
-  // this, row.id is undefined, the find() below misses, and r.displayName
-  // throws — white-screening the page once any record renders.
-  const tableRows = list.items.map((r) => ({ ...r, id: r.userId }))
+  // Carbon DataTable requires a unique string `id` on each row; checkin records
+  // are keyed by userId (no `id` field from the API), so derive it here. The
+  // generated CheckinRecord type has no `id`, which is exactly what locks this
+  // derivation in: without it the row key is undefined, the find() below
+  // misses, and r.displayName throws — white-screening the page once any
+  // record renders.
+  const tableRows = list.items.map((r) => ({ ...r, id: String(r.userId) }))
 
-  const [editTarget, setEditTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState<CheckinRecord | null>(null)
   const [editStatus, setEditStatus] = useState('')
   const [editError, setEditError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -70,12 +74,12 @@ export default function AttendanceDetailPage() {
 
   const load = async () => {
     try {
-      const v = await apiFetch(`/api/checkins/${id}`, { token })
+      const v = await apiFetch<Checkin>(`/api/checkins/${id}`, { token })
       setCheckin(v)
       setDetailError('')
       if (v.status === 'closed') list.reload()
     } catch (err) {
-      setDetailError(err.message)
+      setDetailError((err as Error).message)
     }
   }
 
@@ -89,7 +93,7 @@ export default function AttendanceDetailPage() {
   // 1s ticker drives the countdown; cleared once the checkin closes or has no
   // expiry.
   useEffect(() => {
-    if (!checkin || checkin.status !== 'active' || !checkin.expiresAt) return
+    if (!checkin || checkin.status !== 'active' || !checkin.expiresAt) return undefined
     const tick = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(tick)
   }, [checkin])
@@ -100,13 +104,14 @@ export default function AttendanceDetailPage() {
     return Math.max(0, s)
   }
 
-  const openEdit = (r) => {
+  const openEdit = (r: CheckinRecord) => {
     setEditTarget(r)
     setEditStatus(r.status)
     setEditError('')
   }
 
   const handleSave = async () => {
+    if (!editTarget) return
     try {
       setSaving(true)
       setEditError('')
@@ -119,7 +124,7 @@ export default function AttendanceDetailPage() {
       list.reload()
       load()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setSaving(false)
     }
@@ -131,7 +136,7 @@ export default function AttendanceDetailPage() {
       await apiFetch(`/api/checkins/${id}/close`, { method: 'POST', token })
       load()
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     }
   }
 
@@ -301,7 +306,7 @@ export default function AttendanceDetailPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -322,8 +327,9 @@ export default function AttendanceDetailPage() {
                   ) : (
                     rows.map((row) => {
                       const r = list.items.find((x) => String(x.userId) === String(row.id))
+                      if (!r) return null
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           <TableCell>{r.displayName}</TableCell>
                           <TableCell>{r.studentNo || '-'}</TableCell>
                           <TableCell>{r.adminClass || '-'}</TableCell>

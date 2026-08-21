@@ -1,8 +1,10 @@
 import '@carbon/charts-react/styles.css'
 import { Column, Grid, Tile } from '@carbon/react'
 import { SimpleBarChart, LineChart } from '@carbon/charts-react'
+import { ScaleTypes } from '@carbon/charts'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../theme/ThemeContext'
+import type { DailyCount, DashboardPeriodCount } from '../types/api'
 
 // d3 fills resolve to literal color strings (no CSS var support), so the chart
 // series pin each Carbon theme's interactive color: #0f62fe on the light
@@ -13,7 +15,13 @@ import { useTheme } from '../theme/ThemeContext'
 // (--cds-grid-bg backdrop, the dataviz palettes, color-scheme). Those do NOT
 // inherit from the cds--g100 class on <html>, so without this the backdrop
 // stays white in every theme.
-const SERIES_COLORS = { white: '#0f62fe', g10: '#0f62fe', g90: '#4589ff', g100: '#4589ff' }
+const SERIES_COLORS: Record<string, string> = { white: '#0f62fe', g10: '#0f62fe', g90: '#4589ff', g100: '#4589ff' }
+
+interface DashboardChartsProps {
+  periods: DashboardPeriodCount[]
+  load: DailyCount[]
+  loadAll: boolean
+}
 
 // DashboardCharts renders the homepage's two @carbon/charts panels as one
 // band. It is lazy-loaded from DashboardPage so the ~600KB d3/charts bundle
@@ -21,7 +29,7 @@ const SERIES_COLORS = { white: '#0f62fe', g10: '#0f62fe', g90: '#4589ff', g100: 
 // (fixed height in SCSS, width 100%). Empty prop arrays hide the panel, so
 // the band degrades the same way the list sections do when the backend omits
 // a field for a low-privilege user or an empty day.
-export default function DashboardCharts({ periods, load, loadAll }) {
+export default function DashboardCharts({ periods, load, loadAll }: DashboardChartsProps) {
   const { t } = useTranslation('dashboard')
   const { theme } = useTheme()
   const seriesColor = SERIES_COLORS[theme] ?? '#0f62fe'
@@ -31,7 +39,7 @@ export default function DashboardCharts({ periods, load, loadAll }) {
   const barGroup = t('charts.sessionCount')
   const lineGroup = loadAll ? t('charts.futureLoadAll') : t('charts.futureLoadMine')
 
-  const barData = (periods ?? []).map((p) => ({
+  const barData = periods.map((p) => ({
     group: barGroup,
     key: t('periodLabel.single', { period: p.period }),
     value: p.count,
@@ -39,7 +47,7 @@ export default function DashboardCharts({ periods, load, loadAll }) {
 
   // Local-midnight Date objects: the time-scale x-axis needs real dates, and
   // pinning to the client's midnight keeps every point on its own calendar day.
-  const lineData = (load ?? []).map((d) => ({
+  const lineData = load.map((d) => ({
     group: lineGroup,
     date: new Date(`${d.date}T00:00:00`),
     value: d.count,
@@ -53,7 +61,7 @@ export default function DashboardCharts({ periods, load, loadAll }) {
     color: { scale: { [barGroup]: seriesColor } },
     axes: {
       left: { mapsTo: 'value', includeZero: true },
-      bottom: { mapsTo: 'key', scaleType: 'labels' },
+      bottom: { mapsTo: 'key', scaleType: ScaleTypes.LABELS },
     },
   }
 
@@ -67,7 +75,7 @@ export default function DashboardCharts({ periods, load, loadAll }) {
     points: { radius: 3, enabled: true },
     axes: {
       left: { mapsTo: 'value', includeZero: true },
-      bottom: { mapsTo: 'date', scaleType: 'time', primary: true },
+      bottom: { mapsTo: 'date', scaleType: ScaleTypes.TIME, primary: true },
     },
   }
 

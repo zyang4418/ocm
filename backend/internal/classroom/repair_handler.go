@@ -51,6 +51,18 @@ func isRepairAdmin(r *http.Request) bool {
 	return ok && s.Has(authz.RepairAssign)
 }
 
+// @Summary      List repair tickets
+// @Tags         repairs
+// @Produce      json
+// @Param        classroom_id query int false "filter by classroom id"
+// @Param        status query string false "filter by status" Enums(open,processing,completed,confirmed)
+// @Param        q query string false "search"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged repair views"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/repairs [get]
 func (h *RepairHandler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := RepairFilter{
@@ -71,6 +83,16 @@ func (h *RepairHandler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondPaged(w, list, total, p)
 }
 
+// @Summary      Get a repair ticket
+// @Tags         repairs
+// @Produce      json
+// @Param        id path int true "repair id"
+// @Success      200 {object} RepairView "repair detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid repair id"
+// @Failure      404 {object} httpx.ErrorResponse "repair ticket not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/repairs/{id} [get]
 func (h *RepairHandler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseRepairID(r)
 	if err != nil {
@@ -94,6 +116,17 @@ func (h *RepairHandler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Create a repair ticket
+// @Tags         repairs
+// @Accept       json
+// @Produce      json
+// @Param        body body RepairInput true "repair input"
+// @Success      201 {object} RepairView "created repair view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / classroom not found"
+// @Failure      409 {object} httpx.ErrorResponse "open ticket already exists for the classroom"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/repairs [post]
 func (h *RepairHandler) create(w http.ResponseWriter, r *http.Request) {
 	var in RepairInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -119,6 +152,16 @@ func (h *RepairHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create an emergency repair ticket (skips the open-ticket guard)
+// @Tags         repairs
+// @Accept       json
+// @Produce      json
+// @Param        body body RepairInput true "repair input"
+// @Success      201 {object} RepairView "created repair view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / classroom not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/repairs/emergency [post]
 func (h *RepairHandler) emergency(w http.ResponseWriter, r *http.Request) {
 	var in RepairInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -142,6 +185,18 @@ func (h *RepairHandler) emergency(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Process a repair ticket (start/finish)
+// @Tags         repairs
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "repair id"
+// @Param        body body RepairUpdateInput true "status transition"
+// @Success      200 {object} RepairView "updated repair view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / invalid status transition"
+// @Failure      404 {object} httpx.ErrorResponse "repair ticket not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/repairs/{id} [put]
 func (h *RepairHandler) update(w http.ResponseWriter, r *http.Request) {
 	id, err := parseRepairID(r)
 	if err != nil {
@@ -170,6 +225,17 @@ func (h *RepairHandler) update(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Confirm a completed repair (creator only)
+// @Tags         repairs
+// @Produce      json
+// @Param        id path int true "repair id"
+// @Success      200 {object} RepairView "confirmed repair view"
+// @Failure      400 {object} httpx.ErrorResponse "repair not completed yet"
+// @Failure      403 {object} httpx.ErrorResponse "only the creator may confirm"
+// @Failure      404 {object} httpx.ErrorResponse "repair ticket not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/repairs/{id}/confirm [post]
 func (h *RepairHandler) confirm(w http.ResponseWriter, r *http.Request) {
 	id, err := parseRepairID(r)
 	if err != nil {

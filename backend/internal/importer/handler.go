@@ -97,6 +97,16 @@ func (h *Handler) checkPerm(w http.ResponseWriter, r *http.Request, perm string)
 	return true
 }
 
+// @Summary      List import jobs
+// @Tags         imports
+// @Produce      json
+// @Param        q query string false "search by filename"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged import jobs (metadata only)"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -117,6 +127,16 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 // a job processes, so it stays small. Preview rows are served page-by-page by the
 // rows endpoint below; the per-row error report is served on demand by the
 // errors endpoint below. Cheap to call.
+// @Summary      Get an import job's metadata
+// @Tags         imports
+// @Produce      json
+// @Param        id path int true "job id"
+// @Success      200 {object} Job "job metadata (no rows/payload/error report)"
+// @Failure      400 {object} httpx.ErrorResponse "invalid job id"
+// @Failure      404 {object} httpx.ErrorResponse "import job not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{id} [get]
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -139,6 +159,18 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 // commit). Paginated so a tens-of-thousands-row sessions preview is not shipped
 // in full: GET /api/imports/{id}/rows?page=1&pageSize=100. page is 1-based;
 // pageSize is clamped to [1, 500]. Returns {rows, total, page, pageSize}.
+// @Summary      Get one page of a job's preview rows
+// @Tags         imports
+// @Produce      json
+// @Param        id path int true "job id"
+// @Param        page query int false "1-based page" default(1)
+// @Param        pageSize query int false "page size (clamped 1..500)" default(100)
+// @Success      200 {object} PreviewRowsPage "dry-run preview rows page"
+// @Failure      400 {object} httpx.ErrorResponse "invalid job id"
+// @Failure      404 {object} httpx.ErrorResponse "import job not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{id}/rows [get]
 func (h *Handler) rows(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -176,6 +208,16 @@ func (h *Handler) rows(w http.ResponseWriter, r *http.Request) {
 // excluded from the polled list (PageJobs) and meta (GetJobMeta) responses to
 // keep those small; the preview table fetches it once via this endpoint instead
 // of receiving it on every meta poll.
+// @Summary      Get a job's per-row error report
+// @Tags         imports
+// @Produce      json
+// @Param        id path int true "job id"
+// @Success      200 {object} JobErrors "per-row errors"
+// @Failure      400 {object} httpx.ErrorResponse "invalid job id"
+// @Failure      404 {object} httpx.ErrorResponse "import job not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{id}/errors [get]
 func (h *Handler) jobErrors(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -194,6 +236,19 @@ func (h *Handler) jobErrors(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, map[string]any{"errors": errs})
 }
 
+// @Summary      Upload a typed xlsx import file (async dry-run)
+// @Description  Accepts multipart/form-data with a `file` field. The job is
+// @Description  parsed/validated in the background; poll GET /api/imports/{id}.
+// @Tags         imports
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        type path string true "import type" Enums(classrooms,bookings,catalog,offerings,sessions,admin_classes,teaching_classes,regimes)
+// @Param        file formData file true "xlsx file"
+// @Success      202 {object} JobAccepted "job accepted for processing"
+// @Failure      400 {object} httpx.ErrorResponse "invalid type / file required / bad xlsx"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{type} [post]
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	typ := r.PathValue("type")
 	_, perm, ok := h.registry.Lookup(typ)
@@ -257,6 +312,22 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 // Fatal split errors (bad params, unparseable xlsx, regime not covering an
 // expanded date) are returned as 400 without creating any job, so the operator
 // can fix inputs and retry without orphan jobs.
+// @Summary      Upload a JWC (教务处) master timetable and split it into six imports
+// @Description  Accepts multipart/form-data with `file`, `semester` and
+// @Description  `week1Monday` fields. Splits the master xlsx into six typed
+// @Description  import jobs (classrooms, catalog, admin/teaching classes,
+// @Description  offerings, sessions, regimes) and processes them.
+// @Tags         imports
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file formData file true "JWC master xlsx"
+// @Param        semester formData string true "semester label, e.g. 2024-2025-2"
+// @Param        week1Monday formData string true "first week's Monday (Y-M-D)"
+// @Success      202 {object} SplitResult "created jobs, split stats and warnings"
+// @Failure      400 {object} httpx.ErrorResponse "file/semester/week1Monday required / bad xlsx / week1Monday is not a Monday"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/jwc_split [post]
 func (h *Handler) jwcSplit(w http.ResponseWriter, r *http.Request) {
 	if !h.checkPerm(w, r, authz.CourseManage) {
 		return
@@ -413,6 +484,17 @@ func (h *Handler) processJob(id int64) {
 // prerequisites have just been committed — instead of the stale "课程不存在"
 // snapshot taken at split time. Only preview-state jobs can be reanalyzed; a
 // job already processing is a 409 so the client can poll and retry.
+// @Summary      Re-run analysis of a job (async)
+// @Tags         imports
+// @Produce      json
+// @Param        id path int true "job id"
+// @Success      202 {object} JobAccepted "re-analysis started"
+// @Failure      400 {object} httpx.ErrorResponse "invalid job id"
+// @Failure      404 {object} httpx.ErrorResponse "import job not found"
+// @Failure      409 {object} httpx.ErrorResponse "job is being processed by someone else"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{id}/reanalyze [post]
 func (h *Handler) reanalyze(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -551,6 +633,17 @@ func (h *Handler) runCommit(id int64) {
 // after the root cause (e.g. a prerequisite that has since been committed) is
 // fixed succeeds. The status and permission checks are synchronous so a stale
 // or unauthorized job is rejected before any work starts.
+// @Summary      Commit a preview job (async)
+// @Tags         imports
+// @Produce      json
+// @Param        id path int true "job id"
+// @Success      202 {object} JobAccepted "commit started"
+// @Failure      400 {object} httpx.ErrorResponse "invalid job id / job is not in preview"
+// @Failure      404 {object} httpx.ErrorResponse "import job not found"
+// @Failure      409 {object} httpx.ErrorResponse "job is being processed by someone else"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{id}/commit [post]
 func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -592,6 +685,17 @@ func (h *Handler) commitJob(w http.ResponseWriter, r *http.Request) {
 }
 
 // cancelJob discards a previewed job without committing.
+// @Summary      Cancel a preview job
+// @Tags         imports
+// @Produce      json
+// @Param        id path int true "job id"
+// @Success      200 {object} JobAccepted "job cancelled"
+// @Failure      400 {object} httpx.ErrorResponse "invalid job id"
+// @Failure      404 {object} httpx.ErrorResponse "import job not found"
+// @Failure      409 {object} httpx.ErrorResponse "job cannot be cancelled in its current status"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/imports/{id}/cancel [post]
 func (h *Handler) cancelJob(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

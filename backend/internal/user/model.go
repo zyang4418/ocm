@@ -34,3 +34,15 @@ type UpdateUserInput struct {
 type ChangePasswordInput struct {
 	Password string `json:"password"`
 }
+
+// UserRolesInput documents the PUT /api/users/{id}/roles body: a whole-set
+// replace of direct role grants.
+type UserRolesInput struct {
+	Roles []iam.RoleGrantInput `json:"roles"`
+}
+
+// UserPermissionsInput documents the PUT /api/users/{id}/permissions body: a
+// whole-set replace of direct permission grants.
+type UserPermissionsInput struct {
+	Permissions []iam.PermGrantInput `json:"permissions"`
+}

@@ -22,6 +22,8 @@ import {
   TableToolbarSearch,
   Tag,
   TextInput,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -32,6 +34,7 @@ import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import type { Classroom, ClassroomInput } from '../types/api'
 
 // Enum value lists (not translatable text — the labels come from i18n).
 const TYPE_KEYS = [
@@ -45,16 +48,28 @@ const TYPE_KEYS = [
   'language',
   'studio',
   'special',
-]
-const STATUS_KEYS = ['available', 'maintenance', 'disabled']
+] as const
+const STATUS_KEYS = ['available', 'maintenance', 'disabled'] as const
 
-const statusKind = {
+const statusKind: Record<string, TagProps<'div'>['type']> = {
   available: 'green',
   maintenance: 'blue',
   disabled: 'red',
 }
 
-const emptyForm = {
+// Form fields are all strings while editing; capacity converts on submit.
+interface ClassroomForm {
+  name: string
+  building: string
+  capacity: string
+  type: string
+  floor: string
+  campus: string
+  status: string
+  description: string
+}
+
+const emptyForm: ClassroomForm = {
   name: '',
   building: '',
   capacity: '',
@@ -71,7 +86,7 @@ export default function ClassroomsPage() {
   const navigate = useNavigate()
   const canManage = can('classroom:manage')
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'id', header: t('field.id') },
     { key: 'name', header: t('field.name') },
     { key: 'building', header: t('field.building') },
@@ -83,33 +98,36 @@ export default function ClassroomsPage() {
     { key: 'createdAt', header: t('field.createdAt') },
   ]
 
-  const list = usePagedList({ path: '/api/classrooms', token })
+  const list = usePagedList<Classroom>({ path: '/api/classrooms', token })
   const { loading } = list
   // Export errors are separate from the list fetch (the hook owns its error).
   const [exportError, setExportError] = useState('')
   const error = list.error || exportError
 
+  // Carbon DataTable keys rows by a string id.
+  const tableRows = list.items.map((c) => ({ ...c, id: String(c.id) }))
+
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyForm)
+  const [createForm, setCreateForm] = useState<ClassroomForm>(emptyForm)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const [editTarget, setEditTarget] = useState(null)
-  const [editForm, setEditForm] = useState(emptyForm)
+  const [editTarget, setEditTarget] = useState<Classroom | null>(null)
+  const [editForm, setEditForm] = useState<ClassroomForm>(emptyForm)
   const [editError, setEditError] = useState('')
   const [editing, setEditing] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState<Classroom | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  const validate = (form) => {
+  const validate = (form: ClassroomForm) => {
     if (!form.name.trim()) return t('validation.nameRequired')
     if (!form.capacity || Number(form.capacity) <= 0) return t('validation.capacityPositive')
     return ''
   }
 
-  const buildBody = (form) => ({
+  const buildBody = (form: ClassroomForm): ClassroomInput => ({
     name: form.name.trim(),
     building: form.building.trim(),
     capacity: Number(form.capacity),
@@ -138,13 +156,13 @@ export default function ClassroomsPage() {
       setCreateForm(emptyForm)
       list.reload()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const openEdit = (c) => {
+  const openEdit = (c: Classroom) => {
     setEditTarget(c)
     setEditForm({
       name: c.name,
@@ -160,6 +178,7 @@ export default function ClassroomsPage() {
   }
 
   const handleEdit = async () => {
+    if (!editTarget) return
     const msg = validate(editForm)
     if (msg) {
       setEditError(msg)
@@ -176,18 +195,19 @@ export default function ClassroomsPage() {
       setEditTarget(null)
       list.reload()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setEditing(false)
     }
   }
 
-  const openDelete = (c) => {
+  const openDelete = (c: Classroom) => {
     setDeleteTarget(c)
     setDeleteError('')
   }
 
   const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
@@ -195,7 +215,7 @@ export default function ClassroomsPage() {
       setDeleteTarget(null)
       list.reload()
     } catch (err) {
-      setDeleteError(err.message)
+      setDeleteError((err as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -234,7 +254,7 @@ export default function ClassroomsPage() {
           />
         )}
 
-        <DataTable rows={list.items} headers={headers}>
+        <DataTable rows={tableRows} headers={headers}>
           {({
             rows,
             headers: tableHeaders,
@@ -263,7 +283,7 @@ export default function ClassroomsPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -284,29 +304,31 @@ export default function ClassroomsPage() {
                   ) : (
                     rows.map((row) => {
                       const c = list.items.find((x) => String(x.id) === String(row.id))
+                      if (!c) return null
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
+                            const value = cell.value as string
                             if (cell.info.header === 'type') {
                               return (
                                 <TableCell key={cell.id}>
-                                  {t('type.' + cell.value, { defaultValue: cell.value })}
+                                  {t('type.' + value, { defaultValue: value })}
                                 </TableCell>
                               )
                             }
                             if (cell.info.header === 'status') {
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {t('status.' + cell.value, { ns: 'common', defaultValue: cell.value })}
+                                  <Tag type={statusKind[value] ?? 'gray'} size="sm">
+                                    {t('status.' + value, { ns: 'common', defaultValue: value })}
                                   </Tag>
                                 </TableCell>
                               )
                             }
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{value}</TableCell>
                           })}
                           {canManage && (
                             <TableCell>

@@ -60,6 +60,14 @@ jobs:
       - name: Build
         run: go build ./...
 
+      # Contract drift gate: regenerate the OpenAPI docs and fail if they
+      # differ from the committed version (someone changed handlers/models
+      # without running swag init).
+      - name: Swagger docs drift
+        run: |
+          go tool swag init -o docs --parseDependency --parseInternal --requiredByDefault
+          git diff --exit-code -- docs/
+
       - name: Test
         run: go test -race -coverprofile=coverage.out -v ./...
 

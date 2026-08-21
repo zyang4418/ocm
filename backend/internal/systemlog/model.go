@@ -17,7 +17,7 @@ type Entry struct {
 // LogView is the JSON shape returned by the list endpoint.
 type LogView struct {
 	ID         int64     `json:"id"`
-	ActorID    *int64    `json:"actorId"` // null when the row has no actor
+	ActorID    *int64    `json:"actorId" validate:"optional"` // null when the row has no actor
 	ActorName  string    `json:"actorName"`
 	Method     string    `json:"method"`
 	Path       string    `json:"path"`

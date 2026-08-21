@@ -27,6 +27,8 @@ import {
   Tag,
   TextArea,
   TextInput,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { Add, Download, Edit, TrashCan, CheckmarkOutline } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -35,30 +37,126 @@ import { useAuth } from '../auth/AuthContext'
 import { apiFetch, apiDownload } from '../auth/api'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
+import type { Classroom, ObservationInput, ObservationView, OfferingView, Paged, Period, Regime } from '../types/api'
 
-const statusKind = { draft: 'gray', submitted: 'green' }
+const STATUS_KIND: Record<string, TagProps<'div'>['type']> = { draft: 'gray', submitted: 'green' }
+
+// ---------------------------------------------------------------------------
+// Local types for the Python-derived template schema (schema.json) served by
+// GET /api/observations/templates. The docx renderer is not wired yet, so Go
+// is not the source of truth — these stay hand-mirrored here. NOTE: backend
+// schema uses snake_case keys (score_groups / line_indexes), NOT camelCase.
+// ---------------------------------------------------------------------------
+
+interface RatingOption {
+  value: string
+  label: string
+}
+
+interface ScoreGroup {
+  key: string
+  line_indexes?: number[]
+}
+
+interface Indicator {
+  key: string
+  title: string
+  lines?: string[]
+  score_groups?: ScoreGroup[]
+}
+
+interface HeaderExtra {
+  key: string
+  label: string
+  options?: string[]
+}
+
+interface CommentField {
+  key: string
+  label: string
+  placeholder?: string
+  max_length?: number
+}
+
+interface ExtraField {
+  key: string
+  label: string
+  options?: string[]
+  detail_key?: string
+  detail_placeholder?: string
+  detail_limit?: { max_length?: number }
+  detail_required_when?: string
+}
+
+interface StudentFeedbackSchema {
+  columns?: string[]
+  questions?: Array<{ key: string; title: string; options?: RatingOption[] }>
+}
+
+interface TemplateEntry {
+  value: string
+  label: string
+  indicators?: Indicator[]
+  header_extras?: HeaderExtra[]
+  header_extra_section_title?: string
+  score_label?: string
+  content_label?: string
+  content_limit?: { max_length?: number }
+  comment_fields?: CommentField[]
+  extras?: ExtraField[]
+  extra_section_title?: string
+  post_content_comment_fields?: CommentField[]
+  post_content_comment_title?: string
+  student_feedback?: StudentFeedbackSchema
+}
+
+interface TemplateSchema {
+  templates?: TemplateEntry[]
+  rating_options?: RatingOption[]
+}
 
 // indicatorScoreGroups mirrors the backend: an explicit score_groups list wins,
 // otherwise a single group keyed by the indicator key.
-function indicatorScoreGroups(ind) {
-  // NOTE: backend schema uses snake_case keys (score_groups / line_indexes),
-  // matching the Python-derived schema.json — NOT camelCase.
+function indicatorScoreGroups(ind: Indicator): Array<{ key: string; lines: string[] }> {
   if (ind.score_groups && ind.score_groups.length) {
     return ind.score_groups.map((g) => ({
       key: g.key,
-      lines: (g.line_indexes || []).map((i) => ind.lines?.[i]).filter(Boolean),
+      lines: (g.line_indexes || []).map((i) => ind.lines?.[i]).filter((l): l is string => Boolean(l)),
     }))
   }
   return [{ key: ind.key, lines: ind.lines || [] }]
 }
 
-function fmtScore(v) {
-  if (v === null || v === undefined || v === '') return '—'
+function fmtScore(v: number | null | undefined): string {
+  if (v === null || v === undefined || (v as unknown) === '') return '—'
   return String(v)
 }
 
-const emptyMeta = { templateType: '', courseId: '', classroomId: '', observeDate: '', sections: [], isAnonymous: false }
-const emptyFormData = {
+// Form meta: ids/dates stay strings while editing (converted on submit).
+interface MetaState {
+  templateType: string
+  courseId: string
+  classroomId: string
+  observeDate: string
+  sections: number[]
+  isAnonymous: boolean
+}
+
+const emptyMeta: MetaState = { templateType: '', courseId: '', classroomId: '', observeDate: '', sections: [], isAnonymous: false }
+
+// Dynamic form data written into the observation's opaque formData JSON. The
+// shape is driven by the selected template's schema (see TemplateEntry).
+interface FormDataState {
+  indicatorScores: Record<string, string>
+  totalScore: string
+  contentOutline: string
+  comments: Record<string, string>
+  extraValues: Record<string, string>
+  extraDetails: Record<string, string>
+  studentFeedback: Record<string, Record<string, string>>
+}
+
+const emptyFormData: FormDataState = {
   indicatorScores: {},
   totalScore: '',
   contentOutline: '',
@@ -68,16 +166,19 @@ const emptyFormData = {
   studentFeedback: {},
 }
 
-const headers = (t) => [
-  { key: 'courseName', header: t('field.courseName') },
-  { key: 'teacher', header: t('field.teacher') },
-  { key: 'teachingClassName', header: t('field.teachingClassName') },
-  { key: 'observeDate', header: t('field.observeDate') },
-  { key: 'sections', header: t('field.sections') },
-  { key: 'templateType', header: t('field.templateType') },
-  { key: 'totalScore', header: t('field.totalScore') },
-  { key: 'status', header: t('field.status') },
-]
+// The wire payload: the generated ObservationInput keeps formData opaque
+// (Record<string, never>), so refine it with the page's dynamic shape.
+type ObservationPayload = Omit<ObservationInput, 'formData'> & {
+  formData: {
+    indicatorScores: Record<string, string>
+    totalScore: number | null
+    contentOutline: string
+    comments: Record<string, string>
+    extraValues: Record<string, string>
+    extraDetails: Record<string, string>
+    studentFeedback: Record<string, Record<string, string>>
+  }
+}
 
 export default function ObservationsPage() {
   const { t, i18n } = useTranslation('observations')
@@ -86,17 +187,28 @@ export default function ObservationsPage() {
   const canWrite = can('observation:write')
   const canManage = can('observation:manage')
 
+  const headers: DataTableHeader[] = [
+    { key: 'courseName', header: t('field.courseName') },
+    { key: 'teacher', header: t('field.teacher') },
+    { key: 'teachingClassName', header: t('field.teachingClassName') },
+    { key: 'observeDate', header: t('field.observeDate') },
+    { key: 'sections', header: t('field.sections') },
+    { key: 'templateType', header: t('field.templateType') },
+    { key: 'totalScore', header: t('field.totalScore') },
+    { key: 'status', header: t('field.status') },
+  ]
+
   // Static reference data: form schema, course offerings, classrooms, periods.
-  const [schema, setSchema] = useState(null)
-  const [offerings, setOfferings] = useState([])
-  const [classrooms, setClassrooms] = useState([])
-  const [periods, setPeriods] = useState([])
+  const [schema, setSchema] = useState<TemplateSchema | null>(null)
+  const [offerings, setOfferings] = useState<OfferingView[]>([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [periods, setPeriods] = useState<Period[]>([])
   const [schemaError, setSchemaError] = useState('')
 
   const [filterStatus, setFilterStatus] = useState('')
   const [filterTemplate, setFilterTemplate] = useState('')
 
-  const list = usePagedList({
+  const list = usePagedList<ObservationView>({
     path: '/api/observations',
     token,
     extraParams: { status: filterStatus, template_type: filterTemplate },
@@ -107,26 +219,26 @@ export default function ObservationsPage() {
 
   // Form modal state.
   const [formOpen, setFormOpen] = useState(false)
-  const [editId, setEditId] = useState(null)
-  const [meta, setMeta] = useState(emptyMeta)
-  const [formData, setFormData] = useState(emptyFormData)
+  const [editId, setEditId] = useState<number | null>(null)
+  const [meta, setMeta] = useState<MetaState>(emptyMeta)
+  const [formData, setFormData] = useState<FormDataState>(emptyFormData)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [actingId, setActingId] = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [actingId, setActingId] = useState<number | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ObservationView | null>(null)
 
   useEffect(() => {
     Promise.all([
-      apiFetch('/api/observations/templates', { token }),
-      apiFetch('/api/offerings?page_size=500', { token }),
-      apiFetch('/api/classrooms?page_size=500', { token }),
+      apiFetch<TemplateSchema>('/api/observations/templates', { token }),
+      apiFetch<Paged<OfferingView>>('/api/offerings?page_size=500', { token }),
+      apiFetch<Paged<Classroom>>('/api/classrooms?page_size=500', { token }),
     ])
       .then(([sch, off, clr]) => {
         setSchema(sch)
         setOfferings(Array.isArray(off?.items) ? off.items : [])
         setClassrooms(Array.isArray(clr?.items) ? clr.items : [])
       })
-      .catch((err) => setSchemaError(err.message))
+      .catch((err: Error) => setSchemaError(err.message))
   }, [token])
 
   useEffect(() => {
@@ -135,7 +247,7 @@ export default function ObservationsPage() {
       return
     }
     let cancelled = false
-    apiFetch(`/api/schedule/active?date=${meta.observeDate}`, { token })
+    apiFetch<Regime>(`/api/schedule/active?date=${meta.observeDate}`, { token })
       .then((regime) => {
         if (cancelled) return
         setPeriods((regime?.periods || []).slice().sort((a, b) => a.periodIndex - b.periodIndex))
@@ -150,12 +262,12 @@ export default function ObservationsPage() {
 
   const selectedTemplate = useMemo(() => {
     if (!schema || !meta.templateType) return null
-    return schema.templates?.find((t) => t.value === meta.templateType) || null
+    return schema.templates?.find((tpl) => tpl.value === meta.templateType) || null
   }, [schema, meta.templateType])
 
-  const templateLabel = (value) => t('templateType.' + value, { defaultValue: value || '' })
+  const templateLabel = (value: string) => t('templateType.' + value, { defaultValue: value || '' })
 
-  const sectionsLabel = (sections) => {
+  const sectionsLabel = (sections: number[]) => {
     if (!sections || !sections.length) return '—'
     const sorted = sections.slice().sort((a, b) => a - b)
     const listFmt = new Intl.ListFormat(i18n.language || 'zh-CN', { style: 'narrow' })
@@ -170,12 +282,12 @@ export default function ObservationsPage() {
     setFormOpen(true)
   }
 
-  const openEdit = async (row) => {
+  const openEdit = async (row: ObservationView) => {
     try {
       setFormError('')
       setActionError('')
-      const v = await apiFetch(`/api/observations/${row.id}`, { token })
-      const fd = v.formData && typeof v.formData === 'object' ? v.formData : {}
+      const v = await apiFetch<ObservationView>(`/api/observations/${row.id}`, { token })
+      const fd = (v.formData ?? {}) as Partial<FormDataState>
       setEditId(row.id)
       setMeta({
         templateType: v.templateType || '',
@@ -196,14 +308,16 @@ export default function ObservationsPage() {
       })
       setFormOpen(true)
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     }
   }
 
-  const buildPayload = () => ({
+  const buildPayload = (): ObservationPayload => ({
     templateType: meta.templateType,
     courseId: Number(meta.courseId),
-    classroomId: meta.classroomId ? Number(meta.classroomId) : null,
+    // Undefined drops the key on JSON.stringify — the Go side decodes the
+    // missing/null key as a nil pointer either way.
+    classroomId: meta.classroomId ? Number(meta.classroomId) : undefined,
     observeDate: meta.observeDate,
     sections: meta.sections.map(Number).sort((a, b) => a - b),
     isAnonymous: meta.isAnonymous,
@@ -235,26 +349,26 @@ export default function ObservationsPage() {
       setFormOpen(false)
       list.reload()
     } catch (err) {
-      setFormError(err.message)
+      setFormError((err as Error).message)
     } finally {
       setSaving(false)
     }
   }
 
-  const submitObservation = async (row) => {
+  const submitObservation = async (row: ObservationView) => {
     try {
       setActingId(row.id)
       setActionError('')
       await apiFetch(`/api/observations/${row.id}/submit`, { method: 'POST', token })
       list.reload()
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     } finally {
       setActingId(null)
     }
   }
 
-  const exportObservation = async (row) => {
+  const exportObservation = async (row: ObservationView) => {
     try {
       setActingId(row.id)
       setActionError('')
@@ -264,7 +378,7 @@ export default function ObservationsPage() {
         fallbackName: `observation-${row.id}.docx`,
       })
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     } finally {
       setActingId(null)
     }
@@ -280,27 +394,27 @@ export default function ObservationsPage() {
       setDeleteTarget(null)
       list.reload()
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     } finally {
       setActingId(null)
     }
   }
 
-  const setIndicatorScore = (key, val) =>
+  const setIndicatorScore = (key: string, val: string) =>
     setFormData((f) => ({ ...f, indicatorScores: { ...f.indicatorScores, [key]: val } }))
-  const setComment = (key, val) =>
+  const setComment = (key: string, val: string) =>
     setFormData((f) => ({ ...f, comments: { ...f.comments, [key]: val } }))
-  const setExtraValue = (key, val) =>
+  const setExtraValue = (key: string, val: string) =>
     setFormData((f) => ({ ...f, extraValues: { ...f.extraValues, [key]: val } }))
-  const setExtraDetail = (key, val) =>
+  const setExtraDetail = (key: string, val: string) =>
     setFormData((f) => ({ ...f, extraDetails: { ...f.extraDetails, [key]: val } }))
-  const setStudentAnswer = (qKey, student, val) =>
+  const setStudentAnswer = (qKey: string, student: string, val: string) =>
     setFormData((f) => ({
       ...f,
       studentFeedback: { ...f.studentFeedback, [qKey]: { ...(f.studentFeedback[qKey] || {}), [student]: val } },
     }))
 
-  const toggleSection = (idx, checked) =>
+  const toggleSection = (idx: number, checked: boolean) =>
     setMeta((m) => ({
       ...m,
       sections: checked ? [...m.sections, idx].sort((a, b) => a - b) : m.sections.filter((s) => s !== idx),
@@ -320,8 +434,7 @@ export default function ObservationsPage() {
     status: o.status,
   }))
 
-  const tableHeaders = headers(t)
-  const colSpan = tableHeaders.length + 1
+  const colSpan = headers.length + 1
 
   return (
     <Grid fullWidth className="courses-page observations-page">
@@ -382,7 +495,7 @@ export default function ObservationsPage() {
       </Column>
 
       <Column sm={4} md={8} lg={16}>
-        <DataTable rows={rows} headers={tableHeaders}>
+        <DataTable rows={rows} headers={headers}>
           {({ rows: tableRows, headers: renderedHeaders, getTableProps, getHeaderProps, getRowProps, getToolbarProps }) => (
             <TableContainer title={t('table.title')} description={t('table.description', { count: list.total })}>
               <TableToolbar {...getToolbarProps()}>
@@ -399,7 +512,7 @@ export default function ObservationsPage() {
                 <TableHead>
                   <TableRow>
                     {renderedHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -411,7 +524,7 @@ export default function ObservationsPage() {
                     <TableRow>
                       <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
-                  ) : rows.length === 0 ? (
+                  ) : tableRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colSpan}>{list.q ? t('empty.search') : t('empty.none')}</TableCell>
                     </TableRow>
@@ -419,42 +532,44 @@ export default function ObservationsPage() {
                     tableRows.map((row) => {
                       const o = list.items.find((x) => String(x.id) === String(row.id))
                       const isDraft = o?.status === 'draft'
-                      const canEdit = isDraft && (canManage || Number(currentUser?.id) === o?.observerId)
-                      const canSubmit = isDraft && (canManage || Number(currentUser?.id) === o?.observerId)
-                      const canDelete = isDraft && (canManage || Number(currentUser?.id) === o?.observerId)
-                      const canExport = o?.status === 'submitted' && (canManage || Number(currentUser?.id) === o?.observerId)
+                      const own = Boolean(o) && Number(currentUser?.id) === o!.observerId
+                      const canEdit = isDraft && (canManage || own)
+                      const canSubmit = isDraft && (canManage || own)
+                      const canDelete = isDraft && (canManage || own)
+                      const canExport = o?.status === 'submitted' && (canManage || own)
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'status') {
+                              const value = cell.value as string
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {t('status.' + cell.value, { ns: 'common', defaultValue: cell.value })}
+                                  <Tag type={STATUS_KIND[value] ?? 'gray'} size="sm">
+                                    {t('status.' + value, { ns: 'common', defaultValue: value })}
                                   </Tag>
                                 </TableCell>
                               )
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string}</TableCell>
                           })}
                           <TableCell>
                             <div className="courses-page__actions">
-                              {canEdit && (
+                              {o && canEdit && (
                                 <Button kind="ghost" size="sm" renderIcon={Edit} onClick={() => openEdit(o)} disabled={actingId === o.id}>
                                   {t('action.edit', { ns: 'common' })}
                                 </Button>
                               )}
-                              {canSubmit && (
+                              {o && canSubmit && (
                                 <Button kind="ghost" size="sm" renderIcon={CheckmarkOutline} onClick={() => submitObservation(o)} disabled={actingId === o.id}>
                                   {t('action.submit', { ns: 'common' })}
                                 </Button>
                               )}
-                              {canExport && (
+                              {o && canExport && (
                                 <Button kind="ghost" size="sm" renderIcon={Download} onClick={() => exportObservation(o)} disabled={actingId === o.id}>
                                   {t('action.export', { ns: 'common' })}
                                 </Button>
                               )}
-                              {canDelete && (
+                              {o && canDelete && (
                                 <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => setDeleteTarget(o)} disabled={actingId === o.id}>
                                   {t('action.delete', { ns: 'common' })}
                                 </Button>
@@ -574,7 +689,7 @@ export default function ObservationsPage() {
           {selectedTemplate && (
             <>
               {/* 评分指标 */}
-              {selectedTemplate.indicators?.length > 0 && (
+              {selectedTemplate.indicators && selectedTemplate.indicators.length > 0 && (
                 <div className="observations-page__section">
                   <h3 className="observations-page__section-title">{t('section.indicators')}</h3>
                   {selectedTemplate.indicators.map((ind) =>
@@ -593,20 +708,20 @@ export default function ObservationsPage() {
                           legendText={t('form.ratingLegend')}
                           orientation="horizontal"
                           valueSelected={formData.indicatorScores[g.key] || ''}
-                          onChange={(v) => setIndicatorScore(g.key, v)}
+                          onChange={(v) => setIndicatorScore(g.key, String(v))}
                         >
                           {ratingOptions.map((r) => (
                             <RadioButton key={r.value} labelText={r.label} value={r.value} />
                           ))}
                         </RadioButtonGroup>
                       </div>
-                    ))
+                    )),
                   )}
                 </div>
               )}
 
               {/* header extras（radio，如年龄层次/班级规模） */}
-              {selectedTemplate.header_extras?.length > 0 && (
+              {selectedTemplate.header_extras && selectedTemplate.header_extras.length > 0 && (
                 <div className="observations-page__section">
                   <h3 className="observations-page__section-title">{selectedTemplate.header_extra_section_title || t('sectionFallback.headerExtra')}</h3>
                   {selectedTemplate.header_extras.map((ex) => (
@@ -616,7 +731,7 @@ export default function ObservationsPage() {
                       legendText={ex.label}
                       orientation="horizontal"
                       valueSelected={formData.extraValues[ex.key] || ''}
-                      onChange={(v) => setExtraValue(ex.key, v)}
+                      onChange={(v) => setExtraValue(ex.key, String(v))}
                     >
                       {(ex.options || []).map((opt) => (
                         <RadioButton key={opt} labelText={opt} value={opt} />
@@ -635,7 +750,7 @@ export default function ObservationsPage() {
                   min={0}
                   max={100}
                   value={formData.totalScore}
-                  onChange={(e, { value }) => setFormData((f) => ({ ...f, totalScore: value }))}
+                  onChange={(e, { value }) => setFormData((f) => ({ ...f, totalScore: value == null ? '' : String(value) }))}
                   allowEmpty
                 />
                 <TextArea
@@ -650,7 +765,7 @@ export default function ObservationsPage() {
               </div>
 
               {/* 评语 */}
-              {selectedTemplate.comment_fields?.length > 0 && (
+              {selectedTemplate.comment_fields && selectedTemplate.comment_fields.length > 0 && (
                 <div className="observations-page__section">
                   <h3 className="observations-page__section-title">{t('section.comments')}</h3>
                   {selectedTemplate.comment_fields.map((cf) => (
@@ -669,7 +784,7 @@ export default function ObservationsPage() {
               )}
 
               {/* extras（radio_with_detail） */}
-              {selectedTemplate.extras?.length > 0 && (
+              {selectedTemplate.extras && selectedTemplate.extras.length > 0 && (
                 <div className="observations-page__section">
                   <h3 className="observations-page__section-title">{selectedTemplate.extra_section_title || t('sectionFallback.extra')}</h3>
                   {selectedTemplate.extras.map((ex) => {
@@ -684,7 +799,7 @@ export default function ObservationsPage() {
                           legendText={ex.label}
                           orientation="horizontal"
                           valueSelected={formData.extraValues[ex.key] || ''}
-                          onChange={(v) => setExtraValue(ex.key, v)}
+                          onChange={(v) => setExtraValue(ex.key, String(v))}
                         >
                           {(ex.options || []).map((opt) => (
                             <RadioButton key={opt} labelText={opt} value={opt} />
@@ -696,7 +811,7 @@ export default function ObservationsPage() {
                             labelText={t('form.extraDetailLabel', { label: ex.label })}
                             placeholder={ex.detail_placeholder}
                             value={formData.extraDetails[ex.detail_key] || ''}
-                            onChange={(e) => setExtraDetail(ex.detail_key, e.target.value)}
+                            onChange={(e) => setExtraDetail(ex.detail_key ?? '', e.target.value)}
                             maxLength={ex.detail_limit?.max_length || undefined}
                             rows={3}
                           />
@@ -708,7 +823,7 @@ export default function ObservationsPage() {
               )}
 
               {/* post_content_comment_fields（教室条件/听课笔记） */}
-              {selectedTemplate.post_content_comment_fields?.length > 0 && (
+              {selectedTemplate.post_content_comment_fields && selectedTemplate.post_content_comment_fields.length > 0 && (
                 <div className="observations-page__section">
                   <h3 className="observations-page__section-title">
                     {selectedTemplate.post_content_comment_title || t('sectionFallback.postContent')}
@@ -746,7 +861,7 @@ export default function ObservationsPage() {
                         {(selectedTemplate.student_feedback.questions || []).map((q) => (
                           <tr key={q.key}>
                             <td className="observations-page__matrix-question">{q.title}</td>
-                            {(selectedTemplate.student_feedback.columns || []).map((col) => (
+                            {(selectedTemplate.student_feedback?.columns || []).map((col) => (
                               <td key={col}>
                                 <Select
                                   id={`sf-${q.key}-${col}`}

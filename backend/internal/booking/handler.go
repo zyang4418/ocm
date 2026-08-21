@@ -78,6 +78,21 @@ func bookingFilter(r *http.Request) (ListFilter, error) {
 	return f, nil
 }
 
+// @Summary      List classroom bookings
+// @Tags         bookings
+// @Produce      json
+// @Param        classroom_id query int false "filter by classroom id"
+// @Param        status query string false "filter by status" Enums(pending,approved,rejected,cancelled)
+// @Param        from query string false "date range start (Y-M-D)"
+// @Param        to query string false "date range end (Y-M-D)"
+// @Param        q query string false "search"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged booking views"
+// @Failure      400 {object} httpx.ErrorResponse "invalid filter"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/bookings [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	f, err := bookingFilter(r)
 	if err != nil {
@@ -123,6 +138,16 @@ func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Get a booking
+// @Tags         bookings
+// @Produce      json
+// @Param        id path int true "booking id"
+// @Success      200 {object} BookingView "booking detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid booking id"
+// @Failure      404 {object} httpx.ErrorResponse "booking not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/bookings/{id} [get]
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -141,6 +166,18 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
+// @Summary      Create a classroom booking (pending approval)
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Param        body body BookingInput true "booking input"
+// @Success      201 {object} BookingView "created booking view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / classroom unavailable / period not in regime"
+// @Failure      401 {object} httpx.ErrorResponse "not authenticated"
+// @Failure      409 {object} httpx.ErrorResponse "classroom already booked for this date and period"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/bookings [post]
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	var in BookingInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -170,6 +207,18 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
+// @Summary      Cancel a booking (creator or admin)
+// @Tags         bookings
+// @Produce      json
+// @Param        id path int true "booking id"
+// @Success      200 {object} BookingView "cancelled booking view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid booking id"
+// @Failure      403 {object} httpx.ErrorResponse "you can only cancel your own bookings"
+// @Failure      404 {object} httpx.ErrorResponse "booking not found"
+// @Failure      409 {object} httpx.ErrorResponse "booking cannot be cancelled in its current status"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/bookings/{id}/cancel [post]
 func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -198,6 +247,19 @@ func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Approve or reject a pending booking
+// @Tags         bookings
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "booking id"
+// @Param        body body ReviewInput true "decision"
+// @Success      200 {object} BookingView "reviewed booking view"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / decision must be 'approve' or 'reject'"
+// @Failure      404 {object} httpx.ErrorResponse "booking not found"
+// @Failure      409 {object} httpx.ErrorResponse "booking is no longer pending / classroom no longer free"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/bookings/{id}/review [post]
 func (h *Handler) review(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

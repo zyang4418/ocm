@@ -70,14 +70,14 @@ type RoleGrantView struct {
 	RoleID    int64      `json:"roleId"`
 	Code      string     `json:"code"`
 	Name      string     `json:"name"`
-	ExpiresAt *time.Time `json:"expiresAt"`
+	ExpiresAt *time.Time `json:"expiresAt" validate:"optional"`
 }
 
 // PermGrantView is one direct permission grant as returned to the console,
 // including already-expired rows.
 type PermGrantView struct {
 	Permission string     `json:"permission"`
-	ExpiresAt  *time.Time `json:"expiresAt"`
+	ExpiresAt  *time.Time `json:"expiresAt" validate:"optional"`
 }
 
 // UserGrantView is the response of GET /api/users/{id}/grants.
@@ -139,11 +139,11 @@ type GroupInput struct {
 // RoleGrantInput is one element of a replace-set role assignment.
 type RoleGrantInput struct {
 	RoleCode  string     `json:"roleCode"`
-	ExpiresAt *time.Time `json:"expiresAt"`
+	ExpiresAt *time.Time `json:"expiresAt" validate:"optional"`
 }
 
 // PermGrantInput is one element of a replace-set permission assignment.
 type PermGrantInput struct {
 	Permission string     `json:"permission"`
-	ExpiresAt  *time.Time `json:"expiresAt"`
+	ExpiresAt  *time.Time `json:"expiresAt" validate:"optional"`
 }

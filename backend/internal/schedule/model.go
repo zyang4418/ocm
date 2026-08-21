@@ -37,3 +37,9 @@ type PeriodInput struct {
 	StartTime   string `json:"startTime"`
 	EndTime     string `json:"endTime"`
 }
+
+// PeriodsInput documents the PUT /api/schedule/regimes/{id}/periods body: the
+// full replacement set of bell-time periods for a regime.
+type PeriodsInput struct {
+	Periods []PeriodInput `json:"periods"`
+}

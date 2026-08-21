@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../auth/api'
+import type { DashboardSummary } from '../types/api'
 
 // useDashboardSummary fetches the console homepage payload
 // (GET /api/dashboard/summary?date=<local today>). The backend prunes sections
 // the caller lacks permission for, so `data` field presence drives module
 // visibility on the page. reload() refetches (retry button after an error).
-//
-// `data` stays untyped until the dashboard endpoints join the OpenAPI contract
-// (Phase 2d annotates the backend); DashboardPage narrows it when it migrates.
 export default function useDashboardSummary(token: string | null | undefined) {
   const today = new Date()
   const date = [
@@ -16,7 +14,7 @@ export default function useDashboardSummary(token: string | null | undefined) {
     String(today.getDate()).padStart(2, '0'),
   ].join('-')
 
-  const [data, setData] = useState<unknown>(null)
+  const [data, setData] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
@@ -25,7 +23,7 @@ export default function useDashboardSummary(token: string | null | undefined) {
     let cancelled = false
     setLoading(true)
     setError('')
-    apiFetch(`/api/dashboard/summary?date=${date}`, { token })
+    apiFetch<DashboardSummary>(`/api/dashboard/summary?date=${date}`, { token })
       .then((d) => {
         if (!cancelled) setData(d)
       })

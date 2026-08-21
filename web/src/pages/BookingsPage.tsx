@@ -22,6 +22,8 @@ import {
   TableToolbarSearch,
   Tag,
   TextInput,
+  type DataTableHeader,
+  type TagProps,
 } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -32,8 +34,9 @@ import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
 import usePagedList from '../hooks/usePagedList'
 import { formatDate } from '../i18n/formatters'
+import { ApiError, type BookingInput, type BookingView, type Classroom, type Paged, type Period, type Regime, type SessionView } from '../types/api'
 
-const statusKind = {
+const STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   pending: 'blue',
   approved: 'green',
   rejected: 'red',
@@ -43,17 +46,25 @@ const statusKind = {
 // Booking status enum values shown in the status filter dropdown.
 const STATUS_FILTER_KEYS = ['pending', 'approved', 'rejected', 'cancelled']
 
-function pad(n) {
+function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
 // fmt produces an ISO YYYY-MM-DD string for <input type="date"> values, which
 // are locale-independent (the display formatting is handled separately).
-function fmt(d) {
+function fmt(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-const emptyForm = { classroomId: '', date: '', periodStart: '', periodEnd: '', purpose: '' }
+interface BookingForm {
+  classroomId: string
+  date: string
+  periodStart: string
+  periodEnd: string
+  purpose: string
+}
+
+const emptyForm: BookingForm = { classroomId: '', date: '', periodStart: '', periodEnd: '', purpose: '' }
 
 export default function BookingsPage() {
   const { t, i18n } = useTranslation('bookings')
@@ -61,7 +72,7 @@ export default function BookingsPage() {
   const navigate = useNavigate()
   const canApprove = can('booking:approve')
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'classroomName', header: t('field.classroom') },
     { key: 'date', header: t('field.date') },
     { key: 'period', header: t('field.period') },
@@ -71,13 +82,13 @@ export default function BookingsPage() {
     { key: 'createdAt', header: t('field.createdAt') },
   ]
 
-  const periodLabel = (b) => {
+  const periodLabel = (b?: BookingView | null) => {
     if (!b) return ''
     if (b.periodStart === b.periodEnd) return t('periodLabel.single', { period: b.periodStart })
     return t('periodLabel.range', { start: b.periodStart, end: b.periodEnd })
   }
 
-  const [classrooms, setClassrooms] = useState([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
 
   const [filterClassroom, setFilterClassroom] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -85,7 +96,7 @@ export default function BookingsPage() {
   const [from, setFrom] = useState(fmt(today))
   const [to, setTo] = useState(fmt(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)))
 
-  const list = usePagedList({
+  const list = usePagedList<BookingView>({
     path: '/api/bookings',
     token,
     extraParams: { classroom_id: filterClassroom, status: filterStatus, from, to },
@@ -96,19 +107,19 @@ export default function BookingsPage() {
   const error = list.error || actionError
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyForm)
+  const [createForm, setCreateForm] = useState<BookingForm>(emptyForm)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
-  const [periods, setPeriods] = useState([])
-  const [busy, setBusy] = useState([])
+  const [periods, setPeriods] = useState<Period[]>([])
+  const [busy, setBusy] = useState<number[]>([])
 
-  const [cancelTarget, setCancelTarget] = useState(null)
-  const [actingId, setActingId] = useState(null)
+  const [cancelTarget, setCancelTarget] = useState<BookingView | null>(null)
+  const [actingId, setActingId] = useState<number | null>(null)
 
   useEffect(() => {
-    apiFetch('/api/classrooms?page_size=500', { token })
+    apiFetch<Paged<Classroom>>('/api/classrooms?page_size=500', { token })
       .then((data) => setClassrooms(Array.isArray(data?.items) ? data.items : []))
-      .catch((err) => setActionError(err.message))
+      .catch((err: Error) => setActionError(err.message))
   }, [token])
 
   // When the create modal's classroom or date changes, load the active regime
@@ -123,9 +134,9 @@ export default function BookingsPage() {
     }
     let cancelled = false
     Promise.all([
-      apiFetch(`/api/schedule/active?date=${d}`, { token }),
-      apiFetch(`/api/sessions?classroom_id=${cid}&from=${d}&to=${d}&page_size=500`, { token }),
-      apiFetch(`/api/bookings?classroom_id=${cid}&from=${d}&to=${d}&page_size=500`, { token }),
+      apiFetch<Regime>(`/api/schedule/active?date=${d}`, { token }),
+      apiFetch<Paged<SessionView>>(`/api/sessions?classroom_id=${cid}&from=${d}&to=${d}&page_size=500`, { token }),
+      apiFetch<Paged<BookingView>>(`/api/bookings?classroom_id=${cid}&from=${d}&to=${d}&page_size=500`, { token }),
     ])
       .then(([regime, sessData, booksData]) => {
         if (cancelled) return
@@ -133,7 +144,7 @@ export default function BookingsPage() {
         setPeriods(ps)
         const sess = Array.isArray(sessData?.items) ? sessData.items : []
         const books = Array.isArray(booksData?.items) ? booksData.items : []
-        const busySet = new Set()
+        const busySet = new Set<number>()
         sess.forEach((s) => {
           for (let i = s.periodStart; i <= s.periodEnd; i++) busySet.add(i)
         })
@@ -142,7 +153,7 @@ export default function BookingsPage() {
             for (let i = b.periodStart; i <= b.periodEnd; i++) busySet.add(i)
           }
         })
-        setBusy([...busySet].sort((a, b) => a - b))
+        setBusy(Array.from(busySet).sort((a, b) => a - b))
         setCreateError('')
         setCreateForm((f) => {
           const first = ps[0]?.periodIndex
@@ -155,11 +166,11 @@ export default function BookingsPage() {
           }
         })
       })
-      .catch((err) => {
+      .catch((err: ApiError) => {
         if (cancelled) return
         setPeriods([])
         setBusy([])
-        setCreateError(err.status === 404 ? t('validation.noSchedule') : err.message)
+        setCreateError(err instanceof ApiError && err.status === 404 ? t('validation.noSchedule') : err.message)
       })
     return () => {
       cancelled = true
@@ -183,21 +194,18 @@ export default function BookingsPage() {
     try {
       setCreating(true)
       setCreateError('')
-      await apiFetch('/api/bookings', {
-        method: 'POST',
-        token,
-        body: {
-          classroomId: Number(createForm.classroomId),
-          date: createForm.date,
-          periodStart: Number(createForm.periodStart),
-          periodEnd: Number(createForm.periodEnd),
-          purpose: createForm.purpose.trim(),
-        },
-      })
+      const body: BookingInput = {
+        classroomId: Number(createForm.classroomId),
+        date: createForm.date,
+        periodStart: Number(createForm.periodStart),
+        periodEnd: Number(createForm.periodEnd),
+        purpose: createForm.purpose.trim(),
+      }
+      await apiFetch('/api/bookings', { method: 'POST', token, body })
       setCreateOpen(false)
       list.reload()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
@@ -213,20 +221,20 @@ export default function BookingsPage() {
       setCancelTarget(null)
       list.reload()
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     } finally {
       setActingId(null)
     }
   }
 
-  const reviewBooking = async (id, decision) => {
+  const reviewBooking = async (id: number, decision: 'approve' | 'reject') => {
     try {
       setActingId(id)
       setActionError('')
       await apiFetch(`/api/bookings/${id}/review`, { method: 'POST', token, body: { decision } })
       list.reload()
     } catch (err) {
-      setActionError(err.message)
+      setActionError((err as Error).message)
     } finally {
       setActingId(null)
     }
@@ -363,7 +371,7 @@ export default function BookingsPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -390,25 +398,26 @@ export default function BookingsPage() {
                         (canApprove || Number(currentUser?.id) === b.userId)
                       const canReview = canApprove && b && b.status === 'pending'
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'status') {
+                              const value = cell.value as string
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={statusKind[cell.value] ?? 'gray'} size="sm">
-                                    {t('status.' + cell.value, { ns: 'common', defaultValue: cell.value })}
+                                  <Tag type={STATUS_KIND[value] ?? 'gray'} size="sm">
+                                    {t('status.' + value, { ns: 'common', defaultValue: value })}
                                   </Tag>
                                 </TableCell>
                               )
                             }
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string}</TableCell>
                           })}
                           <TableCell>
                             <div className="courses-page__actions">
-                              {canCancel && (
+                              {b && canCancel && (
                                 <Button
                                   kind="ghost"
                                   size="sm"
@@ -418,7 +427,7 @@ export default function BookingsPage() {
                                   {t('action.cancel')}
                                 </Button>
                               )}
-                              {canReview && (
+                              {b && canReview && (
                                 <>
                                   <Button
                                     kind="ghost"

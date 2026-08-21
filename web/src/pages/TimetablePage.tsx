@@ -17,25 +17,41 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
+import type { Classroom, OfferingView, Paged, SessionInput, SessionView, TimetableDay } from '../types/api'
 
-function fmt(d) {
+function fmt(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
-function mondayOf(d) {
+function mondayOf(d: Date): Date {
   const r = new Date(d)
   r.setHours(0, 0, 0, 0)
   r.setDate(r.getDate() - ((r.getDay() + 6) % 7))
   return r
 }
 
-function addDays(d, n) {
+function addDays(d: Date, n: number): Date {
   const r = new Date(d)
   r.setDate(r.getDate() + n)
   return r
+}
+
+// One row of the period index (union of period indices across the week).
+interface PeriodRow {
+  periodIndex: number
+  startTime: string
+  endTime: string
+}
+
+// Cell modal state: which grid cell is open, with its existing session (if
+// the cell is occupied).
+interface CellModal {
+  date: string
+  periodIndex: number
+  session?: SessionView
 }
 
 export default function TimetablePage() {
@@ -44,17 +60,17 @@ export default function TimetablePage() {
   const navigate = useNavigate()
   const canManage = can('course:manage')
 
-  const dayNames = t('dayNames', { returnObjects: true })
+  const dayNames = t('dayNames', { returnObjects: true }) as string[]
 
-  const [classrooms, setClassrooms] = useState([])
-  const [offerings, setOfferings] = useState([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [offerings, setOfferings] = useState<OfferingView[]>([])
   const [classroomId, setClassroomId] = useState('')
-  const [weekStart, setWeekStart] = useState(mondayOf(new Date()))
-  const [days, setDays] = useState([])
+  const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()))
+  const [days, setDays] = useState<TimetableDay[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const [modal, setModal] = useState(null) // {date, periodIndex, session?}
+  const [modal, setModal] = useState<CellModal | null>(null)
   const [form, setForm] = useState({ offeringId: '', classroomId: '', date: '', periodStart: '', periodEnd: '', note: '' })
   const [modalError, setModalError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -63,14 +79,14 @@ export default function TimetablePage() {
     // Dropdowns need (near-)full lists; pull the maximum page and unwrap the
     // pagination envelope.
     Promise.all([
-      apiFetch('/api/classrooms?page_size=500', { token }),
-      apiFetch('/api/offerings?page_size=500', { token }),
+      apiFetch<Paged<Classroom>>('/api/classrooms?page_size=500', { token }),
+      apiFetch<Paged<OfferingView>>('/api/offerings?page_size=500', { token }),
     ])
       .then(([cls, offs]) => {
         setClassrooms(Array.isArray(cls?.items) ? cls.items : [])
         setOfferings(Array.isArray(offs?.items) ? offs.items : [])
       })
-      .catch((err) => setError(err.message))
+      .catch((err: Error) => setError(err.message))
   }, [token])
 
   const from = fmt(weekStart)
@@ -81,10 +97,10 @@ export default function TimetablePage() {
     try {
       setLoading(true)
       setError('')
-      const data = await apiFetch(`/api/timetable?classroom_id=${classroomId}&from=${from}&to=${to}`, { token })
+      const data = await apiFetch<TimetableDay[]>(`/api/timetable?classroom_id=${classroomId}&from=${from}&to=${to}`, { token })
       setDays(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(err.message)
+      setError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -95,19 +111,19 @@ export default function TimetablePage() {
   }, [fetchTimetable])
 
   // union of period indices across the week (rows of the grid)
-  const periods = useMemo(() => {
-    const map = new Map()
+  const periods = useMemo<PeriodRow[]>(() => {
+    const map = new Map<number, PeriodRow>()
     days.forEach((d) =>
       d.slots.forEach((s) => {
-        if (!map.has(s.periodIndex)) map.set(s.periodIndex, { startTime: s.startTime, endTime: s.endTime })
+        if (!map.has(s.periodIndex)) map.set(s.periodIndex, { periodIndex: s.periodIndex, startTime: s.startTime, endTime: s.endTime })
       }),
     )
-    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([idx, t2]) => ({ periodIndex: idx, ...t2 }))
+    return Array.from(map.values()).sort((a, b) => a.periodIndex - b.periodIndex)
   }, [days])
 
-  const slotFor = (day, periodIndex) => day.slots.find((s) => s.periodIndex === periodIndex)
+  const slotFor = (day: TimetableDay, periodIndex: number) => day.slots.find((s) => s.periodIndex === periodIndex)
 
-  const openCell = (date, periodIndex, session) => {
+  const openCell = (date: string, periodIndex: number, session?: SessionView) => {
     setModal({ date, periodIndex, session })
     setForm({
       offeringId: session ? String(session.offeringId) : '',
@@ -131,7 +147,7 @@ export default function TimetablePage() {
       setModalError(t('validation.periodRange'))
       return
     }
-    const body = {
+    const body: SessionInput = {
       offeringId: Number(form.offeringId),
       classroomId: Number(form.classroomId),
       date: form.date,
@@ -142,7 +158,7 @@ export default function TimetablePage() {
     try {
       setSaving(true)
       setModalError('')
-      if (modal.session) {
+      if (modal?.session) {
         await apiFetch(`/api/sessions/${modal.session.id}`, { method: 'PUT', token, body })
       } else {
         await apiFetch('/api/sessions', { method: 'POST', token, body })
@@ -150,13 +166,14 @@ export default function TimetablePage() {
       setModal(null)
       await fetchTimetable()
     } catch (err) {
-      setModalError(err.message)
+      setModalError((err as Error).message)
     } finally {
       setSaving(false)
     }
   }
 
   const remove = async () => {
+    if (!modal?.session) return
     try {
       setSaving(true)
       setModalError('')
@@ -164,7 +181,7 @@ export default function TimetablePage() {
       setModal(null)
       await fetchTimetable()
     } catch (err) {
-      setModalError(err.message)
+      setModalError((err as Error).message)
     } finally {
       setSaving(false)
     }

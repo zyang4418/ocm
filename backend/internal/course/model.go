@@ -124,7 +124,7 @@ type TimetableSlot struct {
 	PeriodIndex int          `json:"periodIndex"`
 	StartTime   string       `json:"startTime"`
 	EndTime     string       `json:"endTime"`
-	Session     *SessionView `json:"session"` // nil when the slot is free
+	Session     *SessionView `json:"session" validate:"optional"` // nil when the slot is free
 }
 
 // TimetableDay is one day column in a classroom timetable grid.

@@ -60,6 +60,16 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, authenticate func(http.Hand
 	mux.Handle("DELETE /api/classrooms/{id}", manage(h.delete))
 }
 
+// @Summary      List classrooms
+// @Tags         classrooms
+// @Produce      json
+// @Param        q query string false "search by name/building/campus"
+// @Param        page query int false "1-based page" default(1)
+// @Param        page_size query int false "page size" default(100)
+// @Success      200 {object} httpx.Paged "paged classrooms"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/classrooms [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := httpx.ParsePageParams(q)
@@ -93,6 +103,17 @@ func (h *Handler) export(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary      Create a classroom
+// @Tags         classrooms
+// @Accept       json
+// @Produce      json
+// @Param        body body ClassroomInput true "classroom input"
+// @Success      201 {object} Classroom "created classroom"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / name required / capacity must be positive"
+// @Failure      409 {object} httpx.ErrorResponse "classroom name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/classrooms [post]
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	var in ClassroomInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -116,6 +137,16 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, c)
 }
 
+// @Summary      Get a classroom
+// @Tags         classrooms
+// @Produce      json
+// @Param        id path int true "classroom id"
+// @Success      200 {object} Classroom "classroom detail"
+// @Failure      400 {object} httpx.ErrorResponse "invalid classroom id"
+// @Failure      404 {object} httpx.ErrorResponse "classroom not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/classrooms/{id} [get]
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -134,6 +165,19 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
+// @Summary      Update a classroom
+// @Tags         classrooms
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "classroom id"
+// @Param        body body ClassroomInput true "classroom input"
+// @Success      200 {object} Classroom "updated classroom"
+// @Failure      400 {object} httpx.ErrorResponse "invalid body / name required"
+// @Failure      404 {object} httpx.ErrorResponse "classroom not found"
+// @Failure      409 {object} httpx.ErrorResponse "classroom name already taken"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/classrooms/{id} [put]
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -166,6 +210,15 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, c)
 }
 
+// @Summary      Delete a classroom
+// @Tags         classrooms
+// @Param        id path int true "classroom id"
+// @Success      204 "no content"
+// @Failure      400 {object} httpx.ErrorResponse "invalid classroom id"
+// @Failure      404 {object} httpx.ErrorResponse "classroom not found"
+// @Failure      500 {object} httpx.ErrorResponse "internal error"
+// @Security     BearerAuth
+// @Router       /api/classrooms/{id} [delete]
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {

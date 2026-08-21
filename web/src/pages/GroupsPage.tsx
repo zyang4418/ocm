@@ -20,6 +20,7 @@ import {
   TableToolbarContent,
   TextArea,
   TextInput,
+  type DataTableHeader,
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -27,15 +28,31 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import { formatDate } from '../i18n/formatters'
+import type { GroupDetail, GroupView, Paged, Role, User } from '../types/api'
 
-const emptyForm = { name: '', description: '', members: [], roles: [] }
+// Picker option shape: id is the stringified entity id (members/roles keep
+// string ids in the form and convert on submit).
+interface PickerOption {
+  id: string
+  text: string
+}
+
+// Form state: members/roles hold stringified ids while editing.
+interface GroupForm {
+  name: string
+  description: string
+  members: string[]
+  roles: string[]
+}
+
+const emptyForm: GroupForm = { name: '', description: '', members: [], roles: [] }
 
 export default function GroupsPage() {
   const { t } = useTranslation('groups')
   const { token } = useAuth()
   const navigate = useNavigate()
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'id', header: t('field.id') },
     { key: 'name', header: t('field.name') },
     { key: 'description', header: t('field.description') },
@@ -43,36 +60,36 @@ export default function GroupsPage() {
     { key: 'createdAt', header: t('field.createdAt') },
   ]
 
-  const [groups, setGroups] = useState([])
+  const [groups, setGroups] = useState<GroupView[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyForm)
+  const [createForm, setCreateForm] = useState<GroupForm>(emptyForm)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const [editTarget, setEditTarget] = useState(null)
-  const [editForm, setEditForm] = useState(emptyForm)
+  const [editTarget, setEditTarget] = useState<GroupView | null>(null)
+  const [editForm, setEditForm] = useState<GroupForm>(emptyForm)
   const [editError, setEditError] = useState('')
   const [editing, setEditing] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState<GroupView | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   // Picker sources: all users (up to 500) and all roles.
-  const [userOptions, setUserOptions] = useState([])
-  const [roleOptions, setRoleOptions] = useState([])
+  const [userOptions, setUserOptions] = useState<PickerOption[]>([])
+  const [roleOptions, setRoleOptions] = useState<PickerOption[]>([])
 
   const load = async () => {
     try {
       setLoading(true)
       setLoadError('')
-      const groupsData = await apiFetch('/api/groups', { token })
-      setGroups(groupsData)
+      const groupsData = await apiFetch<GroupView[]>('/api/groups', { token })
+      setGroups(Array.isArray(groupsData) ? groupsData : [])
     } catch (err) {
-      setLoadError(err.message)
+      setLoadError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -85,17 +102,17 @@ export default function GroupsPage() {
 
   const loadPickerSources = async () => {
     const [usersPage, roles] = await Promise.all([
-      apiFetch('/api/users?page_size=500', { token }),
-      apiFetch('/api/roles', { token }),
+      apiFetch<Paged<User>>('/api/users?page_size=500', { token }),
+      apiFetch<Role[]>('/api/roles', { token }),
     ])
     setUserOptions(
-      usersPage.items.map((u) => ({
+      (usersPage?.items ?? []).map((u) => ({
         id: String(u.id),
         text: t('picker.userOption', { name: u.displayName, username: u.username }),
       })),
     )
     setRoleOptions(
-      roles.map((r) => ({
+      (roles ?? []).map((r) => ({
         id: String(r.id),
         text: t('picker.roleOption', { name: r.name, code: r.code }),
       })),
@@ -134,32 +151,34 @@ export default function GroupsPage() {
       setCreateOpen(false)
       load()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const openEdit = async (group) => {
+  const openEdit = async (group: GroupView | undefined) => {
+    if (!group) return
     setEditTarget(group)
     setEditError('')
     try {
       const [detail] = await Promise.all([
-        apiFetch(`/api/groups/${group.id}`, { token }),
+        apiFetch<GroupDetail>(`/api/groups/${group.id}`, { token }),
         loadPickerSources(),
       ])
       setEditForm({
         name: detail.name,
         description: detail.description,
-        members: detail.members.map((m) => String(m.id)),
-        roles: detail.roles.map((r) => String(r.id)),
+        members: (detail.members ?? []).map((m) => String(m.id)),
+        roles: (detail.roles ?? []).map((r) => String(r.id)),
       })
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     }
   }
 
   const handleEdit = async () => {
+    if (!editTarget) return
     if (!editForm.name.trim()) {
       setEditError(t('validation.nameRequired'))
       return
@@ -180,13 +199,14 @@ export default function GroupsPage() {
       setEditTarget(null)
       load()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setEditing(false)
     }
   }
 
   const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
@@ -194,7 +214,7 @@ export default function GroupsPage() {
       setDeleteTarget(null)
       load()
     } catch (err) {
-      setDeleteError(err.message)
+      setDeleteError((err as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -231,7 +251,7 @@ export default function GroupsPage() {
           />
         )}
 
-        <DataTable rows={groups} headers={headers}>
+        <DataTable rows={groups.map((g) => ({ ...g, id: String(g.id) }))} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
             <TableContainer title={t('table.title')} description={t('table.description', { count: groups.length })}>
               <TableToolbar>
@@ -245,7 +265,7 @@ export default function GroupsPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -265,12 +285,12 @@ export default function GroupsPage() {
                     rows.map((row) => {
                       const group = groups.find((x) => String(x.id) === String(row.id))
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'createdAt') {
-                              return <TableCell key={cell.id}>{formatDate(cell.value)}</TableCell>
+                              return <TableCell key={cell.id}>{formatDate(cell.value as string)}</TableCell>
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string}</TableCell>
                           })}
                           <TableCell>
                             <div className="groups-page__actions">
@@ -289,7 +309,7 @@ export default function GroupsPage() {
                                 renderIcon={TrashCan}
                                 iconDescription={t('action.delete', { ns: 'common' })}
                                 onClick={() => {
-                                  setDeleteTarget(group)
+                                  setDeleteTarget(group ?? null)
                                   setDeleteError('')
                                 }}
                               />
@@ -330,24 +350,24 @@ export default function GroupsPage() {
             value={createForm.description}
             onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
           />
-          <MultiSelect
+          <MultiSelect<PickerOption>
             id="create-group-members"
             titleText={t('form.members')}
             label={t('picker.members')}
             items={userOptions}
             selectedItems={userOptions.filter((o) => createForm.members.includes(o.id))}
             onChange={({ selectedItems }) =>
-              setCreateForm({ ...createForm, members: selectedItems.map((o) => o.id) })
+              setCreateForm({ ...createForm, members: (selectedItems ?? []).map((o) => o.id) })
             }
           />
-          <MultiSelect
+          <MultiSelect<PickerOption>
             id="create-group-roles"
             titleText={t('form.roles')}
             label={t('picker.roles')}
             items={roleOptions}
             selectedItems={roleOptions.filter((o) => createForm.roles.includes(o.id))}
             onChange={({ selectedItems }) =>
-              setCreateForm({ ...createForm, roles: selectedItems.map((o) => o.id) })
+              setCreateForm({ ...createForm, roles: (selectedItems ?? []).map((o) => o.id) })
             }
           />
           {createError && (
@@ -385,24 +405,24 @@ export default function GroupsPage() {
             value={editForm.description}
             onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
           />
-          <MultiSelect
+          <MultiSelect<PickerOption>
             id="edit-group-members"
             titleText={t('form.members')}
             label={t('picker.members')}
             items={userOptions}
             selectedItems={userOptions.filter((o) => editForm.members.includes(o.id))}
             onChange={({ selectedItems }) =>
-              setEditForm({ ...editForm, members: selectedItems.map((o) => o.id) })
+              setEditForm({ ...editForm, members: (selectedItems ?? []).map((o) => o.id) })
             }
           />
-          <MultiSelect
+          <MultiSelect<PickerOption>
             id="edit-group-roles"
             titleText={t('form.roles')}
             label={t('picker.roles')}
             items={roleOptions}
             selectedItems={roleOptions.filter((o) => editForm.roles.includes(o.id))}
             onChange={({ selectedItems }) =>
-              setEditForm({ ...editForm, roles: selectedItems.map((o) => o.id) })
+              setEditForm({ ...editForm, roles: (selectedItems ?? []).map((o) => o.id) })
             }
           />
           {editError && (

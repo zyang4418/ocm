@@ -15,6 +15,1064 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/admin-classes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "List admin classes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by grade/name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged admin classes",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Create an admin class",
+                "parameters": [
+                    {
+                        "description": "admin class input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.AdminClassInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created admin class",
+                        "schema": {
+                            "$ref": "#/definitions/user.AdminClass"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / grade and name required",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "grade + name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin-classes/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Get an admin class (with members)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "admin class",
+                        "schema": {
+                            "$ref": "#/definitions/user.AdminClass"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid admin class id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Update an admin class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "admin class input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.AdminClassInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated admin class",
+                        "schema": {
+                            "$ref": "#/definitions/user.AdminClass"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / grade and name required",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "grade + name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Delete an admin class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid admin class id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "teaching classes still reference the admin class",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin-classes/{id}/students": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "List a class's roster",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "roster entries",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/user.StudentProfileView"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid admin class id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Add a student to the roster",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "roster entry input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.StudentProfileInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "added roster entry",
+                        "schema": {
+                            "$ref": "#/definitions/user.StudentProfileView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / user is not a student",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "student already in a class",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin-classes/{id}/students/{userId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Update a roster entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "roster entry input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.StudentProfileInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated roster entry",
+                        "schema": {
+                            "$ref": "#/definitions/user.StudentProfileView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / user is not in this class",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Remove a student from the roster",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "admin class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "user is not in this class",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login with username/password",
+                "parameters": [
+                    {
+                        "description": "credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "token + user view",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get the current user's identity",
+                "responses": {
+                    "200": {
+                        "description": "user view with roles/groups/permissions",
+                        "schema": {
+                            "$ref": "#/definitions/auth.UserView"
+                        }
+                    },
+                    "401": {
+                        "description": "not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/wx-bind": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Bind a WeChat openid to an existing account",
+                "parameters": [
+                    {
+                        "description": "credentials + wx.login() code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.WxBindRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "token + user view",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / already bound",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/wx-login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "WeChat mini-program silent login (bound accounts only)",
+                "parameters": [
+                    {
+                        "description": "wx.login() code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.WxLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "token + user view",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "code required / account not bound",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/wx-unbind": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Unbind the current user's WeChat openid",
+                "responses": {
+                    "200": {
+                        "description": "fresh token + user view",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "no binding to remove",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bookings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "List classroom bookings",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "filter by classroom id",
+                        "name": "classroom_id",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled"
+                        ],
+                        "type": "string",
+                        "description": "filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "date range start (Y-M-D)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "date range end (Y-M-D)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged booking views",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid filter",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Create a classroom booking (pending approval)",
+                "parameters": [
+                    {
+                        "description": "booking input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/booking.BookingInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created booking view",
+                        "schema": {
+                            "$ref": "#/definitions/booking.BookingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / classroom unavailable / period not in regime",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "classroom already booked for this date and period",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Get a booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "booking id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "booking detail",
+                        "schema": {
+                            "$ref": "#/definitions/booking.BookingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid booking id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "booking not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Cancel a booking (creator or admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "booking id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "cancelled booking view",
+                        "schema": {
+                            "$ref": "#/definitions/booking.BookingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid booking id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "you can only cancel your own bookings",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "booking not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "booking cannot be cancelled in its current status",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bookings/{id}/review": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Approve or reject a pending booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "booking id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "decision",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/booking.ReviewInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "reviewed booking view",
+                        "schema": {
+                            "$ref": "#/definitions/booking.BookingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / decision must be 'approve' or 'reject'",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "booking not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "booking is no longer pending / classroom no longer free",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/checkins": {
             "get": {
                 "security": [
@@ -622,11 +1680,4553 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/classrooms": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classrooms"
+                ],
+                "summary": "List classrooms",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by name/building/campus",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged classrooms",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classrooms"
+                ],
+                "summary": "Create a classroom",
+                "parameters": [
+                    {
+                        "description": "classroom input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/classroom.ClassroomInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created classroom",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.Classroom"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / name required / capacity must be positive",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "classroom name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classrooms/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classrooms"
+                ],
+                "summary": "Get a classroom",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "classroom id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "classroom detail",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.Classroom"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid classroom id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classrooms"
+                ],
+                "summary": "Update a classroom",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "classroom id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "classroom input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/classroom.ClassroomInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated classroom",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.Classroom"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / name required",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "classroom name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "classrooms"
+                ],
+                "summary": "Delete a classroom",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "classroom id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid classroom id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/courses": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "List course catalog entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by code/name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter by department",
+                        "name": "department",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "filter by credit",
+                        "name": "credit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged catalog entries",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Create a course catalog entry",
+                "parameters": [
+                    {
+                        "description": "catalog input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/course.CatalogInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created catalog entry",
+                        "schema": {
+                            "$ref": "#/definitions/course.CatalogCourse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / required fields missing",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "catalog code already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/courses/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get a course catalog entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "catalog id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "catalog detail",
+                        "schema": {
+                            "$ref": "#/definitions/course.CatalogCourse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid catalog id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "catalog entry not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Update a course catalog entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "catalog id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "catalog input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/course.CatalogInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated catalog entry",
+                        "schema": {
+                            "$ref": "#/definitions/course.CatalogCourse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / required fields missing",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "catalog entry not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "catalog code already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Delete a course catalog entry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "catalog id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid catalog id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "catalog entry not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "offerings still reference the catalog",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Each section is present only when the caller holds the\npermission that gates it — absence means \"hidden\".",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Console homepage summary (permission-gated sections)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "school day (Y-M-D)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "sectioned summary",
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.Summary"
+                        }
+                    },
+                    "400": {
+                        "description": "date must be YYYY-MM-DD",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "List user groups",
+                "responses": {
+                    "200": {
+                        "description": "groups with member counts",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/iam.GroupView"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Create a user group",
+                "parameters": [
+                    {
+                        "description": "group input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/iam.GroupInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created group",
+                        "schema": {
+                            "$ref": "#/definitions/iam.GroupView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / member does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "only administrators can grant the admin role",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "group name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Get a user group (edit form prefill)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "group id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "group detail with members and roles",
+                        "schema": {
+                            "$ref": "#/definitions/iam.GroupDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid group id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "group not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Update a user group",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "group id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "group input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/iam.GroupInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated group",
+                        "schema": {
+                            "$ref": "#/definitions/iam.GroupView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / member does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "only administrators can grant the admin role",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "group not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "group name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Delete a user group",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "group id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid group id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "group not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "List import jobs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by filename",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged import jobs (metadata only)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/jwc_split": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Accepts multipart/form-data with ` + "`" + `file` + "`" + `, ` + "`" + `semester` + "`" + ` and\n` + "`" + `week1Monday` + "`" + ` fields. Splits the master xlsx into six typed\nimport jobs (classrooms, catalog, admin/teaching classes,\nofferings, sessions, regimes) and processes them.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Upload a JWC (教务处) master timetable and split it into six imports",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "JWC master xlsx",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "semester label, e.g. 2024-2025-2",
+                        "name": "semester",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "first week's Monday (Y-M-D)",
+                        "name": "week1Monday",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "created jobs, split stats and warnings",
+                        "schema": {
+                            "$ref": "#/definitions/importer.SplitResult"
+                        }
+                    },
+                    "400": {
+                        "description": "file/semester/week1Monday required / bad xlsx / week1Monday is not a Monday",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Get an import job's metadata",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job metadata (no rows/payload/error report)",
+                        "schema": {
+                            "$ref": "#/definitions/importer.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid job id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "import job not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Cancel a preview job",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job cancelled",
+                        "schema": {
+                            "$ref": "#/definitions/importer.JobAccepted"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid job id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "import job not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "job cannot be cancelled in its current status",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{id}/commit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Commit a preview job (async)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "commit started",
+                        "schema": {
+                            "$ref": "#/definitions/importer.JobAccepted"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid job id / job is not in preview",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "import job not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "job is being processed by someone else",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{id}/errors": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Get a job's per-row error report",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "per-row errors",
+                        "schema": {
+                            "$ref": "#/definitions/importer.JobErrors"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid job id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "import job not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{id}/reanalyze": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Re-run analysis of a job (async)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "re-analysis started",
+                        "schema": {
+                            "$ref": "#/definitions/importer.JobAccepted"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid job id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "import job not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "job is being processed by someone else",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{id}/rows": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Get one page of a job's preview rows",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size (clamped 1..500)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "dry-run preview rows page",
+                        "schema": {
+                            "$ref": "#/definitions/importer.PreviewRowsPage"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid job id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "import job not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/imports/{type}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Accepts multipart/form-data with a ` + "`" + `file` + "`" + ` field. The job is\nparsed/validated in the background; poll GET /api/imports/{id}.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Upload a typed xlsx import file (async dry-run)",
+                "parameters": [
+                    {
+                        "enum": [
+                            "classrooms",
+                            "bookings",
+                            "catalog",
+                            "offerings",
+                            "sessions",
+                            "admin_classes",
+                            "teaching_classes",
+                            "regimes"
+                        ],
+                        "type": "string",
+                        "description": "import type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "xlsx file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "job accepted for processing",
+                        "schema": {
+                            "$ref": "#/definitions/importer.JobAccepted"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid type / file required / bad xlsx",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "List audit log entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "range start (Y-M-D)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "range end (Y-M-D)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged log views",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid date filter",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logs/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Get log retention settings",
+                "responses": {
+                    "200": {
+                        "description": "retention settings",
+                        "schema": {
+                            "$ref": "#/definitions/systemlog.Settings"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Update log retention settings",
+                "parameters": [
+                    {
+                        "description": "retention settings",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/systemlog.Settings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated retention settings",
+                        "schema": {
+                            "$ref": "#/definitions/systemlog.Settings"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / retentionDays out of range",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/observations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "observations"
+                ],
+                "summary": "List observations",
+                "parameters": [
+                    {
+                        "enum": [
+                            "draft",
+                            "submitted"
+                        ],
+                        "type": "string",
+                        "description": "filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter by template type",
+                        "name": "template_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "filter by offering id",
+                        "name": "course_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "range start (Y-M-D)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "range end (Y-M-D)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged observation views (non-admins see only their own)",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid date filter",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "observations"
+                ],
+                "summary": "Create an observation (draft)",
+                "parameters": [
+                    {
+                        "description": "observation input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/observation.ObservationInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created observation",
+                        "schema": {
+                            "$ref": "#/definitions/observation.ObservationView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / offering not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/observations/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "observations"
+                ],
+                "summary": "Get an observation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "observation id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "observation detail",
+                        "schema": {
+                            "$ref": "#/definitions/observation.ObservationView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid observation id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "observation not found / not yours",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "observations"
+                ],
+                "summary": "Update a draft observation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "observation id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "observation input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/observation.ObservationInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated observation",
+                        "schema": {
+                            "$ref": "#/definitions/observation.ObservationView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / not a draft / not yours",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "observation not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "observations"
+                ],
+                "summary": "Delete a draft observation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "observation id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid id / not a draft / not yours",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "observation not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/observations/{id}/submit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "observations"
+                ],
+                "summary": "Submit an observation (locks it)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "observation id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "submitted observation",
+                        "schema": {
+                            "$ref": "#/definitions/observation.ObservationView"
+                        }
+                    },
+                    "400": {
+                        "description": "required form fields missing",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "observation not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/offerings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "offerings"
+                ],
+                "summary": "List offerings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "filter by semester",
+                        "name": "semester",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "filter by catalog id",
+                        "name": "catalog_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "filter by teacher id",
+                        "name": "teacher_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged offerings",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "offerings"
+                ],
+                "summary": "Create an offering",
+                "parameters": [
+                    {
+                        "description": "offering input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/course.OfferingInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created offering",
+                        "schema": {
+                            "$ref": "#/definitions/course.OfferingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / referenced catalog or teaching class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "semester + catalog + teaching class already offered",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/offerings/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "offerings"
+                ],
+                "summary": "Get an offering",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "offering id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "offering detail",
+                        "schema": {
+                            "$ref": "#/definitions/course.OfferingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid offering id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "offering not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "offerings"
+                ],
+                "summary": "Update an offering",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "offering id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "offering input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/course.OfferingInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated offering",
+                        "schema": {
+                            "$ref": "#/definitions/course.OfferingView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / referenced catalog or teaching class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "offering not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "semester + catalog + teaching class already offered",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "offerings"
+                ],
+                "summary": "Delete an offering",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "offering id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid offering id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "offering not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "sessions still exist for the offering",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "List the permission catalog",
+                "responses": {
+                    "200": {
+                        "description": "permission catalog",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/authz.Permission"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/repairs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "repairs"
+                ],
+                "summary": "List repair tickets",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "filter by classroom id",
+                        "name": "classroom_id",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "open",
+                            "processing",
+                            "completed",
+                            "confirmed"
+                        ],
+                        "type": "string",
+                        "description": "filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged repair views",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "repairs"
+                ],
+                "summary": "Create a repair ticket",
+                "parameters": [
+                    {
+                        "description": "repair input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created repair view",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "open ticket already exists for the classroom",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/repairs/emergency": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "repairs"
+                ],
+                "summary": "Create an emergency repair ticket (skips the open-ticket guard)",
+                "parameters": [
+                    {
+                        "description": "repair input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created repair view",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/repairs/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "repairs"
+                ],
+                "summary": "Get a repair ticket",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "repair id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "repair detail",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid repair id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "repair ticket not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "repairs"
+                ],
+                "summary": "Process a repair ticket (start/finish)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "repair id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "status transition",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairUpdateInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated repair view",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / invalid status transition",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "repair ticket not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/repairs/{id}/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "repairs"
+                ],
+                "summary": "Confirm a completed repair (creator only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "repair id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "confirmed repair view",
+                        "schema": {
+                            "$ref": "#/definitions/classroom.RepairView"
+                        }
+                    },
+                    "400": {
+                        "description": "repair not completed yet",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "only the creator may confirm",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "repair ticket not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "List roles",
+                "responses": {
+                    "200": {
+                        "description": "all roles with permissions",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/iam.Role"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Create a role",
+                "parameters": [
+                    {
+                        "description": "role input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/iam.RoleInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created role",
+                        "schema": {
+                            "$ref": "#/definitions/iam.Role"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / unknown permission",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "role code already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Update a role (code immutable)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "role id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "role input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/iam.RoleInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated role",
+                        "schema": {
+                            "$ref": "#/definitions/iam.Role"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / unknown permission",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "role not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "system role cannot be modified",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "iam"
+                ],
+                "summary": "Delete a role",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "role id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid role id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "role not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "system role cannot be deleted / role still in use",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schedule/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Get the regime active today",
+                "responses": {
+                    "200": {
+                        "description": "regime with periods",
+                        "schema": {
+                            "$ref": "#/definitions/schedule.Regime"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schedule/regimes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "List bell-time regimes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged regimes with periods",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Create a bell-time regime",
+                "parameters": [
+                    {
+                        "description": "regime input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schedule.RegimeInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created regime (no periods yet)",
+                        "schema": {
+                            "$ref": "#/definitions/schedule.Regime"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / name required / effective date invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "effective date already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schedule/regimes/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Get a bell-time regime",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "regime id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "regime with periods",
+                        "schema": {
+                            "$ref": "#/definitions/schedule.Regime"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid regime id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "regime not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Update a bell-time regime",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "regime id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "regime input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schedule.RegimeInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated regime with periods",
+                        "schema": {
+                            "$ref": "#/definitions/schedule.Regime"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / name required / effective date invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "regime not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "effective date already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Delete a bell-time regime",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "regime id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid regime id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "regime not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "cannot delete the last regime",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schedule/regimes/{id}/periods": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Replace a regime's periods (bell times)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "regime id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "full replacement set of periods",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schedule.PeriodsInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "regime with the new periods",
+                        "schema": {
+                            "$ref": "#/definitions/schedule.Regime"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / period numbers must be contiguous",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "regime not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "List sessions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "filter by offering id",
+                        "name": "offering_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "filter by classroom id",
+                        "name": "classroom_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "date range start (Y-M-D)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "date range end (Y-M-D)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged sessions",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Create a session",
+                "parameters": [
+                    {
+                        "description": "session input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/course.SessionInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created session",
+                        "schema": {
+                            "$ref": "#/definitions/course.SessionView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / referenced offering or classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "classroom occupied in the same periods",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/sessions/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Get a session",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "session id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "session detail",
+                        "schema": {
+                            "$ref": "#/definitions/course.SessionView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid session id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "session not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Update a session",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "session id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "session input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/course.SessionInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated session",
+                        "schema": {
+                            "$ref": "#/definitions/course.SessionView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / referenced offering or classroom not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "session not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "classroom occupied in the same periods",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Delete a session",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "session id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid session id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "session not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/settings/ai": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get AI assistant settings (API key masked)",
+                "responses": {
+                    "200": {
+                        "description": "settings with the API key hidden",
+                        "schema": {
+                            "$ref": "#/definitions/ai.MaskedSettings"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "An empty apiKey means \"keep the stored one\" — the key can\nnever be cleared through the API.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Update AI assistant settings",
+                "parameters": [
+                    {
+                        "description": "AI settings",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.Settings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated settings (key masked)",
+                        "schema": {
+                            "$ref": "#/definitions/ai.MaskedSettings"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / apiKey required when enabled",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/settings/email": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get mail service settings (password masked)",
+                "responses": {
+                    "200": {
+                        "description": "settings with the password hidden",
+                        "schema": {
+                            "$ref": "#/definitions/mail.MaskedSettings"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "An empty password means \"keep the stored one\" — the secret\ncan never be cleared through the API.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Update mail service settings",
+                "parameters": [
+                    {
+                        "description": "mail settings",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mail.Settings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated settings (password masked)",
+                        "schema": {
+                            "$ref": "#/definitions/mail.MaskedSettings"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / required fields missing when enabled",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/settings/storage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get object storage settings (secret key masked)",
+                "responses": {
+                    "200": {
+                        "description": "settings with the secret key hidden",
+                        "schema": {
+                            "$ref": "#/definitions/storage.MaskedSettings"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "An empty secretKey means \"keep the stored one\" — the secret\ncan never be cleared through the API.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Update object storage settings",
+                "parameters": [
+                    {
+                        "description": "storage settings",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/storage.Settings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated settings (secret masked)",
+                        "schema": {
+                            "$ref": "#/definitions/storage.MaskedSettings"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / required fields missing when enabled",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/teaching-classes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "List teaching classes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged teaching classes",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Create a teaching class",
+                "parameters": [
+                    {
+                        "description": "teaching class input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.TeachingClassInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created teaching class",
+                        "schema": {
+                            "$ref": "#/definitions/user.TeachingClassView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / name required / member admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/teaching-classes/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Get a teaching class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "teaching class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "teaching class with member admin classes",
+                        "schema": {
+                            "$ref": "#/definitions/user.TeachingClassView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid teaching class id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "teaching class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Update a teaching class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "teaching class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "teaching class input (classIds replace semantics)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.TeachingClassInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated teaching class",
+                        "schema": {
+                            "$ref": "#/definitions/user.TeachingClassView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / name required / member admin class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "teaching class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "name already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "org"
+                ],
+                "summary": "Delete a teaching class",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "teaching class id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid teaching class id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "teaching class not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "offerings still reference the teaching class",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/timetable": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Classroom timetable for a date range",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "classroom id",
+                        "name": "classroom_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "range start (Y-M-D)",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "range end (Y-M-D)",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "one entry per day in range",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/course.TimetableDay"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "classroom_id required / invalid date range",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search by username/display name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "1-based page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "paged users with role/group summaries",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.Paged"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a user",
+                "parameters": [
+                    {
+                        "description": "create user input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.CreateUserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "created user",
+                        "schema": {
+                            "$ref": "#/definitions/user.User"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / required fields missing",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "username already taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "user detail",
+                        "schema": {
+                            "$ref": "#/definitions/user.User"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid user id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "update user input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UpdateUserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated user",
+                        "schema": {
+                            "$ref": "#/definitions/user.User"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / displayName required",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid user id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "only administrators can delete an administrator's account",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "cannot delete your own account",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}/grants": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a user's grants (roles / permissions / groups)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "grant view incl. expired rows",
+                        "schema": {
+                            "$ref": "#/definitions/iam.UserGrantView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid user id",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}/password": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Reset a user's password",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "new password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.ChangePasswordInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "no content"
+                    },
+                    "400": {
+                        "description": "invalid body / password required",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "only administrators can change an administrator's password",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}/permissions": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Replace a user's permission grants",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "whole-set permission grants",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UserPermissionsInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated grant view",
+                        "schema": {
+                            "$ref": "#/definitions/iam.UserGrantView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / unknown permission",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}/roles": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Replace a user's role grants",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "whole-set role grants",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UserRolesInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "updated grant view",
+                        "schema": {
+                            "$ref": "#/definitions/iam.UserGrantView"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid body / unknown role code",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "only administrators can grant the admin role",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "ai.MaskedSettings": {
+            "type": "object",
+            "required": [
+                "apiKey",
+                "apiKeySet",
+                "baseUrl",
+                "enabled",
+                "model"
+            ],
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "apiKeySet": {
+                    "type": "boolean"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "model": {
+                    "type": "string"
+                }
+            }
+        },
+        "ai.Settings": {
+            "type": "object",
+            "required": [
+                "apiKey",
+                "baseUrl",
+                "enabled",
+                "model"
+            ],
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "model": {
+                    "type": "string"
+                }
+            }
+        },
         "attendance.CheckinInput": {
             "type": "object",
+            "required": [
+                "durationMinute",
+                "lateMinutes",
+                "offeringId",
+                "sessionId",
+                "title"
+            ],
             "properties": {
                 "durationMinute": {
                     "type": "integer"
@@ -647,6 +6247,15 @@ const docTemplate = `{
         },
         "attendance.CheckinRecordView": {
             "type": "object",
+            "required": [
+                "adminClass",
+                "checkinId",
+                "displayName",
+                "inRoster",
+                "status",
+                "studentNo",
+                "userId"
+            ],
             "properties": {
                 "adminClass": {
                     "description": "\"grade name\", \"\" when unknown",
@@ -680,6 +6289,24 @@ const docTemplate = `{
         },
         "attendance.CheckinView": {
             "type": "object",
+            "required": [
+                "code",
+                "counts",
+                "courseName",
+                "createdAt",
+                "createdBy",
+                "id",
+                "lateMinutes",
+                "offeringId",
+                "semester",
+                "sessionId",
+                "sessionText",
+                "startsAt",
+                "status",
+                "teacher",
+                "teachingClassName",
+                "title"
+            ],
             "properties": {
                 "closedAt": {
                     "type": "string"
@@ -740,6 +6367,13 @@ const docTemplate = `{
         },
         "attendance.Counts": {
             "type": "object",
+            "required": [
+                "absent",
+                "expected",
+                "late",
+                "leave",
+                "present"
+            ],
             "properties": {
                 "absent": {
                     "type": "integer"
@@ -760,6 +6394,15 @@ const docTemplate = `{
         },
         "attendance.OfferingSummary": {
             "type": "object",
+            "required": [
+                "checkins",
+                "courseName",
+                "offeringId",
+                "rows",
+                "semester",
+                "teacher",
+                "teachingClassName"
+            ],
             "properties": {
                 "checkins": {
                     "type": "array",
@@ -792,6 +6435,9 @@ const docTemplate = `{
         },
         "attendance.RecordUpdateInput": {
             "type": "object",
+            "required": [
+                "status"
+            ],
             "properties": {
                 "status": {
                     "type": "string",
@@ -807,6 +6453,9 @@ const docTemplate = `{
         },
         "attendance.ScanRequest": {
             "type": "object",
+            "required": [
+                "code"
+            ],
             "properties": {
                 "code": {
                     "type": "string",
@@ -816,6 +6465,13 @@ const docTemplate = `{
         },
         "attendance.ScanResult": {
             "type": "object",
+            "required": [
+                "checkinId",
+                "inRoster",
+                "isNew",
+                "status",
+                "title"
+            ],
             "properties": {
                 "checkinId": {
                     "type": "integer"
@@ -836,6 +6492,15 @@ const docTemplate = `{
         },
         "attendance.SummaryRow": {
             "type": "object",
+            "required": [
+                "adminClass",
+                "displayName",
+                "inRoster",
+                "records",
+                "studentNo",
+                "totals",
+                "userId"
+            ],
             "properties": {
                 "adminClass": {
                     "type": "string"
@@ -866,8 +6531,960 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.LoginResponse": {
+            "type": "object",
+            "required": [
+                "token",
+                "user"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/auth.UserView"
+                }
+            }
+        },
+        "auth.UserView": {
+            "type": "object",
+            "required": [
+                "displayName",
+                "groups",
+                "id",
+                "permissions",
+                "roles",
+                "type",
+                "username"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.GroupBrief"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.RoleBrief"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.WxBindRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.WxLoginRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "authz.Permission": {
+            "type": "object",
+            "required": [
+                "category",
+                "categoryName",
+                "code",
+                "description",
+                "name"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "categoryName": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "booking.BookingInput": {
+            "type": "object",
+            "required": [
+                "classroomId",
+                "date",
+                "periodEnd",
+                "periodStart",
+                "purpose"
+            ],
+            "properties": {
+                "classroomId": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "periodEnd": {
+                    "type": "integer"
+                },
+                "periodStart": {
+                    "type": "integer"
+                },
+                "purpose": {
+                    "type": "string"
+                }
+            }
+        },
+        "booking.BookingView": {
+            "type": "object",
+            "required": [
+                "classroomId",
+                "classroomName",
+                "createdAt",
+                "date",
+                "displayName",
+                "id",
+                "periodEnd",
+                "periodStart",
+                "purpose",
+                "status",
+                "userId",
+                "username"
+            ],
+            "properties": {
+                "classroomId": {
+                    "type": "integer"
+                },
+                "classroomName": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "periodEnd": {
+                    "type": "integer"
+                },
+                "periodStart": {
+                    "type": "integer"
+                },
+                "purpose": {
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "booking.DailyCount": {
+            "type": "object",
+            "required": [
+                "count",
+                "date"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                }
+            }
+        },
+        "booking.ReviewInput": {
+            "type": "object",
+            "required": [
+                "decision"
+            ],
+            "properties": {
+                "decision": {
+                    "description": "\"approve\" or \"reject\"",
+                    "type": "string"
+                }
+            }
+        },
+        "classroom.Classroom": {
+            "type": "object",
+            "required": [
+                "building",
+                "campus",
+                "capacity",
+                "createdAt",
+                "description",
+                "floor",
+                "id",
+                "name",
+                "status",
+                "type"
+            ],
+            "properties": {
+                "building": {
+                    "type": "string"
+                },
+                "campus": {
+                    "type": "string"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "floor": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "classroom.ClassroomInput": {
+            "type": "object",
+            "required": [
+                "building",
+                "campus",
+                "capacity",
+                "description",
+                "floor",
+                "name",
+                "status",
+                "type"
+            ],
+            "properties": {
+                "building": {
+                    "type": "string"
+                },
+                "campus": {
+                    "type": "string"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "floor": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "classroom.RepairInput": {
+            "type": "object",
+            "required": [
+                "classroomId",
+                "description",
+                "images"
+            ],
+            "properties": {
+                "classroomId": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "classroom.RepairUpdateInput": {
+            "type": "object",
+            "required": [
+                "remark",
+                "status"
+            ],
+            "properties": {
+                "remark": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "classroom.RepairView": {
+            "type": "object",
+            "required": [
+                "assigneeName",
+                "building",
+                "classroomId",
+                "classroomName",
+                "createdAt",
+                "creatorId",
+                "creatorName",
+                "description",
+                "id",
+                "images",
+                "remark",
+                "status",
+                "updatedAt"
+            ],
+            "properties": {
+                "assigneeId": {
+                    "type": "integer"
+                },
+                "assigneeName": {
+                    "type": "string"
+                },
+                "building": {
+                    "type": "string"
+                },
+                "classroomId": {
+                    "type": "integer"
+                },
+                "classroomName": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "creatorId": {
+                    "type": "integer"
+                },
+                "creatorName": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "course.CatalogCourse": {
+            "type": "object",
+            "required": [
+                "category",
+                "code",
+                "createdAt",
+                "credits",
+                "description",
+                "examType",
+                "id",
+                "name",
+                "totalHours"
+            ],
+            "properties": {
+                "category": {
+                    "description": "课程类别二：专业基础课/专业课/学科基础课/通识教育课",
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "credits": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "examType": {
+                    "description": "考核方式：考试/考查",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "totalHours": {
+                    "type": "integer"
+                }
+            }
+        },
+        "course.CatalogInput": {
+            "type": "object",
+            "required": [
+                "category",
+                "code",
+                "credits",
+                "description",
+                "examType",
+                "name",
+                "totalHours"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "credits": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "examType": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "totalHours": {
+                    "type": "integer"
+                }
+            }
+        },
+        "course.OfferingInput": {
+            "type": "object",
+            "required": [
+                "catalogId",
+                "college",
+                "courseSeq",
+                "maxStudents",
+                "note",
+                "requirement",
+                "semester",
+                "teacher",
+                "teacherId",
+                "teacherTitle",
+                "teachingClassId",
+                "weeklyHours"
+            ],
+            "properties": {
+                "catalogId": {
+                    "type": "integer"
+                },
+                "college": {
+                    "type": "string"
+                },
+                "courseSeq": {
+                    "type": "string"
+                },
+                "maxStudents": {
+                    "type": "integer"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "requirement": {
+                    "type": "string"
+                },
+                "semester": {
+                    "type": "string"
+                },
+                "teacher": {
+                    "type": "string"
+                },
+                "teacherId": {
+                    "type": "string"
+                },
+                "teacherTitle": {
+                    "type": "string"
+                },
+                "teachingClassId": {
+                    "type": "integer"
+                },
+                "weeklyHours": {
+                    "type": "integer"
+                }
+            }
+        },
+        "course.OfferingView": {
+            "type": "object",
+            "required": [
+                "catalogCode",
+                "catalogId",
+                "catalogName",
+                "classNames",
+                "college",
+                "courseSeq",
+                "createdAt",
+                "id",
+                "maxStudents",
+                "note",
+                "requirement",
+                "semester",
+                "teacher",
+                "teacherId",
+                "teacherTitle",
+                "teachingClassId",
+                "teachingClassName",
+                "weeklyHours"
+            ],
+            "properties": {
+                "catalogCode": {
+                    "type": "string"
+                },
+                "catalogId": {
+                    "type": "integer"
+                },
+                "catalogName": {
+                    "type": "string"
+                },
+                "classNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "college": {
+                    "description": "开课学院",
+                    "type": "string"
+                },
+                "courseSeq": {
+                    "description": "课程序号，如 113130004.68",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "maxStudents": {
+                    "description": "人数上限",
+                    "type": "integer"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "requirement": {
+                    "description": "课程类别一：必修/限选/任选",
+                    "type": "string"
+                },
+                "semester": {
+                    "type": "string"
+                },
+                "teacher": {
+                    "type": "string"
+                },
+                "teacherId": {
+                    "description": "教师工号（合上课逗号合并）",
+                    "type": "string"
+                },
+                "teacherTitle": {
+                    "description": "教师职称",
+                    "type": "string"
+                },
+                "teachingClassId": {
+                    "type": "integer"
+                },
+                "teachingClassName": {
+                    "type": "string"
+                },
+                "weeklyHours": {
+                    "description": "周学时",
+                    "type": "integer"
+                }
+            }
+        },
+        "course.SessionInput": {
+            "type": "object",
+            "required": [
+                "classroomId",
+                "date",
+                "note",
+                "offeringId",
+                "periodEnd",
+                "periodStart"
+            ],
+            "properties": {
+                "classroomId": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "offeringId": {
+                    "type": "integer"
+                },
+                "periodEnd": {
+                    "type": "integer"
+                },
+                "periodStart": {
+                    "type": "integer"
+                }
+            }
+        },
+        "course.SessionView": {
+            "type": "object",
+            "required": [
+                "catalogCode",
+                "classNames",
+                "classroomId",
+                "classroomName",
+                "courseName",
+                "createdAt",
+                "date",
+                "id",
+                "note",
+                "offeringId",
+                "periodEnd",
+                "periodStart",
+                "semester",
+                "teacher",
+                "teachingClassName"
+            ],
+            "properties": {
+                "catalogCode": {
+                    "type": "string"
+                },
+                "classNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "classroomId": {
+                    "type": "integer"
+                },
+                "classroomName": {
+                    "type": "string"
+                },
+                "courseName": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "offeringId": {
+                    "type": "integer"
+                },
+                "periodEnd": {
+                    "type": "integer"
+                },
+                "periodStart": {
+                    "type": "integer"
+                },
+                "semester": {
+                    "type": "string"
+                },
+                "teacher": {
+                    "type": "string"
+                },
+                "teachingClassName": {
+                    "type": "string"
+                }
+            }
+        },
+        "course.TimetableDay": {
+            "type": "object",
+            "required": [
+                "date",
+                "dayOfWeek",
+                "regimeName",
+                "slots"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "dayOfWeek": {
+                    "description": "1=Mon .. 7=Sun",
+                    "type": "integer"
+                },
+                "regimeName": {
+                    "type": "string"
+                },
+                "slots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/course.TimetableSlot"
+                    }
+                }
+            }
+        },
+        "course.TimetableSlot": {
+            "type": "object",
+            "required": [
+                "endTime",
+                "periodIndex",
+                "startTime"
+            ],
+            "properties": {
+                "endTime": {
+                    "type": "string"
+                },
+                "periodIndex": {
+                    "type": "integer"
+                },
+                "session": {
+                    "description": "nil when the slot is free",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/course.SessionView"
+                        }
+                    ]
+                },
+                "startTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.BookingsSection": {
+            "type": "object",
+            "required": [
+                "items",
+                "total"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/booking.BookingView"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.PeriodCount": {
+            "type": "object",
+            "required": [
+                "count",
+                "period"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "period": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.RepairsSection": {
+            "type": "object",
+            "required": [
+                "items",
+                "total"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/classroom.RepairView"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.SessionsSection": {
+            "type": "object",
+            "required": [
+                "items",
+                "total"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/course.SessionView"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.Summary": {
+            "type": "object",
+            "required": [
+                "date"
+            ],
+            "properties": {
+                "bookingLoad": {
+                    "description": "BookingLoad is approved booking counts per day over the next 14 days,\nzero-filled. Scope matches the caller: booking:approve sees every\nbooking, everyone else only their own. Visible to every authenticated\nsubject.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/booking.DailyCount"
+                    }
+                },
+                "classroomTotal": {
+                    "description": "ClassroomTotal is the number of managed classrooms (classroom:read).",
+                    "type": "integer"
+                },
+                "date": {
+                    "description": "Date is the echoed \"YYYY-MM-DD\" school day the figures refer to\n(supplied by the client so server/client timezone skew cannot shift\n\"today\").",
+                    "type": "string"
+                },
+                "myBookings": {
+                    "description": "MyBookings is the caller's own approved bookings starting at Date,\nsoonest first. Visible to every authenticated subject: a booking's\ncreator can always see their own reservation.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/booking.BookingView"
+                    }
+                },
+                "openRepairs": {
+                    "description": "OpenRepairs is the unresolved ticket queue, open or processing,\nscoped like the repair list itself: repair:assign sees every ticket,\na plain repair:create only their own (repair:create OR repair:assign).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.RepairsSection"
+                        }
+                    ]
+                },
+                "pendingBookings": {
+                    "description": "PendingBookings is the pending-approval queue (booking:approve).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.BookingsSection"
+                        }
+                    ]
+                },
+                "recentLogs": {
+                    "description": "RecentLogs is the latest audit trail entries (log:read).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/systemlog.LogView"
+                    }
+                },
+                "sessionPeriods": {
+                    "description": "SessionPeriods is today's occupancy histogram: for each period index\n1..max, how many sessions are running (a session spanning periods 1-2\ncounts in both slots). Filled alongside TodaySessions from the same\nquery, so it carries the same course:read gate (course:read).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dashboard.PeriodCount"
+                    }
+                },
+                "todaySessions": {
+                    "description": "TodaySessions is the day's course session count plus a preview of the\nfirst sessions by period (course:read).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.SessionsSection"
+                        }
+                    ]
+                }
+            }
+        },
         "httpx.ErrorResponse": {
             "type": "object",
+            "required": [
+                "error"
+            ],
             "properties": {
                 "error": {
                     "type": "string",
@@ -877,6 +7494,12 @@ const docTemplate = `{
         },
         "httpx.Paged": {
             "type": "object",
+            "required": [
+                "items",
+                "page",
+                "pageSize",
+                "total"
+            ],
             "properties": {
                 "items": {},
                 "page": {
@@ -887,6 +7510,1330 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "iam.GroupBrief": {
+            "type": "object",
+            "required": [
+                "id",
+                "name"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.GroupDetail": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "description",
+                "id",
+                "memberCount",
+                "members",
+                "name",
+                "roles"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "memberCount": {
+                    "type": "integer"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.GroupMemberView"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.RoleBrief"
+                    }
+                }
+            }
+        },
+        "iam.GroupInput": {
+            "type": "object",
+            "required": [
+                "description",
+                "members",
+                "name",
+                "roles"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "iam.GroupMemberView": {
+            "type": "object",
+            "required": [
+                "displayName",
+                "id",
+                "username"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.GroupView": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "description",
+                "id",
+                "memberCount",
+                "name"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "memberCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.PermGrantInput": {
+            "type": "object",
+            "required": [
+                "permission"
+            ],
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "permission": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.PermGrantView": {
+            "type": "object",
+            "required": [
+                "permission"
+            ],
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "permission": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.Role": {
+            "type": "object",
+            "required": [
+                "code",
+                "description",
+                "id",
+                "isSystem",
+                "name",
+                "permissions"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isSystem": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "iam.RoleBrief": {
+            "type": "object",
+            "required": [
+                "code",
+                "id",
+                "name"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.RoleGrantInput": {
+            "type": "object",
+            "required": [
+                "roleCode"
+            ],
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "roleCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "iam.RoleGrantView": {
+            "type": "object",
+            "required": [
+                "code",
+                "name",
+                "roleId"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "roleId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "iam.RoleInput": {
+            "type": "object",
+            "required": [
+                "code",
+                "description",
+                "name",
+                "permissions"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "iam.UserGrantView": {
+            "type": "object",
+            "required": [
+                "groups",
+                "permissions",
+                "roles"
+            ],
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.GroupBrief"
+                    }
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.PermGrantView"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.RoleGrantView"
+                    }
+                }
+            }
+        },
+        "importer.Job": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "errorReport",
+                "failedRows",
+                "filename",
+                "id",
+                "status",
+                "succeededRows",
+                "totalRows",
+                "type",
+                "userId"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "errorReport": {
+                    "type": "string"
+                },
+                "failedRows": {
+                    "type": "integer"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "finishedAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "succeededRows": {
+                    "type": "integer"
+                },
+                "totalRows": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "importer.JobAccepted": {
+            "type": "object",
+            "required": [
+                "id",
+                "status"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "importer.JobErrors": {
+            "type": "object",
+            "required": [
+                "errors"
+            ],
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/importer.RowError"
+                    }
+                }
+            }
+        },
+        "importer.PreviewRowsPage": {
+            "type": "object",
+            "required": [
+                "page",
+                "pageSize",
+                "rows",
+                "total"
+            ],
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "importer.RowError": {
+            "type": "object",
+            "required": [
+                "error",
+                "row"
+            ],
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "integer"
+                }
+            }
+        },
+        "importer.SplitJobRef": {
+            "type": "object",
+            "required": [
+                "id",
+                "status",
+                "type"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "importer.SplitResult": {
+            "type": "object",
+            "required": [
+                "jobs",
+                "stats",
+                "warnings"
+            ],
+            "properties": {
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/importer.SplitJobRef"
+                    }
+                },
+                "stats": {
+                    "$ref": "#/definitions/jwc.Stats"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "jwc.Stats": {
+            "type": "object",
+            "required": [
+                "adminClasses",
+                "catalogCourses",
+                "classrooms",
+                "noTeacherFilled",
+                "offerings",
+                "rows",
+                "sessions",
+                "skippedEmptyAdmin",
+                "skippedParallel",
+                "teachingClasses",
+                "warnings"
+            ],
+            "properties": {
+                "adminClasses": {
+                    "description": "去重后行政班数",
+                    "type": "integer"
+                },
+                "catalogCourses": {
+                    "description": "去重后课程数",
+                    "type": "integer"
+                },
+                "classrooms": {
+                    "description": "去重后教室数",
+                    "type": "integer"
+                },
+                "noTeacherFilled": {
+                    "description": "无教师已填「未安排」的开课数",
+                    "type": "integer"
+                },
+                "offerings": {
+                    "description": "开课数",
+                    "type": "integer"
+                },
+                "rows": {
+                    "description": "源表数据行数",
+                    "type": "integer"
+                },
+                "sessions": {
+                    "description": "展开后课次数",
+                    "type": "integer"
+                },
+                "skippedEmptyAdmin": {
+                    "description": "空行政班跳过的开课数",
+                    "type": "integer"
+                },
+                "skippedParallel": {
+                    "description": "平行教学班跳过的开课数",
+                    "type": "integer"
+                },
+                "teachingClasses": {
+                    "description": "教学班数",
+                    "type": "integer"
+                },
+                "warnings": {
+                    "description": "人类可读告警",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "mail.MaskedSettings": {
+            "type": "object",
+            "required": [
+                "enabled",
+                "encryption",
+                "fromAddress",
+                "fromName",
+                "host",
+                "password",
+                "passwordSet",
+                "port",
+                "username"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "encryption": {
+                    "type": "string"
+                },
+                "fromAddress": {
+                    "type": "string"
+                },
+                "fromName": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "passwordSet": {
+                    "type": "boolean"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "mail.Settings": {
+            "type": "object",
+            "required": [
+                "enabled",
+                "encryption",
+                "fromAddress",
+                "fromName",
+                "host",
+                "password",
+                "port",
+                "username"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "encryption": {
+                    "type": "string"
+                },
+                "fromAddress": {
+                    "type": "string"
+                },
+                "fromName": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "observation.ObservationInput": {
+            "type": "object",
+            "required": [
+                "courseId",
+                "formData",
+                "isAnonymous",
+                "observeDate",
+                "sections",
+                "templateType"
+            ],
+            "properties": {
+                "classroomId": {
+                    "type": "integer"
+                },
+                "courseId": {
+                    "type": "integer"
+                },
+                "formData": {
+                    "type": "object"
+                },
+                "isAnonymous": {
+                    "type": "boolean"
+                },
+                "observeDate": {
+                    "type": "string"
+                },
+                "occurrenceId": {
+                    "type": "integer"
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "templateType": {
+                    "type": "string"
+                }
+            }
+        },
+        "observation.ObservationView": {
+            "type": "object",
+            "required": [
+                "classroomName",
+                "content",
+                "courseCode",
+                "courseId",
+                "courseName",
+                "courseSnapshot",
+                "createdAt",
+                "formData",
+                "id",
+                "isAnonymous",
+                "observeDate",
+                "observerId",
+                "observerName",
+                "remark",
+                "scores",
+                "sections",
+                "status",
+                "teacher",
+                "teachingClassName",
+                "templateType",
+                "updatedAt"
+            ],
+            "properties": {
+                "classroomId": {
+                    "description": "nullable FK -\u003e classrooms",
+                    "type": "integer"
+                },
+                "classroomName": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "courseCode": {
+                    "type": "string"
+                },
+                "courseId": {
+                    "description": "FK -\u003e course_offerings",
+                    "type": "integer"
+                },
+                "courseName": {
+                    "type": "string"
+                },
+                "courseSnapshot": {
+                    "type": "object"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "exportedAt": {
+                    "type": "string"
+                },
+                "formData": {
+                    "type": "object"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isAnonymous": {
+                    "type": "boolean"
+                },
+                "observeDate": {
+                    "description": "\"YYYY-MM-DD\"",
+                    "type": "string"
+                },
+                "observerId": {
+                    "description": "FK -\u003e users",
+                    "type": "integer"
+                },
+                "observerName": {
+                    "type": "string"
+                },
+                "occurrenceId": {
+                    "description": "nullable FK -\u003e course_sessions",
+                    "type": "integer"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "scores": {
+                    "type": "object"
+                },
+                "sections": {
+                    "description": "normalized period indices",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "description": "draft | submitted",
+                    "type": "string"
+                },
+                "teacher": {
+                    "type": "string"
+                },
+                "teachingClassName": {
+                    "type": "string"
+                },
+                "templateType": {
+                    "type": "string"
+                },
+                "totalScore": {
+                    "type": "number"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "schedule.Period": {
+            "type": "object",
+            "required": [
+                "endTime",
+                "id",
+                "periodIndex",
+                "regimeId",
+                "startTime"
+            ],
+            "properties": {
+                "endTime": {
+                    "description": "\"HH:MM\"",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "periodIndex": {
+                    "type": "integer"
+                },
+                "regimeId": {
+                    "type": "integer"
+                },
+                "startTime": {
+                    "description": "\"HH:MM\"",
+                    "type": "string"
+                }
+            }
+        },
+        "schedule.PeriodInput": {
+            "type": "object",
+            "required": [
+                "endTime",
+                "periodIndex",
+                "startTime"
+            ],
+            "properties": {
+                "endTime": {
+                    "type": "string"
+                },
+                "periodIndex": {
+                    "type": "integer"
+                },
+                "startTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "schedule.PeriodsInput": {
+            "type": "object",
+            "required": [
+                "periods"
+            ],
+            "properties": {
+                "periods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schedule.PeriodInput"
+                    }
+                }
+            }
+        },
+        "schedule.Regime": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "effectiveDay",
+                "effectiveMonth",
+                "id",
+                "name",
+                "periods"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "effectiveDay": {
+                    "type": "integer"
+                },
+                "effectiveMonth": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "periods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schedule.Period"
+                    }
+                }
+            }
+        },
+        "schedule.RegimeInput": {
+            "type": "object",
+            "required": [
+                "effectiveDay",
+                "effectiveMonth",
+                "name"
+            ],
+            "properties": {
+                "effectiveDay": {
+                    "type": "integer"
+                },
+                "effectiveMonth": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "storage.MaskedSettings": {
+            "type": "object",
+            "required": [
+                "accessKey",
+                "bucket",
+                "enabled",
+                "endpoint",
+                "publicBaseUrl",
+                "region",
+                "secretKey",
+                "secretKeySet",
+                "usePathStyle",
+                "useSsl"
+            ],
+            "properties": {
+                "accessKey": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "publicBaseUrl": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "secretKey": {
+                    "type": "string"
+                },
+                "secretKeySet": {
+                    "type": "boolean"
+                },
+                "usePathStyle": {
+                    "type": "boolean"
+                },
+                "useSsl": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "storage.Settings": {
+            "type": "object",
+            "required": [
+                "accessKey",
+                "bucket",
+                "enabled",
+                "endpoint",
+                "publicBaseUrl",
+                "region",
+                "secretKey",
+                "usePathStyle",
+                "useSsl"
+            ],
+            "properties": {
+                "accessKey": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "publicBaseUrl": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "secretKey": {
+                    "type": "string"
+                },
+                "usePathStyle": {
+                    "type": "boolean"
+                },
+                "useSsl": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "systemlog.LogView": {
+            "type": "object",
+            "required": [
+                "actorName",
+                "clientIp",
+                "createdAt",
+                "id",
+                "method",
+                "path",
+                "statusCode",
+                "summary"
+            ],
+            "properties": {
+                "actorId": {
+                    "description": "null when the row has no actor",
+                    "type": "integer"
+                },
+                "actorName": {
+                    "type": "string"
+                },
+                "clientIp": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "systemlog.Settings": {
+            "type": "object",
+            "required": [
+                "retentionDays",
+                "retentionEnabled"
+            ],
+            "properties": {
+                "retentionDays": {
+                    "type": "integer"
+                },
+                "retentionEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "user.AdminClass": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "grade",
+                "id",
+                "name",
+                "note"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "grade": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.AdminClassInput": {
+            "type": "object",
+            "required": [
+                "grade",
+                "name",
+                "note"
+            ],
+            "properties": {
+                "grade": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.ChangePasswordInput": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.ClassRef": {
+            "type": "object",
+            "required": [
+                "grade",
+                "id",
+                "name"
+            ],
+            "properties": {
+                "grade": {
+                    "description": "Grade is included so the UI can render the full \"2024级/计算机244\" label.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.CreateUserInput": {
+            "type": "object",
+            "required": [
+                "displayName",
+                "password",
+                "type",
+                "username"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.StudentProfileInput": {
+            "type": "object",
+            "required": [
+                "note",
+                "studentNo",
+                "userId"
+            ],
+            "properties": {
+                "note": {
+                    "type": "string"
+                },
+                "studentNo": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "user.StudentProfileView": {
+            "type": "object",
+            "required": [
+                "adminClassId",
+                "displayName",
+                "note",
+                "studentNo",
+                "userId",
+                "username"
+            ],
+            "properties": {
+                "adminClassId": {
+                    "type": "integer"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "studentNo": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.TeachingClassInput": {
+            "type": "object",
+            "required": [
+                "classIds",
+                "name",
+                "note"
+            ],
+            "properties": {
+                "classIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.TeachingClassView": {
+            "type": "object",
+            "required": [
+                "classes",
+                "createdAt",
+                "id",
+                "name",
+                "note"
+            ],
+            "properties": {
+                "classes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user.ClassRef"
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateUserInput": {
+            "type": "object",
+            "required": [
+                "displayName",
+                "type"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.User": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "displayName",
+                "id",
+                "type",
+                "username"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.GroupBrief"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.RoleBrief"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UserPermissionsInput": {
+            "type": "object",
+            "required": [
+                "permissions"
+            ],
+            "properties": {
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.PermGrantInput"
+                    }
+                }
+            }
+        },
+        "user.UserRolesInput": {
+            "type": "object",
+            "required": [
+                "roles"
+            ],
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/iam.RoleGrantInput"
+                    }
                 }
             }
         }

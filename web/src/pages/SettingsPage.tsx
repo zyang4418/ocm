@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,40 +19,43 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
-import { THEME_PREFERENCES, useTheme } from '../theme/ThemeContext'
+import { THEME_PREFERENCES, useTheme, type ThemePreference } from '../theme/ThemeContext'
+import type { AiMaskedSettings, MailMaskedSettings, StorageMaskedSettings } from '../types/api'
 
 // useSettings loads one settings endpoint into a form, saves via PUT, and
 // re-applies the masked response over the form (so a stored secret shows as
-// passwordSet rather than its value).
-function useSettings(path, defaults, successText) {
+// passwordSet rather than its value). The form carries the masked shape
+// (Settings + the *Set secret marker), which the PUT body also sends — the
+// backend decoder ignores the extra marker field.
+function useSettings<T>(path: string, defaults: T, successText: string) {
   const { token } = useAuth()
-  const [form, setForm] = useState(defaults)
+  const [form, setForm] = useState<T>(defaults)
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    apiFetch(path, { token })
+    apiFetch<T>(path, { token })
       .then((data) => {
         setForm({ ...defaults, ...data })
         setLoaded(true)
       })
-      .catch((err) => setError(err.message))
+      .catch((err: Error) => setError(err.message))
   }, [path, token])
 
   const save = () => {
     setSaving(true)
     setNotice('')
-    apiFetch(path, { method: 'PUT', body: form, token })
+    apiFetch<T>(path, { method: 'PUT', body: form, token })
       .then((data) => {
         setForm({ ...form, ...data })
         setNotice(successText)
       })
-      .catch((err) => setError(err.message))
+      .catch((err: Error) => setError(err.message))
       .finally(() => setSaving(false))
   }
-  return { form, setForm, loaded, saving, error, notice, save }
+  return { form, setForm: setForm as Dispatch<SetStateAction<T>>, loaded, saving, error, notice, save }
 }
 
 // Appearance is a client-side preference (localStorage), unlike the server
@@ -70,7 +73,7 @@ function AppearanceSection() {
         legendText={t('appearance.label')}
         name="theme-preference"
         valueSelected={preference}
-        onChange={(value) => setPreference(value)}
+        onChange={(value) => setPreference(value as ThemePreference)}
       >
         {THEME_PREFERENCES.map((pref) => (
           <RadioButton
@@ -85,7 +88,7 @@ function AppearanceSection() {
   )
 }
 
-const mailDefaults = {
+const MAIL_DEFAULTS: MailMaskedSettings = {
   enabled: false,
   host: '',
   port: 465,
@@ -97,9 +100,9 @@ const mailDefaults = {
   encryption: 'ssl',
 }
 
-function MailSection({ disabled }) {
+function MailSection({ disabled }: { disabled: boolean }) {
   const { t } = useTranslation('settings')
-  const s = useSettings('/api/settings/email', mailDefaults, t('mail.savedNotice'))
+  const s = useSettings<MailMaskedSettings>('/api/settings/email', MAIL_DEFAULTS, t('mail.savedNotice'))
   const { form, setForm } = s
   // Mirrors the server-side validation for enabled services so the save
   // button stays disabled on invalid input.
@@ -198,7 +201,7 @@ function MailSection({ disabled }) {
   )
 }
 
-const storageDefaults = {
+const STORAGE_DEFAULTS: StorageMaskedSettings = {
   enabled: false,
   endpoint: '',
   region: '',
@@ -211,9 +214,9 @@ const storageDefaults = {
   publicBaseUrl: '',
 }
 
-function StorageSection({ disabled }) {
+function StorageSection({ disabled }: { disabled: boolean }) {
   const { t } = useTranslation('settings')
-  const s = useSettings('/api/settings/storage', storageDefaults, t('storage.savedNotice'))
+  const s = useSettings<StorageMaskedSettings>('/api/settings/storage', STORAGE_DEFAULTS, t('storage.savedNotice'))
   const { form, setForm } = s
   // Mirrors the server-side validation for enabled services so the save
   // button stays disabled on invalid input.
@@ -310,7 +313,7 @@ function StorageSection({ disabled }) {
   )
 }
 
-function isHttpUrl(value) {
+function isHttpUrl(value: string): boolean {
   try {
     const u = new URL(value)
     return u.protocol === 'http:' || u.protocol === 'https:'
@@ -319,7 +322,7 @@ function isHttpUrl(value) {
   }
 }
 
-const aiDefaults = {
+const AI_DEFAULTS: AiMaskedSettings = {
   enabled: false,
   baseUrl: '',
   model: '',
@@ -327,9 +330,9 @@ const aiDefaults = {
   apiKeySet: false,
 }
 
-function AiSection({ disabled }) {
+function AiSection({ disabled }: { disabled: boolean }) {
   const { t } = useTranslation('settings')
-  const s = useSettings('/api/settings/ai', aiDefaults, t('ai.savedNotice'))
+  const s = useSettings<AiMaskedSettings>('/api/settings/ai', AI_DEFAULTS, t('ai.savedNotice'))
   const { form, setForm } = s
   // Mirrors the server-side validation for enabled services so the save
   // button stays disabled on invalid input.

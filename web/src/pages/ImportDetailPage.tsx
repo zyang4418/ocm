@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Breadcrumb, BreadcrumbItem, Button, Column, Grid, InlineNotification, Tag } from '@carbon/react'
+import { Breadcrumb, BreadcrumbItem, Button, Column, Grid, InlineNotification, Tag, type TagProps } from '@carbon/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ImportPreviewTable from '../components/ImportPreviewTable'
+import type { ImportJob } from '../types/api'
 
-const statusKind = {
+const STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   pending: 'blue',
   processing: 'blue',
   preview: 'purple',
@@ -26,7 +27,7 @@ export default function ImportDetailPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
 
-  const [job, setJob] = useState(null)
+  const [job, setJob] = useState<ImportJob | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [actionPending, setActionPending] = useState(false)
@@ -34,12 +35,12 @@ export default function ImportDetailPage() {
 
   const load = async () => {
     try {
-      const v = await apiFetch(`/api/imports/${id}`, { token })
+      const v = await apiFetch<ImportJob>(`/api/imports/${id}`, { token })
       setJob(v)
       setLoadError('')
       setLoading(false)
     } catch (e) {
-      setLoadError(e.message)
+      setLoadError((e as Error).message)
       setLoading(false)
     }
   }
@@ -55,7 +56,7 @@ export default function ImportDetailPage() {
     if (!job || (job.status !== 'pending' && job.status !== 'processing')) return undefined
     const timer = setInterval(async () => {
       try {
-        const v = await apiFetch(`/api/imports/${id}`, { token })
+        const v = await apiFetch<ImportJob>(`/api/imports/${id}`, { token })
         setJob(v)
       } catch {
         // keep the last known job on a transient poll failure
@@ -64,7 +65,7 @@ export default function ImportDetailPage() {
     return () => clearInterval(timer)
   }, [job?.status, id, token])
 
-  const typeLabel = (type) => (type ? t('types.' + type + '.label', { defaultValue: type }) : '-')
+  const typeLabel = (type?: string) => (type ? t('types.' + type + '.label', { defaultValue: type }) : '-')
 
   const handleCommit = async () => {
     setActionPending(true)
@@ -73,7 +74,7 @@ export default function ImportDetailPage() {
       await apiFetch(`/api/imports/${id}/commit`, { method: 'POST', token })
       await load() // flip to processing; the poll effect takes over
     } catch (e) {
-      setActionError(e.message)
+      setActionError((e as Error).message)
     } finally {
       setActionPending(false)
     }
@@ -86,15 +87,14 @@ export default function ImportDetailPage() {
       await apiFetch(`/api/imports/${id}/cancel`, { method: 'POST', token })
       navigate('/imports')
     } catch (e) {
-      setActionError(e.message)
+      setActionError((e as Error).message)
     } finally {
       setActionPending(false)
     }
   }
 
   const canCommit = job && (job.status === 'preview' || job.status === 'failed')
-  const commitDisabled =
-    actionPending || (job?.status === 'preview' && (job?.succeededRows ?? 0) === 0)
+  const commitDisabled = actionPending || (job?.status === 'preview' && (job?.succeededRows ?? 0) === 0)
 
   return (
     <Grid fullWidth className="courses-page">
@@ -102,13 +102,19 @@ export default function ImportDetailPage() {
         <Breadcrumb noTrailingSlash aria-label={t('aria.breadcrumb', { ns: 'common' })}>
           <BreadcrumbItem
             href="/"
-            onClick={(e) => { e.preventDefault(); navigate('/') }}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/')
+            }}
           >
             {t('breadcrumb.home')}
           </BreadcrumbItem>
           <BreadcrumbItem
             href="/imports"
-            onClick={(e) => { e.preventDefault(); navigate('/imports') }}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/imports')
+            }}
           >
             {t('breadcrumb.current')}
           </BreadcrumbItem>
@@ -140,7 +146,7 @@ export default function ImportDetailPage() {
               className="imports-page__detail-head"
               style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.5rem' }}
             >
-              <Tag type={statusKind[job.status] ?? 'gray'} size="sm">
+              <Tag type={STATUS_KIND[job.status] ?? 'gray'} size="sm">
                 {t('status.' + job.status, { defaultValue: job.status })}
               </Tag>
               <span style={{ color: 'var(--cds-text-secondary)' }}>{job.filename || t('unnamed')}</span>

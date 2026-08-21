@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -22,21 +22,31 @@ import {
   Tag,
   TextArea,
   TextInput,
+  type DataTableHeader,
 } from '@carbon/react'
 import { Add, Edit, TrashCan } from '@carbon/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
+import type { CatalogPermission, Role } from '../types/api'
 
-const emptyForm = { code: '', name: '', description: '', permissions: {} }
+// Form state: permissions is a checkbox map keyed by permission code.
+interface RoleForm {
+  code: string
+  name: string
+  description: string
+  permissions: Record<string, boolean>
+}
+
+const emptyForm: RoleForm = { code: '', name: '', description: '', permissions: {} }
 
 export default function RolesPage() {
   const { t } = useTranslation('roles')
   const { token } = useAuth()
   const navigate = useNavigate()
 
-  const headers = [
+  const headers: DataTableHeader[] = [
     { key: 'id', header: t('field.id') },
     { key: 'code', header: t('field.code') },
     { key: 'name', header: t('field.name') },
@@ -45,22 +55,22 @@ export default function RolesPage() {
     { key: 'isSystem', header: t('field.isSystem') },
   ]
 
-  const [roles, setRoles] = useState([])
-  const [catalog, setCatalog] = useState([])
+  const [roles, setRoles] = useState<Role[]>([])
+  const [catalog, setCatalog] = useState<CatalogPermission[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState(emptyForm)
+  const [createForm, setCreateForm] = useState<RoleForm>(emptyForm)
   const [createError, setCreateError] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const [editTarget, setEditTarget] = useState(null)
-  const [editForm, setEditForm] = useState(emptyForm)
+  const [editTarget, setEditTarget] = useState<Role | null>(null)
+  const [editForm, setEditForm] = useState<RoleForm>(emptyForm)
   const [editError, setEditError] = useState('')
   const [editing, setEditing] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState<Role | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
 
@@ -69,13 +79,13 @@ export default function RolesPage() {
       setLoading(true)
       setLoadError('')
       const [rolesData, catalogData] = await Promise.all([
-        apiFetch('/api/roles', { token }),
-        apiFetch('/api/permissions', { token }),
+        apiFetch<Role[]>('/api/roles', { token }),
+        apiFetch<CatalogPermission[]>('/api/permissions', { token }),
       ])
-      setRoles(rolesData)
-      setCatalog(catalogData)
+      setRoles(Array.isArray(rolesData) ? rolesData : [])
+      setCatalog(Array.isArray(catalogData) ? catalogData : [])
     } catch (err) {
-      setLoadError(err.message)
+      setLoadError((err as Error).message)
     } finally {
       setLoading(false)
     }
@@ -87,12 +97,12 @@ export default function RolesPage() {
   }, [token])
 
   // permissionChecked reads a permission key from a form's permission map.
-  const permissionChecked = (form, code) => Boolean(form.permissions[code])
+  const permissionChecked = (form: RoleForm, code: string) => Boolean(form.permissions[code])
 
-  const togglePermission = (form, setForm, code, checked) =>
+  const togglePermission = (form: RoleForm, setForm: Dispatch<SetStateAction<RoleForm>>, code: string, checked: boolean) =>
     setForm({ ...form, permissions: { ...form.permissions, [code]: checked } })
 
-  const buildPermissions = (form) =>
+  const buildPermissions = (form: RoleForm) =>
     Object.entries(form.permissions)
       .filter(([, checked]) => checked)
       .map(([code]) => code)
@@ -128,21 +138,23 @@ export default function RolesPage() {
       setCreateOpen(false)
       load()
     } catch (err) {
-      setCreateError(err.message)
+      setCreateError((err as Error).message)
     } finally {
       setCreating(false)
     }
   }
 
-  const openEdit = (role) => {
+  const openEdit = (role: Role | undefined) => {
+    if (!role) return
     setEditTarget(role)
-    const permissions = {}
+    const permissions: Record<string, boolean> = {}
     for (const perm of role.permissions) permissions[perm] = true
     setEditForm({ code: role.code, name: role.name, description: role.description, permissions })
     setEditError('')
   }
 
   const handleEdit = async () => {
+    if (!editTarget) return
     if (!editForm.name.trim()) {
       setEditError(t('validation.nameRequired'))
       return
@@ -162,13 +174,14 @@ export default function RolesPage() {
       setEditTarget(null)
       load()
     } catch (err) {
-      setEditError(err.message)
+      setEditError((err as Error).message)
     } finally {
       setEditing(false)
     }
   }
 
   const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
@@ -176,14 +189,13 @@ export default function RolesPage() {
       setDeleteTarget(null)
       load()
     } catch (err) {
-      setDeleteError(err.message)
+      setDeleteError((err as Error).message)
     } finally {
       setDeleting(false)
     }
   }
 
   const catalogGroups = groupCatalog(catalog)
-  const displayRows = roles.map((r) => ({ ...r, isSystem: r.isSystem }))
 
   return (
     <Grid fullWidth className="roles-page">
@@ -216,7 +228,7 @@ export default function RolesPage() {
           />
         )}
 
-        <DataTable rows={displayRows} headers={headers}>
+        <DataTable rows={roles.map((r) => ({ ...r, id: String(r.id) }))} headers={headers}>
           {({ rows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
             <TableContainer title={t('table.title')} description={t('table.description', { count: roles.length })}>
               <TableToolbar>
@@ -230,7 +242,7 @@ export default function RolesPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
@@ -251,15 +263,16 @@ export default function RolesPage() {
                       const role = roles.find((x) => String(x.id) === String(row.id))
                       const isSystem = Boolean(role?.isSystem)
                       return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
                             if (cell.info.header === 'permissions') {
+                              const value = (cell.value ?? []) as string[]
                               return (
                                 <TableCell key={cell.id}>
-                                  <Tag type={cell.value.includes('*') ? 'purple' : 'blue'} size="sm">
-                                    {cell.value.includes('*')
+                                  <Tag type={value.includes('*') ? 'purple' : 'blue'} size="sm">
+                                    {value.includes('*')
                                       ? t('permissions.all')
-                                      : t('permissions.count', { count: cell.value.length })}
+                                      : t('permissions.count', { count: value.length })}
                                   </Tag>
                                 </TableCell>
                               )
@@ -273,7 +286,7 @@ export default function RolesPage() {
                                 </TableCell>
                               )
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>
+                            return <TableCell key={cell.id}>{cell.value as string}</TableCell>
                           })}
                           <TableCell>
                             <div className="roles-page__actions">
@@ -294,7 +307,7 @@ export default function RolesPage() {
                                 iconDescription={t('action.delete', { ns: 'common' })}
                                 disabled={isSystem}
                                 onClick={() => {
-                                  setDeleteTarget(role)
+                                  setDeleteTarget(role ?? null)
                                   setDeleteError('')
                                 }}
                               />
@@ -463,11 +476,15 @@ export default function RolesPage() {
 
 // groupCatalog buckets the permission catalog by categoryName, preserving
 // the catalog's sorted order within each bucket.
-function groupCatalog(catalog) {
-  const groups = new Map()
+function groupCatalog(catalog: CatalogPermission[]): Array<{ name: string; items: CatalogPermission[] }> {
+  const groups = new Map<string, CatalogPermission[]>()
   for (const perm of catalog) {
-    if (!groups.has(perm.categoryName)) groups.set(perm.categoryName, [])
-    groups.get(perm.categoryName).push(perm)
+    const bucket = groups.get(perm.categoryName)
+    if (bucket) {
+      bucket.push(perm)
+    } else {
+      groups.set(perm.categoryName, [perm])
+    }
   }
   return Array.from(groups, ([name, items]) => ({ name, items }))
 }
