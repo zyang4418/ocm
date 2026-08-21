@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,6 +14,9 @@ import {
   TableBody,
   TableCell,
   TableContainer,
+  TableExpandHeader,
+  TableExpandedRow,
+  TableExpandRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -35,13 +38,17 @@ import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
 import ListPagination from '../components/ListPagination'
+import SessionsMiniTable, { type SessionsCacheEntry } from '../components/SessionsMiniTable'
+import SessionsPanel from '../components/SessionsPanel'
 import usePagedList, { type PagedList } from '../hooks/usePagedList'
 import type {
   CatalogCourse,
   CatalogInput,
+  Classroom,
   OfferingInput,
   OfferingView,
   Paged,
+  SessionView,
   TeachingClassView,
 } from '../types/api'
 
@@ -90,7 +97,17 @@ export default function CourseManagementPage() {
   // maximum page. optionsKey re-triggers the fetch after catalog mutations.
   const [catalogOptions, setCatalogOptions] = useState<CatalogCourse[]>([])
   const [teachingClasses, setTeachingClasses] = useState<TeachingClassView[]>([])
+  // Dropdown options for the session modal and the sessions tab (near-full lists).
+  const [offeringOptions, setOfferingOptions] = useState<OfferingView[]>([])
+  const [classroomOptions, setClassroomOptions] = useState<Classroom[]>([])
   const [optionsKey, setOptionsKey] = useState(0)
+  // L3 sessions: per-offering cache backing the offerings table's expanded rows.
+  const [sessionsCache, setSessionsCache] = useState<Record<string, SessionsCacheEntry>>({})
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  // Controlled tabs so an expanded row's "view all" link can jump to the
+  // sessions tab with the offering filter pre-applied.
+  const [tabIndex, setTabIndex] = useState(0)
+  const [pendingSessionsFilter, setPendingSessionsFilter] = useState<string | null>(null)
   // Export errors are separate from the list fetches (the hooks own theirs).
   const [exportError, setExportError] = useState('')
   const error = offerings.error || catalogList.error || exportError
@@ -119,16 +136,22 @@ export default function CourseManagementPage() {
     Promise.all([
       apiFetch<Paged<CatalogCourse>>('/api/courses?page_size=500', { token }),
       apiFetch<Paged<TeachingClassView>>('/api/teaching-classes?page_size=500', { token }),
+      apiFetch<Paged<OfferingView>>('/api/offerings?page_size=500', { token }),
+      apiFetch<Paged<Classroom>>('/api/classrooms?page_size=500', { token }),
     ])
-      .then(([cats, tcs]) => {
+      .then(([cats, tcs, offs, cls]) => {
         if (cancelled) return
         setCatalogOptions(Array.isArray(cats?.items) ? cats.items : [])
         setTeachingClasses(Array.isArray(tcs?.items) ? tcs.items : [])
+        setOfferingOptions(Array.isArray(offs?.items) ? offs.items : [])
+        setClassroomOptions(Array.isArray(cls?.items) ? cls.items : [])
       })
       .catch(() => {
         if (!cancelled) {
           setCatalogOptions([])
           setTeachingClasses([])
+          setOfferingOptions([])
+          setClassroomOptions([])
         }
       })
     return () => {
@@ -283,6 +306,64 @@ export default function CourseManagementPage() {
     }
   }
 
+  // ---- L3 sessions: expanded rows + cache ----
+
+  // Fetch one offering's sessions into the cache (page_size=500 covers a
+  // semester's ~60-90 sessions). Existing data stays visible while reloading.
+  const loadSessions = useCallback(
+    async (offeringId: string) => {
+      setSessionsCache((prev) => ({
+        ...prev,
+        [offeringId]: { data: prev[offeringId]?.data ?? [], loading: true, error: '' },
+      }))
+      try {
+        const data = await apiFetch<Paged<SessionView>>(`/api/sessions?offering_id=${offeringId}&page_size=500`, { token })
+        setSessionsCache((prev) => ({
+          ...prev,
+          [offeringId]: { data: Array.isArray(data?.items) ? data.items : [], loading: false, error: '' },
+        }))
+      } catch (err) {
+        setSessionsCache((prev) => ({
+          ...prev,
+          [offeringId]: { data: [], loading: false, error: (err as Error).message },
+        }))
+      }
+    },
+    [token],
+  )
+
+  // Toggling an un-cached row kicks off its lazy fetch; cached rows re-expand
+  // without another request. Multiple rows may be expanded at once.
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    if (!sessionsCache[id]) void loadSessions(id)
+  }
+
+  // Session mutations (from the expanded rows or the sessions tab) refresh the
+  // cache of every affected offering, keeping the two views in sync.
+  const refreshSessionsCache = (offeringId?: number, prevOfferingId?: number) => {
+    for (const id of [offeringId, prevOfferingId]) {
+      if (id && sessionsCache[String(id)]) void loadSessions(String(id))
+    }
+  }
+
+  // A new page/search/page-size means new rows: drop expansions but keep the
+  // cache so paging back re-expands without another request.
+  useEffect(() => {
+    setExpandedIds(new Set())
+  }, [offerings.page, offerings.q, offerings.pageSize])
+
+  // "View all" from an expanded row: switch to the sessions tab pre-filtered.
+  const viewAllSessions = (offeringId: number) => {
+    setPendingSessionsFilter(String(offeringId))
+    setTabIndex(2)
+  }
+
   const renderActions = (kind: DeleteTarget['kind'], row: OfferingView | CatalogCourse) =>
     canManage && (
       <TableCell>
@@ -352,6 +433,7 @@ export default function CourseManagementPage() {
           <Table {...getTableProps()}>
             <TableHead>
               <TableRow>
+                {kind === 'offering' && <TableExpandHeader />}
                 {th.map((h) => (
                   <TableHeader {...getHeaderProps({ header: h })}>
                     {h.header}
@@ -361,38 +443,89 @@ export default function CourseManagementPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.loading ? (
-                <TableRow>
-                  <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>{t('empty.loading')}</TableCell>
-                </TableRow>
-              ) : rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={headers.length + (canManage ? 1 : 0)}>
-                    {list.q ? t('empty.noResults', { ns: 'common' }) : t('empty.noData', { ns: 'common' })}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                rows.map((row) => {
-                  const item = list.items.find((x) => String(x.id) === String(row.id))
-                  if (!item) return null
+              {(() => {
+                // Expand column (offerings) + data columns + optional actions.
+                const colSpan = headers.length + (kind === 'offering' ? 1 : 0) + (canManage ? 1 : 0)
+                if (list.loading) {
                   return (
-                    <TableRow {...getRowProps({ row })}>
-                      {row.cells.map((cell) => {
-                        if (cell.info.header === 'classNames') {
-                          const value = cell.value as string[]
-                          return (
-                            <TableCell key={cell.id}>
-                              {Array.isArray(value) && value.length ? listFmt.format(value) : '-'}
-                            </TableCell>
-                          )
-                        }
-                        return <TableCell key={cell.id}>{(cell.value as string) || '-'}</TableCell>
-                      })}
-                      {renderActions(kind, item)}
+                    <TableRow>
+                      <TableCell colSpan={colSpan}>{t('empty.loading')}</TableCell>
                     </TableRow>
                   )
+                }
+                if (rows.length === 0) {
+                  return (
+                    <TableRow>
+                      <TableCell colSpan={colSpan}>
+                        {list.q ? t('empty.noResults', { ns: 'common' }) : t('empty.noData', { ns: 'common' })}
+                      </TableCell>
+                    </TableRow>
+                  )
+                }
+                return rows.map((row) => {
+                  const item = list.items.find((x) => String(x.id) === String(row.id))
+                  if (!item) return null
+                  if (kind !== 'offering') {
+                    return (
+                      <TableRow {...getRowProps({ row })}>
+                        {row.cells.map((cell) => {
+                          if (cell.info.header === 'classNames') {
+                            const value = cell.value as string[]
+                            return (
+                              <TableCell key={cell.id}>
+                                {Array.isArray(value) && value.length ? listFmt.format(value) : '-'}
+                              </TableCell>
+                            )
+                          }
+                          return <TableCell key={cell.id}>{(cell.value as string) || '-'}</TableCell>
+                        })}
+                        {renderActions(kind, item)}
+                      </TableRow>
+                    )
+                  }
+                  // Offering rows expand into their session list (controlled:
+                  // our expandedIds set drives TableExpandRow/TableExpandedRow).
+                  const offering = item as OfferingView
+                  const idStr = String(offering.id)
+                  const expanded = expandedIds.has(idStr)
+                  return (
+                    <Fragment key={row.id}>
+                      <TableExpandRow
+                        aria-label={t('sessionsExpanded.aria', { name: offering.catalogName })}
+                        isExpanded={expanded}
+                        onExpand={() => toggleExpand(idStr)}
+                      >
+                        {row.cells.map((cell) => {
+                          if (cell.info.header === 'classNames') {
+                            const value = cell.value as string[]
+                            return (
+                              <TableCell key={cell.id}>
+                                {Array.isArray(value) && value.length ? listFmt.format(value) : '-'}
+                              </TableCell>
+                            )
+                          }
+                          return <TableCell key={cell.id}>{(cell.value as string) || '-'}</TableCell>
+                        })}
+                        {renderActions('offering', offering)}
+                      </TableExpandRow>
+                      {expanded && (
+                        <TableExpandedRow colSpan={colSpan}>
+                          <SessionsMiniTable
+                            offering={offering}
+                            entry={sessionsCache[idStr] ?? { data: [], loading: false, error: '' }}
+                            canManage={canManage}
+                            offerings={offeringOptions}
+                            classrooms={classroomOptions}
+                            onMutated={refreshSessionsCache}
+                            onReload={(oid) => void loadSessions(String(oid))}
+                            onViewAll={viewAllSessions}
+                          />
+                        </TableExpandedRow>
+                      )}
+                    </Fragment>
+                  )
                 })
-              )}
+              })()}
             </TableBody>
           </Table>
         </TableContainer>
@@ -430,10 +563,11 @@ export default function CourseManagementPage() {
       </Column>
 
       <Column sm={4} md={8} lg={16}>
-        <Tabs>
+        <Tabs selectedIndex={tabIndex} onChange={({ selectedIndex }) => setTabIndex(selectedIndex)}>
           <TabList aria-label={t('tabs.ariaLabel')}>
             <Tab>{t('tabs.offerings')}</Tab>
             <Tab>{t('tabs.catalog')}</Tab>
+            <Tab>{t('tabs.sessions')}</Tab>
           </TabList>
           <TabPanels>
             <TabPanel>
@@ -454,6 +588,16 @@ export default function CourseManagementPage() {
                 totalItems={catalogList.total}
                 onPageChange={catalogList.setPage}
                 onPageSizeChange={catalogList.setPageSize}
+              />
+            </TabPanel>
+            <TabPanel>
+              <SessionsPanel
+                active={tabIndex === 2}
+                filterOfferingId={pendingSessionsFilter}
+                onFilterConsumed={() => setPendingSessionsFilter(null)}
+                onMutated={refreshSessionsCache}
+                offerings={offeringOptions}
+                classrooms={classroomOptions}
               />
             </TabPanel>
           </TabPanels>

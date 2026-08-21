@@ -2,10 +2,11 @@
   "breadcrumb": { "home": "首页", "current": "课程管理" },
   "title": "课程管理",
   "subtitle": "维护课程库与各班级开课信息，为排课与课表提供数据基础。",
-  "tabs": { "ariaLabel": "课程管理", "offerings": "课程列表", "catalog": "课程库" },
+  "tabs": { "ariaLabel": "课程管理", "offerings": "课程列表", "catalog": "课程库", "sessions": "课次" },
   "table": {
     "offering": { "title": "课程列表", "description": "共 {{count}} 项" },
-    "catalog": { "title": "课程库", "description": "共 {{count}} 项" }
+    "catalog": { "title": "课程库", "description": "共 {{count}} 项" },
+    "sessions": { "title": "课次", "description": "共 {{count}} 项" }
   },
   "searchPlaceholder": "搜索",
   "addButton": { "offering": "添加课程", "catalog": "添加课程库" },
@@ -41,6 +42,54 @@
     "code": "课程代码",
     "description": "描述",
     "codePlaceholder": "如 MATH101"
+  },
+  "sessionFilter": {
+    "offering": "开课",
+    "classroom": "教室",
+    "from": "开始日期",
+    "to": "结束日期",
+    "allOfferings": "全部开课",
+    "allClassrooms": "全部教室"
+  },
+  "sessionField": {
+    "id": "ID",
+    "date": "日期",
+    "period": "节次",
+    "course": "课程",
+    "teachingClass": "教学班",
+    "classNames": "行政班",
+    "teacher": "教师",
+    "semester": "学期",
+    "classroom": "教室",
+    "note": "备注"
+  },
+  "sessionPeriod": { "single": "第 {{period}} 节", "range": "第 {{start}}–{{end}} 节" },
+  "sessionForm": {
+    "offering": "开课",
+    "classroom": "教室",
+    "date": "日期",
+    "periodStart": "起始节次",
+    "periodEnd": "结束节次",
+    "note": "备注",
+    "selectOffering": "请选择开课",
+    "selectClassroom": "请选择教室",
+    "dateRequired": "请选择日期",
+    "periodRange": "节次须为不小于 1 的连续区间",
+    "periodHint": "连堂课填写起始与结束节次"
+  },
+  "sessionModal": {
+    "create": "添加课次",
+    "edit": "编辑课次（{{date}}）",
+    "deleteConfirm": "确定要删除 {{date}} {{period}}（{{classroom}}）的课次吗？此操作不可撤销。"
+  },
+  "sessionsExpanded": {
+    "title": "课次（{{count}}）",
+    "empty": "该开课暂无课次。",
+    "add": "添加课次",
+    "viewAll": "在课次页查看全部",
+    "loadError": "课次加载失败",
+    "retry": "重试",
+    "aria": "展开 {{name}} 的课次"
   },
   "modal": {
     "offeringCreate": "添加课程",

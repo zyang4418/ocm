@@ -2,10 +2,11 @@
   "breadcrumb": { "home": "Home", "current": "Courses" },
   "title": "Courses",
   "subtitle": "Maintain the course catalog and per-class offerings — the base data for scheduling and timetables.",
-  "tabs": { "ariaLabel": "Courses", "offerings": "Offerings", "catalog": "Catalog" },
+  "tabs": { "ariaLabel": "Courses", "offerings": "Offerings", "catalog": "Catalog", "sessions": "Sessions" },
   "table": {
     "offering": { "title": "Offerings", "description": "{{count}} items" },
-    "catalog": { "title": "Catalog", "description": "{{count}} items" }
+    "catalog": { "title": "Catalog", "description": "{{count}} items" },
+    "sessions": { "title": "Sessions", "description": "{{count}} items" }
   },
   "searchPlaceholder": "Search",
   "addButton": { "offering": "Add offering", "catalog": "Add course" },
@@ -41,6 +42,54 @@
     "code": "Course code",
     "description": "Description",
     "codePlaceholder": "e.g. MATH101"
+  },
+  "sessionFilter": {
+    "offering": "Offering",
+    "classroom": "Classroom",
+    "from": "From",
+    "to": "To",
+    "allOfferings": "All offerings",
+    "allClassrooms": "All classrooms"
+  },
+  "sessionField": {
+    "id": "ID",
+    "date": "Date",
+    "period": "Period",
+    "course": "Course",
+    "teachingClass": "Teaching class",
+    "classNames": "Admin classes",
+    "teacher": "Teacher",
+    "semester": "Semester",
+    "classroom": "Classroom",
+    "note": "Note"
+  },
+  "sessionPeriod": { "single": "Period {{period}}", "range": "Periods {{start}}–{{end}}" },
+  "sessionForm": {
+    "offering": "Offering",
+    "classroom": "Classroom",
+    "date": "Date",
+    "periodStart": "Start period",
+    "periodEnd": "End period",
+    "note": "Note",
+    "selectOffering": "Select an offering",
+    "selectClassroom": "Select a classroom",
+    "dateRequired": "Select a date",
+    "periodRange": "Periods must be a contiguous range starting at 1 or higher",
+    "periodHint": "For consecutive periods, fill in the start and end period"
+  },
+  "sessionModal": {
+    "create": "Add session",
+    "edit": "Edit session ({{date}})",
+    "deleteConfirm": "Are you sure you want to delete the session on {{date}} {{period}} ({{classroom}})? This action cannot be undone."
+  },
+  "sessionsExpanded": {
+    "title": "Sessions ({{count}})",
+    "empty": "No sessions for this offering yet.",
+    "add": "Add session",
+    "viewAll": "View all in Sessions",
+    "loadError": "Failed to load sessions",
+    "retry": "Retry",
+    "aria": "Expand sessions of {{name}}"
   },
   "modal": {
     "offeringCreate": "Add offering",
