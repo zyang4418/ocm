@@ -24,8 +24,53 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-// Migrate creates the regime and period tables. It is idempotent.
+// seedRegimes are the two default bell-time regimes (夏令时/冬令时) seeded when
+// the tables are first created on a fresh database. Existing databases are
+// never touched, so user-edited regimes stay authoritative.
+var seedRegimes = []struct {
+	input   RegimeInput
+	periods []PeriodInput
+}{
+	{
+		input: RegimeInput{Name: "夏令时", EffectiveMonth: 5, EffectiveDay: 1},
+		periods: []PeriodInput{
+			{PeriodIndex: 1, StartTime: "08:00", EndTime: "08:50"},
+			{PeriodIndex: 2, StartTime: "09:00", EndTime: "09:50"},
+			{PeriodIndex: 3, StartTime: "10:05", EndTime: "10:55"},
+			{PeriodIndex: 4, StartTime: "11:05", EndTime: "11:55"},
+			{PeriodIndex: 5, StartTime: "14:30", EndTime: "15:20"},
+			{PeriodIndex: 6, StartTime: "15:30", EndTime: "16:20"},
+			{PeriodIndex: 7, StartTime: "16:35", EndTime: "17:25"},
+			{PeriodIndex: 8, StartTime: "17:35", EndTime: "18:25"},
+			{PeriodIndex: 9, StartTime: "19:30", EndTime: "20:20"},
+			{PeriodIndex: 10, StartTime: "20:30", EndTime: "21:20"},
+		},
+	},
+	{
+		input: RegimeInput{Name: "冬令时", EffectiveMonth: 10, EffectiveDay: 1},
+		periods: []PeriodInput{
+			{PeriodIndex: 1, StartTime: "08:00", EndTime: "08:50"},
+			{PeriodIndex: 2, StartTime: "09:00", EndTime: "09:50"},
+			{PeriodIndex: 3, StartTime: "10:05", EndTime: "10:55"},
+			{PeriodIndex: 4, StartTime: "11:05", EndTime: "11:55"},
+			{PeriodIndex: 5, StartTime: "14:00", EndTime: "14:50"},
+			{PeriodIndex: 6, StartTime: "15:00", EndTime: "15:50"},
+			{PeriodIndex: 7, StartTime: "16:05", EndTime: "16:55"},
+			{PeriodIndex: 8, StartTime: "17:05", EndTime: "17:55"},
+			{PeriodIndex: 9, StartTime: "19:00", EndTime: "19:50"},
+			{PeriodIndex: 10, StartTime: "20:00", EndTime: "20:50"},
+		},
+	},
+}
+
+// Migrate creates the regime and period tables and, when they are being created
+// for the first time on a fresh database, seeds the two default regimes. It is
+// idempotent: an existing database is migrated without touching its data.
 func (s *Store) Migrate(ctx context.Context) error {
+	fresh, err := s.regimesTableMissing(ctx)
+	if err != nil {
+		return err
+	}
 	if _, err := s.db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS schedule_regimes (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -47,7 +92,36 @@ CREATE TABLE IF NOT EXISTS schedule_periods (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`); err != nil {
 		return fmt.Errorf("create schedule_periods table: %w", err)
 	}
+	if !fresh {
+		return nil
+	}
+	for _, seed := range seedRegimes {
+		regime, err := s.CreateRegime(ctx, seed.input)
+		if err != nil {
+			return fmt.Errorf("seed regime %q: %w", seed.input.Name, err)
+		}
+		if err := s.ReplacePeriods(ctx, regime.ID, seed.periods); err != nil {
+			return fmt.Errorf("seed periods for %q: %w", seed.input.Name, err)
+		}
+	}
 	return nil
+}
+
+// regimesTableMissing reports whether the schedule_regimes table does not exist
+// yet in the current database (i.e. this migration run is the one creating it).
+// The companion schedule_periods table is always created alongside it.
+func (s *Store) regimesTableMissing(ctx context.Context) (bool, error) {
+	var one int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'schedule_regimes'`,
+	).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("check schedule_regimes existence: %w", err)
+	}
+	return false, nil
 }
 
 func (s *Store) ListRegimes(ctx context.Context) ([]Regime, error) {

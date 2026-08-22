@@ -1069,6 +1069,75 @@
   color: var(--cds-text-secondary);
 }
 
+/* ---- sessions tab / offerings expanded rows (L3) ---- */
+.sessions-panel__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-05;
+  align-items: flex-end;
+  margin-block-end: $spacing-05;
+}
+
+.sessions-panel__filter {
+  flex: 1 1 12rem;
+  min-width: 12rem;
+}
+
+// Compact session list rendered inside an offerings-table expanded row. A
+// plain table (not Carbon DataTable) keeps the nested markup light; the
+// surrounding expand-row styles provide the surface color.
+.sessions-mini {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-03;
+  padding-block: $spacing-03 $spacing-05;
+
+  &__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-03;
+  }
+
+  &__title {
+    font-weight: 600;
+  }
+
+  &__hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-03;
+    color: var(--cds-text-secondary);
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      @include type-style('body-01');
+      text-align: start;
+      padding: $spacing-03 $spacing-05 $spacing-03 0;
+      border-block-end: 1px solid var(--cds-border-subtle);
+    }
+
+    th {
+      color: var(--cds-text-secondary);
+    }
+
+    tr:last-child td {
+      border-block-end: none;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-01;
+  }
+}
+
 /* ---- imports page ---- */
 .imports-page__upload {
   display: flex;
