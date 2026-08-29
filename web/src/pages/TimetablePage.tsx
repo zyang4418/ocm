@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,34 +17,9 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { apiFetch } from '../auth/api'
 import ExportButton from '../components/ExportButton'
+import TimetableGrid from '../components/TimetableGrid'
+import { addDays, fmt, mondayOf } from '../utils/date'
 import type { Classroom, OfferingView, Paged, SessionInput, SessionView, TimetableDay } from '../types/api'
-
-function fmt(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function mondayOf(d: Date): Date {
-  const r = new Date(d)
-  r.setHours(0, 0, 0, 0)
-  r.setDate(r.getDate() - ((r.getDay() + 6) % 7))
-  return r
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setDate(r.getDate() + n)
-  return r
-}
-
-// One row of the period index (union of period indices across the week).
-interface PeriodRow {
-  periodIndex: number
-  startTime: string
-  endTime: string
-}
 
 // Cell modal state: which grid cell is open, with its existing session (if
 // the cell is occupied).
@@ -59,8 +34,6 @@ export default function TimetablePage() {
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('course:manage')
-
-  const dayNames = t('dayNames', { returnObjects: true }) as string[]
 
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [offerings, setOfferings] = useState<OfferingView[]>([])
@@ -109,19 +82,6 @@ export default function TimetablePage() {
   useEffect(() => {
     fetchTimetable()
   }, [fetchTimetable])
-
-  // union of period indices across the week (rows of the grid)
-  const periods = useMemo<PeriodRow[]>(() => {
-    const map = new Map<number, PeriodRow>()
-    days.forEach((d) =>
-      d.slots.forEach((s) => {
-        if (!map.has(s.periodIndex)) map.set(s.periodIndex, { periodIndex: s.periodIndex, startTime: s.startTime, endTime: s.endTime })
-      }),
-    )
-    return Array.from(map.values()).sort((a, b) => a.periodIndex - b.periodIndex)
-  }, [days])
-
-  const slotFor = (day: TimetableDay, periodIndex: number) => day.slots.find((s) => s.periodIndex === periodIndex)
 
   const openCell = (date: string, periodIndex: number, session?: SessionView) => {
     setModal({ date, periodIndex, session })
@@ -259,63 +219,7 @@ export default function TimetablePage() {
         ) : days.length === 0 ? (
           <p>{t('empty.none')}</p>
         ) : (
-          <div className="timetable__scroll">
-            <table className="timetable__grid">
-              <thead>
-                <tr>
-                  <th className="timetable__corner">{t('corner')}</th>
-                  {days.map((d) => (
-                    <th key={d.date}>
-                      {dayNames[d.dayOfWeek - 1]}
-                      <span className="timetable__date">{d.date.slice(5)}</span>
-                      {d.regimeName && <span className="timetable__regime">{d.regimeName}</span>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {periods.map((p) => (
-                  <tr key={p.periodIndex}>
-                    <td className="timetable__period">
-                      <span>{t('periodLabel.single', { period: p.periodIndex })}</span>
-                      <span className="timetable__time">{p.startTime}-{p.endTime}</span>
-                    </td>
-                    {days.map((d) => {
-                      const slot = slotFor(d, p.periodIndex)
-                      const session = slot?.session
-                      // 连上多节的课次从起始节起合并为一个单元格（rowSpan），
-                      // 被覆盖的后续节次不再渲染。
-                      if (session && session.periodStart !== p.periodIndex) return null
-                      const span = session ? session.periodEnd - session.periodStart + 1 : 1
-                      return (
-                        <td
-                          key={d.date + '-' + p.periodIndex}
-                          rowSpan={span}
-                          className={session ? 'timetable__cell timetable__cell--filled' : 'timetable__cell'}
-                          onClick={() => canManage && openCell(d.date, p.periodIndex, session)}
-                        >
-                          {session ? (
-                            <div
-                              className="timetable__session"
-                              title={[session.courseName, session.teachingClassName, session.teacher]
-                                .filter(Boolean)
-                                .join('\n')}
-                            >
-                              <strong>{session.courseName}</strong>
-                              {session.teachingClassName && <span>{session.teachingClassName}</span>}
-                              {session.teacher && <span>{session.teacher}</span>}
-                            </div>
-                          ) : canManage ? (
-                            <span className="timetable__add">＋</span>
-                          ) : null}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TimetableGrid days={days} interactive={canManage} onCellClick={openCell} />
         )}
       </Column>
 

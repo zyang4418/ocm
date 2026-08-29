@@ -821,6 +821,10 @@ definitions:
     type: object
   course.TimetableSlot:
     properties:
+      booking:
+        allOf:
+        - $ref: '#/definitions/booking.BookingView'
+        description: pending/approved booking occupying the slot
       endTime:
         type: string
       periodIndex:
@@ -5455,6 +5459,8 @@ paths:
       - org
   /api/timetable:
     get:
+      description: Each period slot carries the course session or the active (pending/approved)
+        booking occupying it; free slots carry neither.
       parameters:
       - description: classroom id
         in: query

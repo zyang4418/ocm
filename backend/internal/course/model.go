@@ -1,6 +1,10 @@
 package course
 
-import "time"
+import (
+	"time"
+
+	"ocm-backend/internal/booking"
+)
 
 // CatalogCourse is an abstract subject in the course library, reused across
 // classes and semesters (e.g. "高等数学"). The extended fields
@@ -119,12 +123,16 @@ type SessionInput struct {
 	Note        string `json:"note"`
 }
 
-// TimetableSlot is one period cell in a classroom timetable day.
+// TimetableSlot is one period cell in a classroom timetable day. A cell is
+// occupied by at most one session or one active booking in practice - the
+// shared conflict model (sessionConflict / booking conflicts) guarantees the
+// two never overlap - but a session takes precedence defensively.
 type TimetableSlot struct {
-	PeriodIndex int          `json:"periodIndex"`
-	StartTime   string       `json:"startTime"`
-	EndTime     string       `json:"endTime"`
-	Session     *SessionView `json:"session" validate:"optional"` // nil when the slot is free
+	PeriodIndex int                  `json:"periodIndex"`
+	StartTime   string               `json:"startTime"`
+	EndTime     string               `json:"endTime"`
+	Session     *SessionView         `json:"session" validate:"optional"` // nil when the slot is free
+	Booking     *booking.BookingView `json:"booking" validate:"optional"` // pending/approved booking occupying the slot
 }
 
 // TimetableDay is one day column in a classroom timetable grid.

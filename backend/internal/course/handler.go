@@ -673,6 +673,7 @@ func parseTimetableParams(w http.ResponseWriter, r *http.Request) (classroomID i
 }
 
 // @Summary      Classroom timetable for a date range
+// @Description  Each period slot carries the course session or the active (pending/approved) booking occupying it; free slots carry neither.
 // @Tags         sessions
 // @Produce      json
 // @Param        classroom_id query int true "classroom id"

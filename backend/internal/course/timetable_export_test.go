@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/xuri/excelize/v2"
+
+	"ocm-backend/internal/booking"
 )
 
 // testSession builds a SessionView with the three display fields the grid
@@ -15,6 +17,15 @@ func testSession(periodStart, periodEnd int, courseName, teachingClass, teacher 
 		CourseName:        courseName,
 		TeachingClassName: teachingClass,
 		Teacher:           teacher,
+	}
+}
+
+// testBooking builds a booking.BookingView with the display fields the grid
+// exports and an explicit period range.
+func testBooking(periodStart, periodEnd int, purpose, booker string) *booking.BookingView {
+	return &booking.BookingView{
+		Booking:     booking.Booking{PeriodStart: periodStart, PeriodEnd: periodEnd, Purpose: purpose},
+		DisplayName: booker,
 	}
 }
 
@@ -146,6 +157,125 @@ func TestBuildTimetableGrid(t *testing.T) {
 		if len(st.Border) != 4 {
 			t.Errorf("cell %s has %d borders, want 4", cell, len(st.Border))
 		}
+	}
+}
+
+func TestBuildTimetableGridBookings(t *testing.T) {
+	// Monday has a 2-period session (periods 1-2) plus a free period 3;
+	// Tuesday has a 2-period booking on periods 2-3.
+	days := []TimetableDay{
+		{
+			Date: "2026-08-10", DayOfWeek: 1, RegimeName: "作息A",
+			Slots: []TimetableSlot{
+				{PeriodIndex: 1, StartTime: "08:00", EndTime: "08:45", Session: testSession(1, 2, "高等数学", "计科2301", "张三")},
+				{PeriodIndex: 2, StartTime: "08:55", EndTime: "09:40", Session: testSession(1, 2, "高等数学", "计科2301", "张三")},
+				{PeriodIndex: 3, StartTime: "10:00", EndTime: "10:45"},
+			},
+		},
+		{
+			Date: "2026-08-11", DayOfWeek: 2, RegimeName: "作息A",
+			Slots: []TimetableSlot{
+				{PeriodIndex: 2, StartTime: "08:55", EndTime: "09:40", Booking: testBooking(2, 3, "社团活动", "王五")},
+				{PeriodIndex: 3, StartTime: "10:00", EndTime: "10:45", Booking: testBooking(2, 3, "社团活动", "王五")},
+			},
+		},
+	}
+
+	f := excelize.NewFile()
+	defer func() { _ = f.Close() }()
+	if err := buildTimetableGrid(f, days); err != nil {
+		t.Fatalf("buildTimetableGrid: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		t.Fatalf("encode workbook: %v", err)
+	}
+
+	got, err := excelize.OpenReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("reopen workbook: %v", err)
+	}
+	defer func() { _ = got.Close() }()
+
+	const sh = "教室周课表"
+	check := func(cell, want string) {
+		t.Helper()
+		v, err := got.GetCellValue(sh, cell)
+		if err != nil {
+			t.Fatalf("GetCellValue(%s): %v", cell, err)
+		}
+		if v != want {
+			t.Errorf("%s = %q, want %q", cell, v, want)
+		}
+	}
+
+	// The booking renders as a labeled, merged cell starting at its start
+	// period (period 2 lands on row 3, since Monday's period 1 opens the row
+	// set); the covered cell below stays blank.
+	check("C3", "预约\n社团活动\n王五")
+	rows, err := got.GetRows(sh)
+	if err != nil {
+		t.Fatalf("GetRows: %v", err)
+	}
+	covered := ""
+	if len(rows) >= 4 && len(rows[3]) >= 3 {
+		covered = rows[3][2]
+	}
+	if covered != "" {
+		t.Errorf("covered booking cell C4 should be blank, got %q", covered)
+	}
+	// Monday's session cell and free cell are unaffected; Tuesday has no
+	// period-1 slot at all, so its top cell is free.
+	check("B2", "高等数学\n计科2301\n张三")
+	check("B4", "")
+	check("C1", "周二\n08-11\n作息A")
+	check("C2", "")
+
+	// Two merges: the session's B2:B3 and the booking's C3:C4.
+	merges, err := got.GetMergeCells(sh)
+	if err != nil {
+		t.Fatalf("GetMergeCells: %v", err)
+	}
+	if len(merges) != 2 {
+		t.Fatalf("merge count = %d, want 2", len(merges))
+	}
+	want := map[string]bool{"B2:B3": false, "C3:C4": false}
+	for _, m := range merges {
+		r := m.GetStartAxis() + ":" + m.GetEndAxis()
+		if _, ok := want[r]; !ok {
+			t.Errorf("unexpected merge %s", r)
+			continue
+		}
+		want[r] = true
+	}
+	for r, seen := range want {
+		if !seen {
+			t.Errorf("missing merge %s", r)
+		}
+	}
+
+	// The booking cell is italic (its visual distinction from sessions).
+	sid, err := got.GetCellStyle(sh, "C3")
+	if err != nil {
+		t.Fatalf("GetCellStyle(C2): %v", err)
+	}
+	st, err := got.GetStyle(sid)
+	if err != nil {
+		t.Fatalf("GetStyle(C2): %v", err)
+	}
+	if st.Font == nil || !st.Font.Italic {
+		t.Errorf("booking cell C2 font should be italic")
+	}
+	sid, err = got.GetCellStyle(sh, "B2")
+	if err != nil {
+		t.Fatalf("GetCellStyle(B2): %v", err)
+	}
+	st, err = got.GetStyle(sid)
+	if err != nil {
+		t.Fatalf("GetStyle(B2): %v", err)
+	}
+	if st.Font != nil && st.Font.Italic {
+		t.Errorf("session cell B2 font should not be italic")
 	}
 }
 

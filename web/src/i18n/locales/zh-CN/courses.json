@@ -75,7 +75,8 @@
     "selectClassroom": "请选择教室",
     "dateRequired": "请选择日期",
     "periodRange": "节次须为不小于 1 的连续区间",
-    "periodHint": "连堂课填写起始与结束节次"
+    "periodHint": "连堂课填写起始与结束节次",
+    "pickFromTimetable": "从课表选择时间/教室"
   },
   "sessionModal": {
     "create": "添加课次",
