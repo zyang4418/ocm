@@ -6005,7 +6005,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Classroom timetable for a date range */
+        /**
+         * Classroom timetable for a date range
+         * @description Each period slot carries the course session or the active (pending/approved) booking occupying it; free slots carry neither.
+         */
         get: {
             parameters: {
                 query: {
@@ -6956,6 +6959,8 @@ export interface components {
             slots: components["schemas"]["course.TimetableSlot"][];
         };
         "course.TimetableSlot": {
+            /** @description pending/approved booking occupying the slot */
+            booking?: components["schemas"]["booking.BookingView"];
             endTime: string;
             periodIndex: number;
             /** @description nil when the slot is free */

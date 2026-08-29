@@ -8,6 +8,12 @@
     "classroomOption": "{{name}} ({{building}})"
   },
   "weekNav": { "prev": "Previous week", "next": "Next week" },
+  "booking": { "label": "Booked" },
+  "picker": {
+    "title": "Classroom timetable (pick a slot)",
+    "apply": "Apply",
+    "hint": "Check cells one by one: adjacent cells automatically form one session; clicking a non-adjacent cell restarts the selection there; click a checked cell again to uncheck it. Press Apply to backfill the form. The session being moved counts as free (its merged block checks as a whole); other occupied cells (sessions and bookings) are not selectable. Switching classrooms or paging weeks clears the selection."
+  },
   "export": { "label": "Export timetable", "filename": "classroom-timetable.xlsx" },
   "empty": { "selectClassroom": "Select a classroom first.", "loading": "Loading…", "none": "No data." },
   "corner": "Period",

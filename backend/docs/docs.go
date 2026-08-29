@@ -5592,6 +5592,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Each period slot carries the course session or the active (pending/approved) booking occupying it; free slots carry neither.",
                 "produces": [
                     "application/json"
                 ],
@@ -7324,6 +7325,14 @@ const docTemplate = `{
                 "startTime"
             ],
             "properties": {
+                "booking": {
+                    "description": "pending/approved booking occupying the slot",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/booking.BookingView"
+                        }
+                    ]
+                },
                 "endTime": {
                     "type": "string"
                 },

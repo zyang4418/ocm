@@ -10,9 +10,9 @@ import (
 )
 
 // Weekly-grid xlsx export for the classroom timetable page. It replicates the
-// browser table (web/src/pages/TimetablePage.jsx): days as columns, periods as
-// rows, multi-period sessions merged into one cell, header row and period
-// column centered both ways.
+// browser table (web/src/pages/TimetablePage.tsx): days as columns, periods as
+// rows, multi-period sessions and bookings merged into one cell, header row and
+// period column centered both ways.
 
 const (
 	timetableSheetName    = "教室周课表"
@@ -75,6 +75,17 @@ func buildTimetableGrid(f *excelize.File, days []TimetableDay) error {
 	if err != nil {
 		return fmt.Errorf("create session style: %w", err)
 	}
+	// Booking cell: same layout as the session cell but italic, so reserved
+	// slots stay distinguishable from scheduled classes in the export.
+	bookingStyle, err := f.NewStyle(&excelize.Style{
+		Fill:      labelFill,
+		Border:    border,
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "top", WrapText: true},
+		Font:      &excelize.Font{Italic: true},
+	})
+	if err != nil {
+		return fmt.Errorf("create booking style: %w", err)
+	}
 	// Free cell: bordered only (the browser's "＋" is a click target, not data).
 	emptyStyle, err := f.NewStyle(&excelize.Style{
 		Border: border,
@@ -133,9 +144,11 @@ func buildTimetableGrid(f *excelize.File, days []TimetableDay) error {
 		return fmt.Errorf("set header row height: %w", err)
 	}
 
-	// Body rows. skip[di] counts rows already covered by a merged session cell
-	// in day column di — the same conditional the browser renders with rowSpan
-	// (TimetablePage.jsx: session && session.periodStart !== periodIndex → null).
+	// Body rows. skip[di] counts rows already covered by a merged occupied
+	// cell in day column di — the same conditional the browser renders with
+	// rowSpan (TimetablePage.tsx: session && session.periodStart !==
+	// periodIndex → null). Only the occupant's start period renders; covered
+	// rows skip.
 	lastRow := 1 + len(periods)
 	skip := make([]int, len(days))
 	for ri, p := range periods {
@@ -157,43 +170,71 @@ func buildTimetableGrid(f *excelize.File, days []TimetableDay) error {
 			col, _ := excelize.ColumnNumberToName(di + 2)
 			cell := col + strconv.Itoa(row)
 			slot := slotFor(d, p.PeriodIndex)
-			if slot == nil || slot.Session == nil {
+			switch {
+			case slot == nil || (slot.Session == nil && slot.Booking == nil):
 				if err := f.SetCellStyle(sh, cell, cell, emptyStyle); err != nil {
 					return fmt.Errorf("style free cell %s: %w", cell, err)
 				}
-				continue
-			}
-			ses := slot.Session
-			if ses.PeriodStart != p.PeriodIndex {
-				continue // session reaches here from an earlier row; merge covers it
-			}
-			span := ses.PeriodEnd - ses.PeriodStart + 1
-			bottom := row + span - 1
-			if bottom > lastRow {
-				bottom = lastRow // stale span past the last grid row (regime changed)
-			}
-			lines := make([]string, 0, 3)
-			for _, v := range []string{ses.CourseName, ses.TeachingClassName, ses.Teacher} {
-				if v != "" {
-					lines = append(lines, v)
+			case slot.Session != nil && slot.Session.PeriodStart == p.PeriodIndex:
+				ses := slot.Session
+				span := ses.PeriodEnd - ses.PeriodStart + 1
+				lines := make([]string, 0, 3)
+				for _, v := range []string{ses.CourseName, ses.TeachingClassName, ses.Teacher} {
+					if v != "" {
+						lines = append(lines, v)
+					}
 				}
-			}
-			if err := f.SetCellValue(sh, cell, strings.Join(lines, "\n")); err != nil {
-				return fmt.Errorf("set session cell %s: %w", cell, err)
-			}
-			// Style the whole range before merging: SetCellStyle stamps every
-			// covered cell, and MergeCell only clears non-top-left values, never
-			// styles — styling just the top-left would leave the covered cells
-			// without borders.
-			if err := f.SetCellStyle(sh, cell, col+strconv.Itoa(bottom), sessionStyle); err != nil {
-				return fmt.Errorf("style session range %s:%s: %w", cell, col+strconv.Itoa(bottom), err)
-			}
-			if bottom > row {
-				if err := f.MergeCell(sh, cell, col+strconv.Itoa(bottom)); err != nil {
-					return fmt.Errorf("merge %s:%s: %w", cell, col+strconv.Itoa(bottom), err)
+				if err := writeOccupiedCell(f, sh, cell, col, row, span, lastRow, lines, sessionStyle); err != nil {
+					return err
 				}
+				skip[di] = ri + span
+			case slot.Booking != nil && slot.Booking.PeriodStart == p.PeriodIndex:
+				bk := slot.Booking
+				span := bk.PeriodEnd - bk.PeriodStart + 1
+				booker := bk.DisplayName
+				if booker == "" {
+					booker = bk.Username
+				}
+				lines := make([]string, 0, 3)
+				for _, v := range []string{"预约", bk.Purpose, booker} {
+					if v != "" {
+						lines = append(lines, v)
+					}
+				}
+				if err := writeOccupiedCell(f, sh, cell, col, row, span, lastRow, lines, bookingStyle); err != nil {
+					return err
+				}
+				skip[di] = ri + span
 			}
-			skip[di] = ri + span
+			// Remaining case: an occupant whose start period is an earlier row;
+			// the merge opened there already covers this cell.
+		}
+	}
+	return nil
+}
+
+// writeOccupiedCell renders one occupied (session or booking) cell: the joined
+// label on the top-left cell, borders stamped across the whole span, and the
+// merge itself when the span exceeds one row. The span is clamped to the grid
+// (a stale range past the last row shrinks to the grid's bottom, mirroring the
+// browser's clipping).
+func writeOccupiedCell(f *excelize.File, sh, cell, col string, row, span, lastRow int, lines []string, style int) error {
+	bottom := row + span - 1
+	if bottom > lastRow {
+		bottom = lastRow // stale span past the last grid row (regime changed)
+	}
+	if err := f.SetCellValue(sh, cell, strings.Join(lines, "\n")); err != nil {
+		return fmt.Errorf("set occupied cell %s: %w", cell, err)
+	}
+	// Style the whole range before merging: SetCellStyle stamps every covered
+	// cell, and MergeCell only clears non-top-left values, never styles -
+	// styling just the top-left would leave the covered cells without borders.
+	if err := f.SetCellStyle(sh, cell, col+strconv.Itoa(bottom), style); err != nil {
+		return fmt.Errorf("style occupied range %s:%s: %w", cell, col+strconv.Itoa(bottom), err)
+	}
+	if bottom > row {
+		if err := f.MergeCell(sh, cell, col+strconv.Itoa(bottom)); err != nil {
+			return fmt.Errorf("merge %s:%s: %w", cell, col+strconv.Itoa(bottom), err)
 		}
 	}
 	return nil

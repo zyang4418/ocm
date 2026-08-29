@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"ocm-backend/internal/booking"
 	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
@@ -367,7 +368,9 @@ func (s *Store) DeleteSession(ctx context.Context, id int64) error {
 }
 
 // Timetable builds a classroom timetable grid for a date range. For each date
-// it resolves the active bell-time regime and maps sessions to period slots.
+// it resolves the active bell-time regime and maps sessions and active
+// (pending/approved) bookings to period slots, so the grid reflects the same
+// occupancy the conflict checks enforce.
 func (s *Store) Timetable(ctx context.Context, classroomID int64, from, to string, regimes *schedule.Store) ([]TimetableDay, error) {
 	regimeList, err := regimes.ListRegimes(ctx)
 	if err != nil {
@@ -378,6 +381,60 @@ func (s *Store) Timetable(ctx context.Context, classroomID int64, from, to strin
 	if err != nil {
 		return nil, err
 	}
+	bookings, err := s.listActiveBookings(ctx, classroomID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	return buildTimetableDays(regimeList, sessions, bookings, from, to)
+}
+
+// listActiveBookings returns the pending/approved classroom bookings in the
+// date range, joined with display fields. It reads classroom_bookings directly
+// (the cross-module SQL pattern shared with booking.Store's course_sessions
+// queries); rejected/cancelled bookings do not occupy a period and are
+// filtered out here.
+func (s *Store) listActiveBookings(ctx context.Context, classroomID int64, from, to string) ([]booking.BookingView, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT b.id, b.classroom_id, b.user_id, b.date, b.period_start, b.period_end, b.status, b.purpose, b.created_at, b.reviewed_at, cr.name, u.username, u.display_name
+		FROM classroom_bookings b
+		JOIN classrooms cr ON cr.id = b.classroom_id
+		JOIN users u ON u.id = b.user_id
+		WHERE b.classroom_id = ? AND b.date >= ? AND b.date <= ? AND b.status IN ('pending','approved')
+		ORDER BY b.date, b.period_start, b.id`, classroomID, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("list bookings for timetable: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := []booking.BookingView{}
+	for rows.Next() {
+		var v booking.BookingView
+		var date time.Time
+		var reviewed sql.NullTime
+		if err := rows.Scan(
+			&v.ID, &v.ClassroomID, &v.UserID, &date, &v.PeriodStart, &v.PeriodEnd, &v.Status, &v.Purpose, &v.CreatedAt, &reviewed,
+			&v.ClassroomName, &v.Username, &v.DisplayName,
+		); err != nil {
+			return nil, fmt.Errorf("scan booking for timetable: %w", err)
+		}
+		v.Date = date.Format("2006-01-02")
+		if reviewed.Valid {
+			t := reviewed.Time
+			v.ReviewedAt = &t
+		}
+		list = append(list, v)
+	}
+	return list, rows.Err()
+}
+
+// buildTimetableDays maps sessions and active bookings onto each date's regime
+// period grid. A session or booking covers every period in its
+// [PeriodStart, PeriodEnd] range; each covered slot points at the same record
+// so the frontend (and the xlsx export) can render the block as one
+// row-spanning cell starting at PeriodStart. Sessions take precedence over
+// bookings when both cover a period (cannot happen via the conflict checks;
+// defensive only). Pure function of its inputs.
+func buildTimetableDays(regimeList []schedule.Regime, sessions []SessionView, bookings []booking.BookingView, from, to string) ([]TimetableDay, error) {
 	// A session covers every period in [PeriodStart, PeriodEnd]; fill each
 	// covered slot with the same session so the frontend can render the block
 	// as one row-spanning cell starting at PeriodStart.
@@ -390,6 +447,17 @@ func (s *Store) Timetable(ctx context.Context, classroomID int64, from, to strin
 		}
 		for p := ses.PeriodStart; p <= ses.PeriodEnd; p++ {
 			m[p] = ses
+		}
+	}
+	bookingsByDate := make(map[string]map[int]booking.BookingView)
+	for _, bk := range bookings {
+		m, ok := bookingsByDate[bk.Date]
+		if !ok {
+			m = make(map[int]booking.BookingView)
+			bookingsByDate[bk.Date] = m
+		}
+		for p := bk.PeriodStart; p <= bk.PeriodEnd; p++ {
+			m[p] = bk
 		}
 	}
 
@@ -421,6 +489,9 @@ func (s *Store) Timetable(ctx context.Context, classroomID int64, from, to strin
 				if ses, ok := byDate[dateStr][p.PeriodIndex]; ok {
 					s := ses
 					slot.Session = &s
+				} else if bk, ok := bookingsByDate[dateStr][p.PeriodIndex]; ok {
+					b := bk
+					slot.Booking = &b
 				}
 				slots = append(slots, slot)
 			}

@@ -1388,6 +1388,8 @@
   td {
     border: 1px solid var(--cds-border-subtle);
     padding: $spacing-02 $spacing-03;
+    // Grid content hugs the top-left corner of its cell.
+    text-align: left;
     vertical-align: top;
   }
 
@@ -1416,9 +1418,14 @@
 }
 
 .timetable__grid .timetable__period {
+  // Same minimum height as .timetable__cell below: every body row keeps a
+  // uniform height even when all its day cells are covered by rowSpan merges
+  // (otherwise such a row collapses to this label's own height and the
+  // period column goes out of alignment with the day columns).
+  height: 4.25rem;
   text-align: center;
   // Scoped to the grid so it wins over the `vertical-align: top` shared by
-  // all grid cells; period labels should sit in the middle of their rows.
+  // all grid cells; period labels sit centered in their cells, both ways.
   vertical-align: middle;
   background: var(--cds-layer-01);
 }
@@ -1448,6 +1455,56 @@
   background: var(--cds-layer-hover);
 }
 
+// Booking cell (pending/approved classroom reservation): visually distinct
+// from scheduled sessions and never clickable - its slot cannot host a
+// session. The accent layer plus italic label mirrors the xlsx export.
+.timetable__cell--booking {
+  background: var(--cds-layer-accent-01);
+  cursor: not-allowed;
+}
+
+.timetable__booking {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong,
+  span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  strong {
+    color: var(--cds-text-secondary);
+    font-style: italic;
+    @include type-style('label-01');
+  }
+
+  span {
+    color: var(--cds-text-secondary);
+    @include type-style('label-01');
+  }
+}
+
+// The session being moved in the picker: its current cells stay selectable and
+// are marked so the user sees where it sits before picking a new slot.
+.timetable__cell--current {
+  box-shadow: inset 0 0 0 2px var(--cds-focus);
+}
+
+// Cells inside the picker's dragged range. Declared after the filled/booking/
+// current modifiers so the selection wins when a cell carries both (the moved
+// session's own cells can be part of the selection).
+.timetable__cell--selected {
+  background: var(--cds-layer-selected);
+  box-shadow: inset 0 0 0 1px var(--cds-border-interactive);
+
+  &:hover {
+    background: var(--cds-layer-selected-hover);
+  }
+}
+
 .timetable__session {
   display: flex;
   flex-direction: column;
@@ -1473,8 +1530,53 @@
   cursor: pointer;
 }
 
+// A checked free cell in the picker (the checked counterpart of ＋ above).
+.timetable__pick-check {
+  color: var(--cds-text-primary);
+  font-weight: 600;
+}
+
 .timetable__delete {
   margin-block-start: $spacing-05;
+}
+
+/* ---- session-form timetable picker ---- */
+.timetable-picker__hint {
+  @include type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-block-end: $spacing-05;
+}
+
+// The modal itself scrolls (hasScrollingContent), so the grid renders exactly
+// like the standalone timetable page: one horizontal scroll region, no nested
+// vertical scrollbar clipping the rows or the header. Click-select must not
+// select the cell text underneath.
+.timetable-picker .timetable__grid {
+  user-select: none;
+}
+
+// Click affordance: selectable cells show the pointer; booking cells stay
+// inert (never selectable).
+.timetable-picker .timetable__cell {
+  cursor: pointer;
+}
+
+.timetable-picker .timetable__cell--booking {
+  cursor: not-allowed;
+}
+
+// Inline loading indicator beside the week label: the grid itself stays
+// mounted with the previous week while refetching.
+.timetable-picker__loading {
+  margin-inline-start: $spacing-03;
+  color: var(--cds-text-secondary);
+  @include type-style('label-01');
+}
+
+.session-form__pick {
+  // The form stacks full-width inputs; keep the secondary action visually
+  // grouped with the classroom/date/period fields it backfills.
+  align-self: flex-start;
 }
 
 /* ---- logs page ---- */

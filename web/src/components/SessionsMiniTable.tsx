@@ -95,9 +95,10 @@ export default function SessionsMiniTable({
         </Button>
       </div>
 
-      {entry.loading ? (
-        <p className="sessions-mini__hint">{t('empty.loading')}</p>
-      ) : entry.error ? (
+      {/* The cache keeps the previous data while reloading, so the table stays
+          mounted (no unmount/remount flicker); the loading/empty lines only
+          show when there is nothing to display yet. */}
+      {entry.error && (
         <div className="sessions-mini__hint">
           <span>
             {t('sessionsExpanded.loadError')}: {entry.error}
@@ -106,16 +107,8 @@ export default function SessionsMiniTable({
             {t('sessionsExpanded.retry')}
           </Button>
         </div>
-      ) : entry.data.length === 0 ? (
-        <p className="sessions-mini__hint">
-          {t('sessionsExpanded.empty')}
-          {canManage && (
-            <Button size="sm" kind="ghost" renderIcon={Add} onClick={openAdd}>
-              {t('sessionsExpanded.add')}
-            </Button>
-          )}
-        </p>
-      ) : (
+      )}
+      {entry.data.length > 0 ? (
         <table className="sessions-mini__table">
           <thead>
             <tr>
@@ -162,7 +155,18 @@ export default function SessionsMiniTable({
             ))}
           </tbody>
         </table>
-      )}
+      ) : entry.loading ? (
+        <p className="sessions-mini__hint">{t('empty.loading')}</p>
+      ) : !entry.error ? (
+        <p className="sessions-mini__hint">
+          {t('sessionsExpanded.empty')}
+          {canManage && (
+            <Button size="sm" kind="ghost" renderIcon={Add} onClick={openAdd}>
+              {t('sessionsExpanded.add')}
+            </Button>
+          )}
+        </p>
+      ) : null}
 
       <SessionFormModal
         open={modalOpen}
