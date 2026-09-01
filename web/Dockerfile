@@ -13,6 +13,9 @@ ENV VITE_ICP_NUMBER=${VITE_ICP_NUMBER}
 # External docs site origin; inlined into the bundle by vite build.
 ARG VITE_DOCS_URL=
 ENV VITE_DOCS_URL=${VITE_DOCS_URL}
+# Browser tab title, inlined into index.html by vite build (see src/brand).
+ARG VITE_BRAND_TITLE=
+ENV VITE_BRAND_TITLE=${VITE_BRAND_TITLE}
 RUN npm run build
 
 # --- Runtime stage ---

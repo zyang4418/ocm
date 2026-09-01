@@ -18,6 +18,7 @@ import (
 	"ocm-backend/internal/auth"
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/booking"
+	"ocm-backend/internal/brand"
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
 	"ocm-backend/internal/dashboard"
@@ -97,7 +98,7 @@ func main() {
 	}
 
 	go func() {
-		logging.L.Info("ocm-backend listening", "port", port)
+		logging.L.Info("backend listening", "brand", brand.Name(), "port", port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logging.L.Error("server error", "err", err)
 			os.Exit(1)
@@ -281,6 +282,15 @@ func main() {
 	// never disabled by settings — retention only controls deletion.
 	go systemlogStore.RunRetentionLoop(ctx, 24*time.Hour)
 
+	// Surface role grants pointing at permissions no longer in the catalog
+	// (e.g. a downstream module removed without pruning its role rows). Runs
+	// after all RegisterPermissions calls so the catalog snapshot is final.
+	if orphans, err := iamStore.OrphanPermissionGrants(ctx); err != nil {
+		logging.L.Error("check orphan permission grants", "err", err)
+	} else if len(orphans) > 0 {
+		logging.L.Warn("orphan permission grants in role_permissions (no longer in catalog)", "codes", orphans)
+	}
+
 	// Readiness probe - the process can serve requests (database reachable).
 	// Registered after the DB is connected so it only reports ready once the
 	// app can actually serve auth traffic; until then it 404s (not ready).
@@ -299,7 +309,7 @@ func main() {
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"service":"ocm-backend","status":"running"}`))
+		_, _ = w.Write([]byte(`{"service":"` + brand.Name() + `","status":"running"}`))
 	})
 
 	<-ctx.Done()

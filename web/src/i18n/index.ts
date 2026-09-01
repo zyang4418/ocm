@@ -36,6 +36,7 @@ import observationsZh from './locales/zh-CN/observations.json'
 import observationsEn from './locales/en/observations.json'
 import repairsZh from './locales/zh-CN/repairs.json'
 import repairsEn from './locales/en/repairs.json'
+import { brand } from '../brand'
 import logsZh from './locales/zh-CN/logs.json'
 import logsEn from './locales/en/logs.json'
 import settingsZh from './locales/zh-CN/settings.json'
@@ -102,6 +103,50 @@ const resources = {
 
 const SUPPORTED_LANGUAGES: Language[] = ['zh-CN', 'en']
 const FALLBACK_LANGUAGE: Language = 'zh-CN'
+
+// ---- Brand i18n overrides -------------------------------------------------
+// The brand injection file (src/brand/brand.override.ts, see src/brand) can
+// rebrand the UI without forking any locale JSON: `name`/`titleCloud` replace
+// the login-page brand word in every language, and `i18n` deep-merges
+// per-language namespace patches (e.g. common.app.title) over the resources.
+// Arrays and scalars in a patch replace wholesale; plain objects merge.
+
+type ResourceTree = Record<string, unknown>
+
+function deepMerge<T extends ResourceTree>(base: T, patch: ResourceTree): T {
+  const out: ResourceTree = { ...base }
+  for (const [key, value] of Object.entries(patch)) {
+    const current = out[key]
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      current !== null &&
+      typeof current === 'object' &&
+      !Array.isArray(current)
+    ) {
+      out[key] = deepMerge({ ...(current as ResourceTree) }, value as ResourceTree)
+    } else {
+      out[key] = value
+    }
+  }
+  return out as T
+}
+
+for (const lng of Object.keys(resources)) {
+  const langResources = resources[lng as keyof typeof resources] as unknown as Record<
+    string,
+    ResourceTree
+  >
+  langResources.login = deepMerge(langResources.login ?? {}, {
+    brand: brand.name,
+    titleCloud: brand.titleCloud,
+  })
+  for (const [ns, patch] of Object.entries(brand.i18n[lng] ?? {})) {
+    if (!patch) continue
+    langResources[ns] = deepMerge(langResources[ns] ?? {}, patch)
+  }
+}
 
 i18n
   .use(LanguageDetector)

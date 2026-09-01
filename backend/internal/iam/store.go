@@ -589,6 +589,38 @@ func (s *Store) ListRoles(ctx context.Context) ([]Role, error) {
 	return s.loadAllRoles(ctx)
 }
 
+// OrphanPermissionGrants returns distinct permission codes present in
+// role_permissions but absent from the authz.Catalog (excluding the reserved
+// "*" wildcard). Such grants typically come from a downstream module that was
+// removed without cleaning up its role rows; surfacing them at startup lets an
+// operator prune stale grants. The Catalog snapshot is read once here, so
+// callers should invoke this after all RegisterPermissions calls.
+func (s *Store) OrphanPermissionGrants(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT permission FROM role_permissions`)
+	if err != nil {
+		return nil, fmt.Errorf("list role permissions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	catalog := make(map[string]struct{}, len(authz.Catalog))
+	for _, p := range authz.Catalog {
+		catalog[p.Code] = struct{}{}
+	}
+	var orphans []string
+	for rows.Next() {
+		var perm string
+		if err := rows.Scan(&perm); err != nil {
+			return nil, fmt.Errorf("scan role permission: %w", err)
+		}
+		if perm == authz.Wildcard {
+			continue
+		}
+		if _, ok := catalog[perm]; !ok {
+			orphans = append(orphans, perm)
+		}
+	}
+	return orphans, rows.Err()
+}
+
 // GetRoleByID loads one role with its permission set.
 func (s *Store) GetRoleByID(ctx context.Context, id int64) (Role, error) {
 	roles, err := s.loadAllRoles(ctx)

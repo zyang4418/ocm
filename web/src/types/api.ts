@@ -161,3 +161,8 @@ export type Permission =
   | 'observation:read'
   | 'observation:write'
   | 'observation:manage'
+
+// Open permission code: accepts any code a downstream deployment registers via
+// authz.RegisterPermissions (e.g. 'signage:manage') while keeping editor
+// completion for the catalog above. `string & {}` preserves literal autocomplete.
+export type PermissionCode = Permission | (string & {})

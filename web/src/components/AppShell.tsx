@@ -6,7 +6,6 @@ import {
   HeaderGlobalBar,
   HeaderMenuButton,
   HeaderName,
-  HeaderSideNavItems,
   OverflowMenu,
   OverflowMenuItem,
   SideNav,
@@ -19,31 +18,40 @@ import {
   Theme,
 } from '@carbon/react'
 import {
-  Building,
   Contrast,
-  Dashboard,
-  Education,
   Logout,
   Notification,
-  Settings,
   Translate,
   UserAvatar,
-  UserMultiple,
 } from '@carbon/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import useLanguage from '../i18n/useLanguage'
 import { THEME_PREFERENCES, useTheme } from '../theme/ThemeContext'
+import { navigation, type NavEntry, type NavItem, type PermissionGate } from '../config/navigation'
 
 // The AI assistant chat widget is a large dependency chain (lit + Carbon web
 // components), so it is only fetched when a user with ai:chat permission is
 // logged in.
 const AiChat = lazy(() => import('../ai/AiChat'))
 
+/** True when the subject holds at least one of the gated permissions. */
+function passesGate(can: (perm: string) => boolean, gate?: PermissionGate): boolean {
+  if (!gate) return true
+  return Array.isArray(gate) ? gate.some((perm) => can(perm)) : can(gate)
+}
+
+/** i18n label with a literal-label fallback for downstream entries. */
+function navLabel(t: (key: string) => string, entry: { i18nKey?: string; label?: string; path?: string }): string {
+  if (entry.i18nKey) return t(entry.i18nKey)
+  return entry.label ?? entry.path ?? ''
+}
+
 // AppShell renders the Carbon UI Shell frame (header + side navigation +
 // content area) shared by all authenticated pages. It persists across route
 // changes via a React Router layout route so the header never remounts.
+// The menu itself is data-driven — see src/config/navigation.ts.
 export default function AppShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { language, setLanguage, languages } = useLanguage()
@@ -53,26 +61,53 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   const isActive = (path: string) => location.pathname === path
-  const inOrg =
-    location.pathname.startsWith('/users') ||
-    location.pathname.startsWith('/admin-classes') ||
-    location.pathname.startsWith('/teaching-classes') ||
-    location.pathname.startsWith('/roles') ||
-    location.pathname.startsWith('/groups')
-  const inClassrooms =
-    location.pathname.startsWith('/classrooms') ||
-    location.pathname.startsWith('/bookings') ||
-    location.pathname.startsWith('/repairs')
-  const inCourses =
-    location.pathname.startsWith('/courses') ||
-    location.pathname.startsWith('/timetable') ||
-    location.pathname.startsWith('/schedule-config') ||
-    location.pathname.startsWith('/imports') ||
-    location.pathname.startsWith('/attendance') ||
-    location.pathname.startsWith('/observations')
-  const inSettings =
-    location.pathname.startsWith('/logs') ||
-    location.pathname.startsWith('/settings')
+
+  const renderEntry = (
+    entry: NavEntry,
+    go: (path: string) => (e: MouseEvent) => void,
+  ) => {
+    if (!passesGate(can, entry.permission)) return null
+    if (entry.kind === 'link') {
+      return (
+        <SideNavLink
+          key={`link-${entry.path}`}
+          renderIcon={entry.icon}
+          href={entry.path}
+          isActive={isActive(entry.path)}
+          onClick={go(entry.path)}
+        >
+          {navLabel(t, entry)}
+        </SideNavLink>
+      )
+    }
+    const items = entry.items.filter((item) => passesGate(can, item.permission))
+    if (items.length === 0) return null
+    // SideNavMenu keeps its own open state after mount; the expanded flag in
+    // the key forces a remount so the group auto-expands when the user
+    // navigates deep into it from a bookmark (mirrors the previous
+    // inClassrooms/inCourses/inOrg/inSettings booleans).
+    const expanded = items.some((item) => location.pathname.startsWith(item.path))
+    const key = `${entry.i18nKey ?? entry.label ?? items[0]?.path}-${expanded}`
+    return (
+      <SideNavMenu
+        key={key}
+        renderIcon={entry.icon}
+        title={navLabel(t, entry)}
+        defaultExpanded={expanded}
+      >
+        {items.map((item: NavItem) => (
+          <SideNavMenuItem
+            key={item.path}
+            href={item.path}
+            isActive={isActive(item.path)}
+            onClick={go(item.path)}
+          >
+            {navLabel(t, item)}
+          </SideNavMenuItem>
+        ))}
+      </SideNavMenu>
+    )
+  }
 
   return (
     <HeaderContainer
@@ -155,190 +190,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 onOverlayClick={onClickSideNavExpand}
               >
                 <SideNavItems>
-                  <SideNavLink
-                    renderIcon={Dashboard}
-                    href="/"
-                    isActive={isActive('/')}
-                    onClick={go('/')}
-                  >
-                    {t('nav.overview')}
-                  </SideNavLink>
-                  <SideNavMenu
-                    key={`cls-${inClassrooms}`}
-                    renderIcon={Building}
-                    title={t('nav.classroomManagement')}
-                    defaultExpanded={inClassrooms}
-                  >
-                    <SideNavMenuItem
-                      href="/classrooms"
-                      isActive={isActive('/classrooms')}
-                      onClick={go('/classrooms')}
-                    >
-                      {t('nav.classroomList')}
-                    </SideNavMenuItem>
-                    <SideNavMenuItem
-                      href="/bookings"
-                      isActive={isActive('/bookings')}
-                      onClick={go('/bookings')}
-                    >
-                      {t('nav.classroomBooking')}
-                    </SideNavMenuItem>
-                    {(can('repair:create') || can('repair:assign')) && (
-                      <SideNavMenuItem
-                        href="/repairs"
-                        isActive={isActive('/repairs')}
-                        onClick={go('/repairs')}
-                      >
-                        {t('nav.classroomRepair')}
-                      </SideNavMenuItem>
-                    )}
-                  </SideNavMenu>
-                  <SideNavMenu
-                    key={`course-${inCourses}`}
-                    renderIcon={Education}
-                    title={t('nav.teachingManagement')}
-                    defaultExpanded={inCourses}
-                  >
-                    <SideNavMenuItem
-                      href="/courses"
-                      isActive={isActive('/courses')}
-                      onClick={go('/courses')}
-                    >
-                      {t('nav.courseManagement')}
-                    </SideNavMenuItem>
-                    <SideNavMenuItem
-                      href="/timetable"
-                      isActive={isActive('/timetable')}
-                      onClick={go('/timetable')}
-                    >
-                      {t('nav.timetable')}
-                    </SideNavMenuItem>
-                    <SideNavMenuItem
-                      href="/schedule-config"
-                      isActive={isActive('/schedule-config')}
-                      onClick={go('/schedule-config')}
-                    >
-                      {t('nav.scheduleConfig')}
-                    </SideNavMenuItem>
-                    {can('course:manage') && (
-                      <SideNavMenuItem
-                        href="/imports"
-                        isActive={isActive('/imports')}
-                        onClick={go('/imports')}
-                      >
-                        {t('nav.dataImport')}
-                      </SideNavMenuItem>
-                    )}
-                    {can('course:manage') && (
-                      <SideNavMenuItem
-                        href="/imports/split"
-                        isActive={isActive('/imports/split')}
-                        onClick={go('/imports/split')}
-                      >
-                        {t('nav.jwcSplit')}
-                      </SideNavMenuItem>
-                    )}
-                    {can('attendance:read') && (
-                      <SideNavMenuItem
-                        href="/attendance"
-                        isActive={isActive('/attendance')}
-                        onClick={go('/attendance')}
-                      >
-                        {t('nav.attendance')}
-                      </SideNavMenuItem>
-                    )}
-                    {can('attendance:read') && (
-                      <SideNavMenuItem
-                        href="/attendance/report"
-                        isActive={isActive('/attendance/report')}
-                        onClick={go('/attendance/report')}
-                      >
-                        {t('nav.attendanceReport')}
-                      </SideNavMenuItem>
-                    )}
-                    {can('observation:read') && (
-                      <SideNavMenuItem
-                        href="/observations"
-                        isActive={isActive('/observations')}
-                        onClick={go('/observations')}
-                      >
-                        {t('nav.observations')}
-                      </SideNavMenuItem>
-                    )}
-                  </SideNavMenu>
-                  <SideNavMenu
-                    key={`org-${inOrg}`}
-                    renderIcon={UserMultiple}
-                    title={t('nav.orgManagement')}
-                    defaultExpanded={inOrg}
-                  >
-                    {can('user:read') && (
-                      <SideNavMenuItem
-                        href="/users"
-                        isActive={isActive('/users')}
-                        onClick={go('/users')}
-                      >
-                        {t('nav.userManagement')}
-                      </SideNavMenuItem>
-                    )}
-                    <SideNavMenuItem
-                      href="/admin-classes"
-                      isActive={isActive('/admin-classes')}
-                      onClick={go('/admin-classes')}
-                    >
-                      {t('nav.adminClasses')}
-                    </SideNavMenuItem>
-                    <SideNavMenuItem
-                      href="/teaching-classes"
-                      isActive={isActive('/teaching-classes')}
-                      onClick={go('/teaching-classes')}
-                    >
-                      {t('nav.teachingClasses')}
-                    </SideNavMenuItem>
-                    {can('role:manage') && (
-                      <SideNavMenuItem
-                        href="/roles"
-                        isActive={isActive('/roles')}
-                        onClick={go('/roles')}
-                      >
-                        {t('nav.roleManagement')}
-                      </SideNavMenuItem>
-                    )}
-                    {can('group:manage') && (
-                      <SideNavMenuItem
-                        href="/groups"
-                        isActive={isActive('/groups')}
-                        onClick={go('/groups')}
-                      >
-                        {t('nav.groupManagement')}
-                      </SideNavMenuItem>
-                    )}
-                  </SideNavMenu>
-                  {can('log:read') && (
-                    <SideNavMenu
-                      key={`settings-${inSettings}`}
-                      renderIcon={Settings}
-                      title={t('nav.systemSettings')}
-                      defaultExpanded={inSettings}
-                    >
-                      {can('*') && (
-                        <SideNavMenuItem
-                          href="/settings"
-                          isActive={isActive('/settings')}
-                          onClick={go('/settings')}
-                        >
-                          {t('nav.parameters')}
-                        </SideNavMenuItem>
-                      )}
-                      <SideNavMenuItem
-                        href="/logs"
-                        isActive={isActive('/logs')}
-                        onClick={go('/logs')}
-                      >
-                        {t('nav.auditLogs')}
-                      </SideNavMenuItem>
-                    </SideNavMenu>
-                  )}
+                  {navigation.map((entry) => renderEntry(entry, go))}
                 </SideNavItems>
               </SideNav>
             </Header>

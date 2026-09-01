@@ -39,6 +39,7 @@ services:
       - DB_NAME=${DB_NAME:-ocm}
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      - BRAND_NAME=${BRAND_NAME:-OCM}
       - WX_APP_ID=${WX_APP_ID:-}
       - WX_APP_SECRET=${WX_APP_SECRET:-}
     depends_on:
@@ -53,6 +54,7 @@ services:
         # Baked into the static bundle at image build time.
         VITE_ICP_NUMBER: ${ICP_NUMBER:-}
         VITE_DOCS_URL: ${DOCS_URL:-}
+        VITE_BRAND_TITLE: ${BRAND_NAME:-OCM}
     container_name: ocm-web-prod
     ports:
       - "80:80"
