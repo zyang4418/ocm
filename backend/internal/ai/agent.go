@@ -14,6 +14,7 @@ import (
 
 	"ocm-backend/internal/authz"
 	"ocm-backend/internal/booking"
+	"ocm-backend/internal/brand"
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
 	"ocm-backend/internal/dbutil"
@@ -85,7 +86,7 @@ func NewAgent(client *Client, classrooms *classroom.Store, regimes *schedule.Sto
 var weekdayNames = [...]string{"日", "一", "二", "三", "四", "五", "六"}
 
 func systemPrompt(now time.Time) string {
-	return "你是「OCM 智慧教室管理平台」的 AI 助手，帮助教师查询教室、课表与空闲时段，并生成教室预约方案。" +
+	return "你是「" + brand.Name() + " 智慧教室管理平台」的 AI 助手，帮助教师查询教室、课表与空闲时段，并生成教室预约方案。" +
 		"今天是 " + now.Format("2006年01月02日") + " 星期" + weekdayNames[now.Weekday()] + "。" +
 		"请遵守以下规则：\n" +
 		"1. 只能通过提供的工具查询真实数据，绝不编造任何数据；工具没有返回的信息一律视为不存在。\n" +

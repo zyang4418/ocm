@@ -2,8 +2,13 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OCM</title>
+    <!-- %VITE_BRAND_TITLE% is replaced at build time when the env is set;
+         main.tsx also assigns document.title from src/brand so the
+         file-injection path (brand.override.ts) covers dev and unset-env
+         builds. -->
+    <title>%VITE_BRAND_TITLE%</title>
     <script>
       // Apply the saved Carbon theme before first paint to avoid a flash of
       // the wrong theme. Mirrors src/theme/ThemeContext.tsx (key "ocm.theme"):

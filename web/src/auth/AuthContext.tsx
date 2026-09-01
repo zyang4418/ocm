@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiFetch } from './api'
-import type { CurrentUser, LoginResponse, Permission } from '../types/api'
+import type { CurrentUser, LoginResponse, PermissionCode } from '../types/api'
 
 const TOKEN_KEY = 'ocm.token'
 
@@ -10,7 +10,7 @@ export interface AuthContextValue {
   bootstrapping: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => void
-  can: (perm: Permission) => boolean
+  can: (perm: PermissionCode) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // can reports whether the current user holds a permission. The backend is
   // the enforcement authority; this only gates UI visibility.
   const can = useCallback(
-    (perm: Permission) => {
+    (perm: PermissionCode) => {
       const perms = Array.isArray(user?.permissions) ? user.permissions : []
       return perms.includes('*') || perms.includes(perm)
     },

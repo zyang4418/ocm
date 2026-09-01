@@ -7,27 +7,8 @@ import LanguageProvider from './i18n/LanguageProvider'
 import { ThemeProvider } from './theme/ThemeContext'
 import AppShell from './components/AppShell'
 import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import BookingsPage from './pages/BookingsPage'
-import ClassroomsPage from './pages/ClassroomsPage'
-import CourseManagementPage from './pages/CourseManagementPage'
-import ScheduleConfigPage from './pages/ScheduleConfigPage'
-import TimetablePage from './pages/TimetablePage'
-import ImportsPage from './pages/ImportsPage'
-import ImportDetailPage from './pages/ImportDetailPage'
-import SplitPage from './pages/SplitPage'
-import UsersPage from './pages/UsersPage'
-import RolesPage from './pages/RolesPage'
-import GroupsPage from './pages/GroupsPage'
-import AdminClassesPage from './pages/AdminClassesPage'
-import TeachingClassesPage from './pages/TeachingClassesPage'
-import LogsPage from './pages/LogsPage'
-import SettingsPage from './pages/SettingsPage'
-import AttendancePage from './pages/AttendancePage'
-import AttendanceDetailPage from './pages/AttendanceDetailPage'
-import AttendanceReportPage from './pages/AttendanceReportPage'
-import ObservationsPage from './pages/ObservationsPage'
-import RepairsPage from './pages/RepairsPage'
+import { appRoutes } from './config/appRoutes'
+
 function RequireAuth({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { user, bootstrapping } = useAuth()
@@ -51,45 +32,29 @@ export default function App() {
     <LanguageProvider>
       <ThemeProvider>
         <AuthProvider>
-        <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            element={
-              <RequireAuth>
-                <AppShell>
-                  <Outlet />
-                </AppShell>
-              </RequireAuth>
-            }
-          >
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/classrooms" element={<ClassroomsPage />} />
-            <Route path="/bookings" element={<BookingsPage />} />
-            <Route path="/courses" element={<CourseManagementPage />} />
-            <Route path="/schedule-config" element={<ScheduleConfigPage />} />
-            <Route path="/timetable" element={<TimetablePage />} />
-            <Route path="/imports" element={<ImportsPage />} />
-            <Route path="/imports/split" element={<SplitPage />} />
-            <Route path="/imports/:id" element={<ImportDetailPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/roles" element={<RolesPage />} />
-            <Route path="/groups" element={<GroupsPage />} />
-            <Route path="/admin-classes" element={<AdminClassesPage />} />
-            <Route path="/teaching-classes" element={<TeachingClassesPage />} />
-            <Route path="/attendance" element={<AttendancePage />} />
-            <Route path="/attendance/report" element={<AttendanceReportPage />} />
-            <Route path="/attendance/:id" element={<AttendanceDetailPage />} />
-            <Route path="/observations" element={<ObservationsPage />} />
-            <Route path="/repairs" element={<RepairsPage />} />
-            <Route path="/logs" element={<LogsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-    </ThemeProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                element={
+                  <RequireAuth>
+                    <AppShell>
+                      <Outlet />
+                    </AppShell>
+                  </RequireAuth>
+                }
+              >
+                {/* Route table lives in src/config/appRoutes.tsx — the
+                    injection point for downstream pages. */}
+                {appRoutes.map(({ path, element }) => (
+                  <Route key={path} path={path} element={element} />
+                ))}
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </LanguageProvider>
   )
 }
