@@ -18,9 +18,12 @@ var (
 )
 
 // RegisterRendererFactory installs the customization layer's document backend.
-// Call it from package init, mirroring authz.RegisterPermissions and the
-// internal/modules registry: registration is a boot-time-only step, and a
-// double registration is a wiring error, not a recoverable condition.
+// Call it from package init in a package the binary actually imports — for a
+// downstream fork that is the internal/modules file-level assembly, where a
+// new file runs its init without needing to call modules.Register. Do NOT put
+// the registration in a file inside this package: implementations must import
+// observation for the Renderer contract, so that would create an import
+// cycle. A double registration is a wiring error, not a recoverable condition.
 func RegisterRendererFactory(factory RendererFactory) {
 	rendererMu.Lock()
 	defer rendererMu.Unlock()
