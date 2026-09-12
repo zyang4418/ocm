@@ -21,7 +21,8 @@ OCM IoT 是平台的物联网能力：设备注册表 + MQTT 数据面 + 控制�
 ```
 
 - **数据面**只有一条通道：broker。后端订阅 `iot/#`（设备状态/事件/命令
-  回执），命令下发也经 broker（非 retained QoS1 + 硬过期时间）。
+  回执），命令下发也经 broker（非 retained QoS1 + 硬过期时间）。共享
+  broker 时后端只消费自身 `IOT_SITE_ID` 站点的数据，其他站点一律丢弃。
 - **管理面**走既有 REST：设备认领/绑定教室/下发命令，全部经过 JWT、
   审计与权限链。
 - 契约的规范性文件在仓库 `iot/spec/spec.md`（topic 语法、QoS 矩阵、命令

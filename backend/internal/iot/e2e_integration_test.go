@@ -40,6 +40,9 @@ const (
 	cmdFilter   = "iot/e2e/it-e2e/+/cmd"
 	willTopic   = "iot/_meta/it-e2e/offline"
 	ackTopicFmt = "iot/e2e/it-e2e/dev1/ack"
+	// Same source/device ids under a foreign site: the consumer must drop it
+	// (site isolation), so this topic must never produce a registry row.
+	foreignStateTopic = "iot/elsewhere/" + e2eSource + "/" + e2eDevice + "/state"
 )
 
 func TestIoTDataPlaneE2E(t *testing.T) {
@@ -140,6 +143,11 @@ func TestIoTDataPlaneE2E(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("device never received the command")
 	}
+	// Broker acceptance must read delivered even before any ack arrives.
+	waitFor(t, "command delivered", func() bool {
+		c, err := store.GetCommandByID(ctx, cmd.CommandID)
+		return err == nil && c.Status == iot.CmdStatusDelivered
+	})
 	ack := fmt.Sprintf(`{"v":1,"command_id":%q,"status":"acked","at":%d}`, cmd.CommandID, time.Now().UnixMilli())
 	publish(t, fake, ackTopicFmt, ack, false)
 	waitFor(t, "command acked", func() bool {
@@ -185,6 +193,26 @@ func TestIoTDataPlaneE2E(t *testing.T) {
 		list, _, err := store.PageDevices(ctx, iot.DeviceFilter{SourceID: e2eSource}, "", dbutil.Pagination{})
 		return err == nil && len(list) == 1 && list[0].Status == iot.StatusOffline
 	})
+
+	// 7) Site isolation: a state report published under another site's
+	// subtree never reaches this registry, even with identical source and
+	// device ids — the consumer drops foreign sites before any handler runs.
+	foreign := fmt.Sprintf(`{"v":1,"at":%d,"category":"door_sensor","attrs":{"open":true}}`, time.Now().UnixMilli())
+	publish(t, fake, foreignStateTopic, foreign, false)
+	foreignDeadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(foreignDeadline) {
+		list, _, err := store.PageDevices(ctx, iot.DeviceFilter{SourceID: e2eSource}, "", dbutil.Pagination{})
+		if err != nil {
+			t.Fatalf("page devices for foreign-site check: %v", err)
+		}
+		for _, d := range list {
+			if d.Site != e2eSite {
+				t.Fatalf("foreign-site device leaked into the registry: site=%s source=%s device=%s",
+					d.Site, d.SourceID, d.ExternalID)
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	cancel()
 }

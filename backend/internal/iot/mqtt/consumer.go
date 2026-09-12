@@ -3,6 +3,7 @@ package mqtt
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
 	"time"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
@@ -13,7 +14,10 @@ import (
 
 // subscribeFilter is the one subscription the backend needs: everything under
 // the root namespace, QoS1, so the broker queues device messages while the
-// backend restarts (clean session is disabled below).
+// backend restarts (clean session is disabled below). The subscription cannot
+// narrow to iot/{site}/# — the _meta namespace carries no site segment, and
+// dropping it would silence source will messages — so the site gate lives in
+// handleMessage.
 const subscribeFilter = TopicRoot + "/#"
 
 // perMessageTimeout bounds each registry write so a slow MySQL can never stall
@@ -21,9 +25,11 @@ const subscribeFilter = TopicRoot + "/#"
 const perMessageTimeout = 5 * time.Second
 
 // Consumer bridges the MQTT data plane into the registry: it subscribes
-// iot/# and applies state/event/ack messages. The context is taken at
-// construction (not Run) because paho callbacks fire on their own goroutine
-// and must never observe a zero context.
+// iot/# and applies state/event/ack messages from its own site — data topics
+// carrying a foreign {site} segment are dropped (one broker can host several
+// deployments; see iot.DefaultSiteID). The context is taken at construction
+// (not Run) because paho callbacks fire on their own goroutine and must never
+// observe a zero context.
 type Consumer struct {
 	ctx    context.Context
 	store  *iot.Store
@@ -31,6 +37,11 @@ type Consumer struct {
 	cfg    iot.Config
 	client pahomqtt.Client
 	pub    *Publisher
+
+	// foreignSiteWarned keeps the foreign-site drop at a single Warn so
+	// another deployment's background traffic cannot flood the log; further
+	// drops are logged at debug.
+	foreignSiteWarned atomic.Bool
 }
 
 func NewConsumer(ctx context.Context, store *iot.Store, hub *iot.Hub, cfg iot.Config) *Consumer {
@@ -41,7 +52,7 @@ func NewConsumer(ctx context.Context, store *iot.Store, hub *iot.Hub, cfg iot.Co
 // Must be called before Run connects — main wires it into the handler.
 func (c *Consumer) Publisher() *Publisher {
 	if c.pub == nil {
-		c.pub = &Publisher{cfg: c.cfg}
+		c.pub = &Publisher{cfg: c.cfg, store: c.store}
 	}
 	return c.pub
 }
@@ -51,9 +62,15 @@ func (c *Consumer) Publisher() *Publisher {
 // retained state messages replay the last known device state on every
 // subscribe, which is exactly the bootstrap the registry wants.
 func (c *Consumer) Run() {
+	// The client ID is site-scoped: a broker allows one live connection per
+	// ID, so on a shared broker a constant would make the per-site backends
+	// evict each other in a reconnect loop. It stays stable per site so the
+	// persistent session below survives restarts; replicas of one backend are
+	// not supported (one consumer per site, by design).
+	clientID := "ocm-backend-iot-" + c.cfg.SiteID
 	opts := pahomqtt.NewClientOptions().
 		AddBroker(c.cfg.MQTTURL).
-		SetClientID("ocm-backend-iot").
+		SetClientID(clientID).
 		SetUsername(c.cfg.MQTTUsername).
 		SetPassword(c.cfg.MQTTPassword).
 		SetCleanSession(false).
@@ -113,6 +130,18 @@ func (c *Consumer) handleMessage(_ pahomqtt.Client, msg pahomqtt.Message) {
 	site, sourceID, deviceID, channel, err := ParseDataTopic(topic)
 	if err != nil {
 		logging.L.Warn("iot: unroutable topic", "topic", topic)
+		return
+	}
+	if site != c.cfg.SiteID {
+		// Site isolation: a shared broker carries other deployments' traffic,
+		// and only cfg.SiteID's sources may touch this registry. The gate
+		// must sit on the topic, not the payload, because ack carries no site.
+		if c.foreignSiteWarned.CompareAndSwap(false, true) {
+			logging.L.Warn("iot: dropped data message from a foreign site (check IOT_SITE_ID on both ends; further drops log at debug)",
+				"site", site, "configured", c.cfg.SiteID, "topic", topic)
+		} else {
+			logging.L.Debug("iot: dropped foreign-site data message", "site", site, "topic", topic)
+		}
 		return
 	}
 	switch channel {

@@ -10,6 +10,7 @@ import (
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 
 	"ocm-backend/internal/iot"
+	"ocm-backend/internal/logging"
 )
 
 // publishTimeout bounds the QoS1 PUBACK wait. Publishing happens inside the
@@ -23,6 +24,9 @@ const publishTimeout = 5 * time.Second
 type Publisher struct {
 	cfg    iot.Config
 	client pahomqtt.Client
+	// store records the delivered transition after broker acceptance; set by
+	// Consumer.Publisher (the only constructor).
+	store *iot.Store
 }
 
 // PublishCommand sends one command frame on the device's cmd topic and flips
@@ -50,5 +54,21 @@ func (p *Publisher) PublishCommand(ctx context.Context, d iot.Device, cmd iot.De
 	if !token.WaitTimeout(publishTimeout) {
 		return fmt.Errorf("mqtt publish timeout on %s", topic)
 	}
-	return token.Error()
+	if err := token.Error(); err != nil {
+		return err
+	}
+	// The broker accepted the publish — record the queued → delivered
+	// transition so the registry reflects reality even when no ack ever
+	// arrives (otherwise the row sits queued until the expiry sweep reports
+	// it as expired "before delivery").
+	ok, err := p.store.MarkCommandPublished(ctx, cmd.CommandID)
+	if err != nil {
+		logging.L.Error("iot: mark command delivered failed", "command_id", cmd.CommandID, "err", err)
+	} else if !ok {
+		// The row left queued while we were publishing — the presence sweep
+		// expired it mid-flight. The frame is already on the wire; the device
+		// must drop it per the expiry rule, and a late ack cannot resurrect it.
+		logging.L.Warn("iot: published a command that was no longer queued", "command_id", cmd.CommandID)
+	}
+	return nil
 }

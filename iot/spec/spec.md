@@ -30,7 +30,8 @@ iot/_meta/{sourceId}/{channel}                 源生命周期（无 site 段）
 ```
 
 - `site`：部署标识（env `IOT_SITE_ID`，默认 `main`），用于共享 broker 时
-  的多校隔离。
+  的多校隔离：后端只消费 site 等于自身配置的数据消息（state/event/ack），
+  其他站点一律丢弃。隔离靠 topic 段把守，不靠载荷——ack 里没有 site。
 - `sourceId` / `deviceId`：稳定标识，字符集 `[A-Za-z0-9._-]`，≤128 字符，
   不以 `$` 开头（broker 保留前缀）。
 - **topic 里只放稳定标识**：不放版本号（版本在载荷 `v` 字段）、不放教室、
@@ -85,6 +86,9 @@ queued → delivered → acked | failed
   可选）。遗嘱触发后，后端将该源下全部在线设备置为 offline——这是"站点级
   离线"信号（网关/中控或其上行消失），区别于单设备离线。
 - 心跳类 meta 消息（如 `heartbeat`）v1 仅记录日志；源健康页属后续工作。
+- `_meta` 不带 site 段：v1 的一个 broker 由一次 auth-init 引导，只服务一个
+  site（sourceId 在 broker 内即唯一）。真正的多校共享 broker 引导属后续
+  工作，届时 `_meta` 语法需要加 site 段。
 
 ## 7. 断线缓冲政策
 

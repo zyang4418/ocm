@@ -42,7 +42,6 @@ export default function IotDeviceDetailPage() {
   const { token, can } = useAuth()
   const navigate = useNavigate()
   const id = useParams<{ id: string }>().id
-  const canManage = can('iot:manage')
   const canControl = can('iot:control')
 
   const [device, setDevice] = useState<IotDevice | null>(null)
@@ -227,38 +226,36 @@ export default function IotDeviceDetailPage() {
         )}
       </Column>
 
-      {/* Commands */}
-      {device && device.status !== 'pending' && (canControl || canManage) && (
+      {/* Commands — issuing one is a physical-world action gated by
+          iot:control on the server; manage alone never issues any. */}
+      {device && device.status !== 'pending' && canControl && (
         <Column sm={4} md={8} lg={16}>
           <h3>{t('detail.commands')}</h3>
           <div className="classrooms-page__actions">
-            {canControl &&
-              COMMAND_BUTTONS.map((type) => (
-                <Button
-                  key={type}
-                  kind={type === 'door_open' ? 'danger--ghost' : 'ghost'}
-                  size="sm"
-                  onClick={() => {
-                    setCommandError('')
-                    setCommandTarget(type)
-                  }}
-                >
-                  {t('command.' + type)}
-                </Button>
-              ))}
-            {canManage && (
+            {COMMAND_BUTTONS.map((type) => (
               <Button
-                kind="ghost"
+                key={type}
+                kind={type === 'door_open' ? 'danger--ghost' : 'ghost'}
                 size="sm"
                 onClick={() => {
-                  setCustomError('')
-                  setCustomForm({ type: '', payload: '' })
-                  setCustomOpen(true)
+                  setCommandError('')
+                  setCommandTarget(type)
                 }}
               >
-                {t('command.genericTitle')}
+                {t('command.' + type)}
               </Button>
-            )}
+            ))}
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() => {
+                setCustomError('')
+                setCustomForm({ type: '', payload: '' })
+                setCustomOpen(true)
+              }}
+            >
+              {t('command.genericTitle')}
+            </Button>
           </div>
         </Column>
       )}
