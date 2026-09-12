@@ -1,0 +1,105 @@
+{
+  "title": "物联网设备",
+  "subtitle": "接入设备的台账、实时状态与命令",
+  "breadcrumb": {
+    "home": "首页",
+    "current": "物联网设备",
+    "list": "设备列表"
+  },
+  "field": {
+    "name": "名称",
+    "externalId": "设备编号",
+    "category": "类别",
+    "sourceId": "来源",
+    "classroom": "教室",
+    "status": "状态",
+    "lastSeenAt": "最近上报",
+    "actions": "操作",
+    "type": "类型",
+    "payload": "载荷",
+    "occurredAt": "事件时间",
+    "receivedAt": "接收时间",
+    "issuedBy": "下发人",
+    "createdAt": "下发时间",
+    "expiresAt": "截止时间",
+    "commandDetail": "结果"
+  },
+  "status": {
+    "pending": "待认领",
+    "online": "在线",
+    "offline": "离线",
+    "queued": "已排队",
+    "delivered": "已下发",
+    "acked": "已确认",
+    "failed": "失败",
+    "expired": "已过期"
+  },
+  "filter": {
+    "status": "状态筛选",
+    "allStatuses": "全部状态"
+  },
+  "table": {
+    "title": "设备列表",
+    "description": "共 {{count}} 台设备",
+    "searchPlaceholder": "搜索名称或设备编号"
+  },
+  "empty": {
+    "loading": "加载中…",
+    "search": "没有匹配的设备",
+    "none": "暂无设备。网关或模拟器上报后，设备会以待认领状态出现在这里",
+    "events": "暂无事件"
+  },
+  "action": {
+    "approve": "认领",
+    "detail": "详情",
+    "send": "下发"
+  },
+  "modal": {
+    "approve": "认领设备",
+    "approveSubmit": "认领",
+    "approveHint": "为设备命名并绑定教室。认领后才能下发命令。",
+    "delete": "删除设备",
+    "deleteSubmit": "删除",
+    "deleteLine": "将删除 {{name}} 及其事件与命令记录；设备再次上报后会重新以待认领状态出现。",
+    "name": "设备名称",
+    "classroom": "绑定教室",
+    "category": "类别（可选，留空保持现有值）",
+    "command": "确认下发命令",
+    "commandSubmit": "确认下发",
+    "commandLine": "即将对 {{device}} 执行「{{command}}」。命令作用于物理设备，请确认现场允许。"
+  },
+  "command": {
+    "door_open": "开门",
+    "door_close": "关门",
+    "scene_start_class": "一键上课",
+    "scene_end_class": "一键下课",
+    "send": "下发",
+    "genericTitle": "自定义命令（JSON）",
+    "typeLabel": "命令类型",
+    "typePlaceholder": "如 door_open",
+    "payloadLabel": "参数（JSON 对象，可选）",
+    "payloadPlaceholder": "{ }",
+    "sent": "命令已下发（{{status}}），等待设备回执",
+    "typeRequired": "请填写命令类型",
+    "invalidPayload": "参数必须是合法的 JSON 对象"
+  },
+  "detail": {
+    "attrs": "最新属性",
+    "attrsEmpty": "设备尚未上报属性",
+    "showRaw": "查看原始 JSON",
+    "hideRaw": "收起",
+    "events": "事件",
+    "commands": "命令",
+    "pendingNotice": "设备待认领：完成认领后才能下发命令",
+    "notFound": "设备不存在或已删除",
+    "live": "实时状态已连接（SSE）"
+  },
+  "validation": {
+    "nameRequired": "请填写设备名称",
+    "classroomRequired": "请选择教室"
+  },
+  "error": {
+    "action": "操作失败",
+    "load": "加载失败"
+  }
+}

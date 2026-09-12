@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/zyang4418/ocm/blob/main/iot/spec/schema/state.json",
+  "title": "Device state report (iot/{site}/{sourceId}/{deviceId}/state)",
+  "description": "Retained report of a device's latest attribute set. The registry replaces the previous state wholesale; a report with empty attrs still marks the device seen.",
+  "type": "object",
+  "required": ["v", "at"],
+  "additionalProperties": false,
+  "properties": {
+    "v": {
+      "const": 1,
+      "description": "Payload schema version. Versions live in the payload, never in the topic."
+    },
+    "at": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Event time, Unix milliseconds UTC. Preserved through offline buffering; the registry also records its own arrival time."
+    },
+    "category": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$",
+      "description": "Source-declared device category (e.g. door_sensor). Honored by the registry on first sight only; operators re-categorize via the console."
+    },
+    "attrs": {
+      "type": "object",
+      "description": "Latest attribute set of the device. Device-class specific; the console renders unknown attributes as raw JSON."
+    }
+  }
+}

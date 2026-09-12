@@ -1299,6 +1299,112 @@ definitions:
     - stats
     - warnings
     type: object
+  iot.ApproveInput:
+    properties:
+      category:
+        type: string
+      classroomId:
+        type: integer
+      name:
+        type: string
+    required:
+    - category
+    - classroomId
+    - name
+    type: object
+  iot.CommandInput:
+    properties:
+      expiresInSeconds:
+        type: integer
+      payload:
+        type: object
+      type:
+        type: string
+    required:
+    - type
+    type: object
+  iot.Device:
+    properties:
+      category:
+        type: string
+      classroomId:
+        type: integer
+      createdAt:
+        type: string
+      externalId:
+        type: string
+      id:
+        type: integer
+      lastSeenAt:
+        type: string
+      name:
+        type: string
+      site:
+        type: string
+      sourceId:
+        type: string
+      state:
+        type: object
+      status:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - category
+    - createdAt
+    - externalId
+    - id
+    - name
+    - site
+    - sourceId
+    - status
+    - updatedAt
+    type: object
+  iot.DeviceCommand:
+    properties:
+      commandId:
+        type: string
+      createdAt:
+        type: string
+      detail:
+        type: string
+      deviceId:
+        type: integer
+      expiresAt:
+        type: string
+      id:
+        type: integer
+      issuedBy:
+        type: string
+      payload:
+        type: object
+      status:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - commandId
+    - createdAt
+    - detail
+    - deviceId
+    - expiresAt
+    - id
+    - issuedBy
+    - status
+    - type
+    - updatedAt
+    type: object
+  iot.DeviceUpdateInput:
+    properties:
+      category:
+        type: string
+      classroomId:
+        type: integer
+      name:
+        type: string
+    type: object
   jwc.Stats:
     properties:
       adminClasses:
@@ -3858,6 +3964,332 @@ paths:
       summary: Upload a JWC (教务处) master timetable and split it into six imports
       tags:
       - imports
+  /api/iot/commands:
+    get:
+      parameters:
+      - description: queued|delivered|acked|failed|expired
+        in: query
+        name: status
+        type: string
+      - description: filter by device
+        in: query
+        name: device_id
+        type: integer
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged commands, newest first
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid filter
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List issued commands
+      tags:
+      - iot
+  /api/iot/devices:
+    get:
+      parameters:
+      - description: search by name/external id
+        in: query
+        name: q
+        type: string
+      - description: pending|online|offline
+        in: query
+        name: status
+        type: string
+      - description: filter by source id
+        in: query
+        name: source
+        type: string
+      - description: filter by category
+        in: query
+        name: category
+        type: string
+      - description: filter by classroom
+        in: query
+        name: classroom_id
+        type: integer
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged devices
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid filter
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List IoT devices
+      tags:
+      - iot
+  /api/iot/devices/{id}:
+    delete:
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: invalid device id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an IoT device
+      tags:
+      - iot
+    get:
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: device detail
+          schema:
+            $ref: '#/definitions/iot.Device'
+        "400":
+          description: invalid device id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an IoT device
+      tags:
+      - iot
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: partial update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iot.DeviceUpdateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated device
+          schema:
+            $ref: '#/definitions/iot.Device'
+        "400":
+          description: invalid body / nothing to update
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an IoT device
+      tags:
+      - iot
+  /api/iot/devices/{id}/approve:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: claim input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iot.ApproveInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: approved device
+          schema:
+            $ref: '#/definitions/iot.Device'
+        "400":
+          description: invalid body
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Approve (claim) a pending device
+      tags:
+      - iot
+  /api/iot/devices/{id}/commands:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: command input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/iot.CommandInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created command (delivered when the broker accepted it)
+          schema:
+            $ref: '#/definitions/iot.DeviceCommand'
+        "400":
+          description: invalid body / unknown command type
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: device is pending approval
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "502":
+          description: could not publish command
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "503":
+          description: iot messaging not configured
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Issue a command to a device
+      tags:
+      - iot
+  /api/iot/devices/{id}/events:
+    get:
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: 1-based page
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: paged events, newest first
+          schema:
+            $ref: '#/definitions/httpx.Paged'
+        "400":
+          description: invalid device id
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: device not found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List a device's events
+      tags:
+      - iot
   /api/logs:
     get:
       parameters:
