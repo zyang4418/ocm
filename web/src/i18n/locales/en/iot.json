@@ -1,0 +1,105 @@
+{
+  "title": "IoT devices",
+  "subtitle": "Device registry, live status and commands",
+  "breadcrumb": {
+    "home": "Home",
+    "current": "IoT devices",
+    "list": "Device list"
+  },
+  "field": {
+    "name": "Name",
+    "externalId": "Device ID",
+    "category": "Category",
+    "sourceId": "Source",
+    "classroom": "Classroom",
+    "status": "Status",
+    "lastSeenAt": "Last seen",
+    "actions": "Actions",
+    "type": "Type",
+    "payload": "Payload",
+    "occurredAt": "Event time",
+    "receivedAt": "Received",
+    "issuedBy": "Issued by",
+    "createdAt": "Issued at",
+    "expiresAt": "Expires",
+    "commandDetail": "Result"
+  },
+  "status": {
+    "pending": "Pending",
+    "online": "Online",
+    "offline": "Offline",
+    "queued": "Queued",
+    "delivered": "Delivered",
+    "acked": "Acked",
+    "failed": "Failed",
+    "expired": "Expired"
+  },
+  "filter": {
+    "status": "Status filter",
+    "allStatuses": "All statuses"
+  },
+  "table": {
+    "title": "Devices",
+    "description": "{{count}} devices in total",
+    "searchPlaceholder": "Search by name or device ID"
+  },
+  "empty": {
+    "loading": "Loading…",
+    "search": "No matching devices",
+    "none": "No devices yet. They appear here as pending once a gateway or simulator reports in",
+    "events": "No events"
+  },
+  "action": {
+    "approve": "Approve",
+    "detail": "Details",
+    "send": "Send"
+  },
+  "modal": {
+    "approve": "Approve device",
+    "approveSubmit": "Approve",
+    "approveHint": "Name the device and bind a classroom. Commands can only be issued after approval.",
+    "delete": "Delete device",
+    "deleteSubmit": "Delete",
+    "deleteLine": "This deletes {{name}} together with its events and commands. If the device reports again it reappears as pending.",
+    "name": "Device name",
+    "classroom": "Classroom",
+    "category": "Category (optional, empty keeps the current value)",
+    "command": "Confirm command",
+    "commandSubmit": "Send command",
+    "commandLine": "About to run \"{{command}}\" on {{device}}. The command acts on physical equipment — make sure the room allows it."
+  },
+  "command": {
+    "door_open": "Open door",
+    "door_close": "Close door",
+    "scene_start_class": "Start class",
+    "scene_end_class": "End class",
+    "send": "Send",
+    "genericTitle": "Custom command (JSON)",
+    "typeLabel": "Command type",
+    "typePlaceholder": "e.g. door_open",
+    "payloadLabel": "Payload (JSON object, optional)",
+    "payloadPlaceholder": "{ }",
+    "sent": "Command delivered ({{status}}), waiting for the device ack",
+    "typeRequired": "Command type is required",
+    "invalidPayload": "Payload must be a valid JSON object"
+  },
+  "detail": {
+    "attrs": "Latest attributes",
+    "attrsEmpty": "The device has not reported any attributes yet",
+    "showRaw": "Show raw JSON",
+    "hideRaw": "Hide",
+    "events": "Events",
+    "commands": "Commands",
+    "pendingNotice": "Device is pending: approve it in the list before issuing commands",
+    "notFound": "Device not found or deleted",
+    "live": "Live status connected (SSE)"
+  },
+  "validation": {
+    "nameRequired": "Device name is required",
+    "classroomRequired": "Please select a classroom"
+  },
+  "error": {
+    "action": "Action failed",
+    "load": "Failed to load"
+  }
+}

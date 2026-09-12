@@ -43,6 +43,12 @@ Classroom management system: Go backend + WeChat mini-program (小程序) + web 
 - MySQL 幂等迁移:ALTER 忽略 1060/1061/1062(见 importer/store.go 模式)。
 - 权限链:`auth.Middleware`(JWT→username)→ `user.LoadSubject`(每请求重算)→ `authz.RequirePermission`/`RequireAny`。RBAC 数据(`roles`/`user_roles`/`user_permissions`/`user_groups` 等)在 `internal/iam`;**有效权限 = 直接角色授权 ∪ 组角色授权 ∪ 直接权限授权**,授权可带 `expires_at` 过期;`*` 通配仅系统 admin 角色持有,不在权限目录(API 无法授予);授权 admin 角色需操作者持有 `*`。权限目录在代码(`authz.Catalog`),DB 只存权限字符串。handler 检查 permission 字符串,不检查角色名。
 
+## 定制层扩展点（模块注册表与 Web 注入）
+
+- **后端模块注册表**：`backend/internal/modules/`——下游在**该目录新增文件**（package modules）以 `init()` 调 `modules.Register(Module{Name, Migrate, Mount})`，`main.go` 在内置模块接线完成后先统一跑 Migrate 再统一 Mount（按 Name 排序确定性执行）。文件级组装即可把下游模块编进二进制，**零覆盖 main.go**；下游权限继续走 `authz.RegisterPermissions`（package init 先于 main，orphan 检查可见）。
+- **Web 文件注入**：`src/config/appRoutes.override.tsx`（导出 `overrideRoutes: AppRoute[]`）与 `src/config/navigation.override.ts`（导出 `overrideEntries: NavEntry[]`）经 `import.meta.glob` 构建期并入，**新增文件即加页面/菜单**；整文件覆盖这两个数据文件的老方式继续兼容。
+- **物联网**：后端模块 `backend/internal/iot`（数据面 `internal/iot/mqtt`，`IOT_*` env 未配置即惰性、命令下发 503）；契约规范 `iot/spec/spec.md`（topic 无版本前缀、载荷带 `"v":1`、命令必须带 `expires_at`）；设备侧 SDK/模拟器在顶层第二个 Go module `iot/`（module ocm-iot，backend 刻意不 import 它，契约一致性靠 `go test -tags=integration` e2e）；部署 overlay `docker-compose.iot.yml`。权限 `iot:read/manage/control`，`iot:control` 单独门控物理命令。
+
 ## OpenAPI 契约(swaggo)
 
 - handler 注释用 swaggo 注解(`@Summary/@Param/@Success/@Router`,试点见 `backend/internal/attendance/handler.go`);`backend/docs/` 为生成产物勿手改。**全部业务模块已注解**(导出 xlsx/docx 的端点除外——二进制响应无 schema 意义)。

@@ -4,14 +4,20 @@ on:
   push:
     paths:
       - 'backend/**'
+      - 'iot/**'
+      - 'deploy/**'
       - '.github/workflows/backend.yml'
+      - '.github/mosquitto.conf'
       - '.gitignore'
       - 'docker-compose.yml'
       - 'docker-compose.prod.yml'
   pull_request:
     paths:
       - 'backend/**'
+      - 'iot/**'
+      - 'deploy/**'
       - '.github/workflows/backend.yml'
+      - '.github/mosquitto.conf'
       - '.gitignore'
       - 'docker-compose.yml'
       - 'docker-compose.prod.yml'
@@ -77,6 +83,38 @@ jobs:
           working-directory: backend
           version: v2.12.2
 
+      # The IoT SDK is a second Go module (iot/, module ocm-iot) so it gets
+      # the same gate set as backend, pointed at its own directory.
+      - name: IoT SDK verify modules tidy
+        working-directory: iot
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: IoT SDK gofmt
+        working-directory: iot
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then
+            echo "::error::Files need gofmt:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: IoT SDK vet & build
+        working-directory: iot
+        run: go vet ./... && go build ./...
+
+      - name: IoT SDK test
+        working-directory: iot
+        run: go test -race -coverprofile=coverage-iot.out -v ./...
+
+      - name: IoT SDK golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: iot
+          version: v2.12.2
+
   docker:
     name: Prod image
     runs-on: ubuntu-latest
@@ -96,11 +134,37 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      # Anonymous broker for the IoT data-plane e2e only (scratch tables; the
+      # test drops/recreates iot_* in the ocm database). Production broker
+      # bootstrap lives in deploy/mosquitto (password_file + acl_file).
+      mosquitto:
+        image: eclipse-mosquitto:2
+        ports:
+          - 1883:1883
+        volumes:
+          - ${{ github.workspace }}/.github/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
       - name: Build
         run: docker build -f backend/Dockerfile -t ocm-backend:ci backend/
+
+      - name: IoT data-plane e2e
+        working-directory: backend
+        run: |
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/1883) 2>/dev/null; then break; fi
+            sleep 1
+          done
+          go test -tags=integration -v ./internal/iot/...
+        env:
+          IOT_TEST_MQTT_URL: tcp://127.0.0.1:1883
+          IOT_TEST_MYSQL_DSN: 'root:ci-root-password@tcp(127.0.0.1:3306)/ocm?parseTime=true'
 
       - name: Run & readiness check
         run: |

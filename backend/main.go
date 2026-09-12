@@ -26,9 +26,12 @@ import (
 	"ocm-backend/internal/httpx"
 	"ocm-backend/internal/iam"
 	"ocm-backend/internal/importer"
+	"ocm-backend/internal/iot"
+	"ocm-backend/internal/iot/mqtt"
 	"ocm-backend/internal/logging"
 	"ocm-backend/internal/mail"
 	"ocm-backend/internal/middleware"
+	"ocm-backend/internal/modules"
 	"ocm-backend/internal/observation"
 	"ocm-backend/internal/schedule"
 	"ocm-backend/internal/storage"
@@ -40,6 +43,7 @@ import (
 // @version        1.0
 // @description    Classroom management backend (Go net/http ServeMux). Auth via JWT Bearer (HS256, 24h); mini-program identity resolved server-side via code2Session.
 // @tag.attendance 考勤
+// @tag.iot 物联网
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
@@ -188,6 +192,32 @@ func main() {
 	}
 	classroom.NewRepairHandler(repairStore).RegisterRoutes(mux, authenticate)
 
+	// OCM IoT: device registry + MQTT data plane. Routes always register so
+	// the permission catalog and console UI stay stable; the consumer and
+	// command publisher only start when IOT_MQTT_URL is configured. A nil
+	// publisher keeps the registry fully functional and degrades command
+	// issuing to 503 (the observation Renderer nil pattern).
+	iotStore := iot.NewStore(database)
+	if err := iotStore.Migrate(ctx); err != nil {
+		logging.L.Error("iot migration", "err", err)
+		os.Exit(1)
+	}
+	iotHub := iot.NewHub()
+	iotCfg := iot.ConfigFromEnv()
+	var iotPublisher iot.CommandPublisher
+	if iotCfg.Enabled() {
+		iotConsumer := mqtt.NewConsumer(ctx, iotStore, iotHub, iotCfg)
+		iotPublisher = iotConsumer.Publisher()
+		go iotConsumer.Run()
+	} else {
+		logging.L.Info("iot data plane disabled", "reason", "IOT_MQTT_URL not set")
+	}
+	iot.NewHandler(iotStore, iotPublisher, iotHub, iotCfg).RegisterRoutes(mux, authenticate)
+	// Presence (command expiry + stale-online sweep) is near-real-time state
+	// and runs at a short interval; retention purges daily like systemlog.
+	go iotStore.RunPresenceLoop(ctx, time.Minute, iotCfg.OnlineTTL)
+	go iotStore.RunRetentionLoop(ctx, 24*time.Hour, iotCfg.EventRetentionDays)
+
 	scheduleStore := schedule.NewStore(database)
 	if err := scheduleStore.Migrate(ctx); err != nil {
 		logging.L.Error("schedule migration", "err", err)
@@ -277,6 +307,28 @@ func main() {
 	// Admin-only system settings (admin-gated inside the handlers).
 	mail.NewHandler(mailStore).RegisterRoutes(mux, authenticate)
 	storage.NewHandler(storageStore).RegisterRoutes(mux, authenticate)
+
+	// Downstream modules (customization layer) — see internal/modules. Their
+	// files are compiled into the binary by the file-level assembly, so
+	// main.go never needs a downstream edit. Migrations for ALL registered
+	// modules run first, then mounts, so a module's routes can rely on another
+	// module's tables. Permissions they add via authz.RegisterPermissions were
+	// registered from package init, i.e. before the orphan check below.
+	for _, m := range modules.All() {
+		if m.Migrate != nil {
+			if err := m.Migrate(ctx, database); err != nil {
+				logging.L.Error("custom module migration", "module", m.Name, "err", err)
+				os.Exit(1)
+			}
+			logging.L.Info("custom module migrated", "module", m.Name)
+		}
+	}
+	for _, m := range modules.All() {
+		if m.Mount != nil {
+			m.Mount(ctx, database, mux, authenticate)
+		}
+		logging.L.Info("custom module mounted", "module", m.Name)
+	}
 
 	// Retention cleanup: purge once now and then daily. Recording itself is
 	// never disabled by settings — retention only controls deletion.

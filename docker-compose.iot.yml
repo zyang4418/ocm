@@ -1,0 +1,45 @@
+# OCM IoT overlay: brings up mosquitto with bootstrapped credentials and
+# wires the backend's MQTT data plane on top of either base compose file:
+#   dev:  docker compose -f docker-compose.yml      -f docker-compose.iot.yml up -d
+#   prod: docker compose -f docker-compose.prod.yml -f docker-compose.iot.yml up -d
+# Broker auth model: iot/spec/spec.md §8; operational notes in
+# deploy/mosquitto/README.md; the full guide is docs/docs/guide/iot.mdx.
+services:
+  mosquitto-init:
+    image: eclipse-mosquitto:2
+    entrypoint: ["/bin/sh", "/mosquitto-config-src/auth-init.sh"]
+    environment:
+      IOT_MQTT_USERNAME: ${IOT_MQTT_USERNAME:-ocm-backend}
+      IOT_MQTT_PASSWORD: ${IOT_MQTT_PASSWORD:?set IOT_MQTT_PASSWORD}
+      IOT_SITE_ID: ${IOT_SITE_ID:-main}
+      IOT_SOURCES: ${IOT_SOURCES:-sim01}
+
+    volumes:
+      - ./deploy/mosquitto:/mosquitto-config-src:ro
+      - mosquitto_auth:/mosquitto-config/auth
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    depends_on:
+      mosquitto-init:
+        condition: service_completed_successfully
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./deploy/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_auth:/mosquitto/config/auth
+      - mosquitto_data:/mosquitto/data
+
+  backend:
+    environment:
+      IOT_MQTT_URL: tcp://mosquitto:1883
+      IOT_MQTT_USERNAME: ${IOT_MQTT_USERNAME:-ocm-backend}
+      IOT_MQTT_PASSWORD: ${IOT_MQTT_PASSWORD:?set IOT_MQTT_PASSWORD}
+      IOT_SITE_ID: ${IOT_SITE_ID:-main}
+      IOT_EVENT_RETENTION_DAYS: ${IOT_EVENT_RETENTION_DAYS:-90}
+      IOT_ONLINE_TTL_SECONDS: ${IOT_ONLINE_TTL_SECONDS:-300}
+
+volumes:
+  mosquitto_auth:
+  mosquitto_data:

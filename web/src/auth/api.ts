@@ -118,16 +118,18 @@ export async function apiDownload(
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-// apiStream POSTs JSON and consumes a text/event-stream response (the AI
-// assistant's SSE endpoint), invoking onEvent(eventName, dataObject) for every
-// frame. `data` is the parsed JSON payload, or null when a frame is malformed -
-// narrow it per event name at the call site. Non-2xx responses are read as JSON
-// and thrown like apiFetch. Returns { promise, controller } - abort the
-// controller to stop the stream mid-way.
-export function apiStream(path: string, { body, token, onEvent }: {
+// apiStream consumes a text/event-stream response (the AI assistant's SSE
+// endpoint is a POST with a JSON body; the IoT live-status stream is a plain
+// GET), invoking onEvent(eventName, dataObject) for every frame. `data` is the
+// parsed JSON payload, or null when a frame is malformed - narrow it per event
+// name at the call site. Non-2xx responses are read as JSON and thrown like
+// apiFetch. Returns { promise, controller } - abort the controller to stop the
+// stream mid-way.
+export function apiStream(path: string, { body, token, onEvent, method = 'POST' }: {
   body?: unknown
   token?: string | null
   onEvent: (eventName: string, data: Record<string, any> | null) => void
+  method?: 'GET' | 'POST'
 }): { promise: Promise<void>; controller: AbortController } {
   const controller = new AbortController()
   const promise = (async () => {
@@ -138,7 +140,7 @@ export function apiStream(path: string, { body, token, onEvent }: {
     let res: Response
     try {
       res = await fetch(path, {
-        method: 'POST',
+        method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,

@@ -91,6 +91,26 @@ export type MailMaskedSettings = components['schemas']['mail.MaskedSettings']
 export type StorageSettings = components['schemas']['storage.Settings']
 export type StorageMaskedSettings = components['schemas']['storage.MaskedSettings']
 
+// ---- Generated schemas: iot ----
+
+export type IotDevice = components['schemas']['iot.Device']
+export type IotApproveInput = components['schemas']['iot.ApproveInput']
+export type IotDeviceUpdateInput = components['schemas']['iot.DeviceUpdateInput']
+export type IotCommandInput = components['schemas']['iot.CommandInput']
+export type IotDeviceCommand = components['schemas']['iot.DeviceCommand']
+// iot.DeviceEvent is returned only inside the paged envelope of
+// /api/iot/devices/{id}/events, so swaggo never references the bare type and
+// it is absent from the generated contract. Hand-written to mirror
+// backend/internal/iot.DeviceEvent.
+export interface IotDeviceEvent {
+  id: number
+  deviceId: number
+  type: string
+  payload?: Record<string, unknown> | null
+  occurredAt: string
+  receivedAt: string
+}
+
 // ---- Paged envelope ----
 
 // httpx.RespondPaged wraps every list endpoint as {items, total, page,
@@ -161,6 +181,9 @@ export type Permission =
   | 'observation:read'
   | 'observation:write'
   | 'observation:manage'
+  | 'iot:read'
+  | 'iot:manage'
+  | 'iot:control'
 
 // Open permission code: accepts any code a downstream deployment registers via
 // authz.RegisterPermissions (e.g. 'signage:manage') while keeping editor

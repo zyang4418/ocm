@@ -1,0 +1,86 @@
+---
+title: 物联网（OCM IoT）
+---
+
+# 物联网（OCM IoT）
+
+OCM IoT 是平台的物联网能力：设备注册表 + MQTT 数据面 + 控制台管理页。
+它是**部署无关的通用基础设施**——设备可以来自任何厂商的边缘网关、云端
+平台或自研硬件，注册表与契约保持中立。
+
+> **品牌说明**：物联网模块与契约统一使用中性命名 `iot`。
+> **OCM Things** 是自研设备与自研驱动产品线的子品牌（如自研教室中控主机
+> 及其运行时）。
+
+## 架构
+
+```
+设备/驱动 ──MQTT──▶ mosquitto ◀──MQTT── backend (internal/iot)
+                    (数据面)              │ REST（管理面）
+                                        web 控制台（设备列表/详情/命令）
+```
+
+- **数据面**只有一条通道：broker。后端订阅 `iot/#`（设备状态/事件/命令
+  回执），命令下发也经 broker（非 retained QoS1 + 硬过期时间）。
+- **管理面**走既有 REST：设备认领/绑定教室/下发命令，全部经过 JWT、
+  审计与权限链。
+- 契约的规范性文件在仓库 `iot/spec/spec.md`（topic 语法、QoS 矩阵、命令
+  生命周期、断线缓冲、安全基线），机器可读 schema 在 `iot/spec/schema/`。
+
+## 快速开始
+
+```bash
+cp .env.example .env          # 设置 IOT_MQTT_PASSWORD（其余 IoT 项有默认）
+docker compose -f docker-compose.yml -f docker-compose.iot.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.iot.yml \
+  run --rm mosquitto-init true   # 首次启动会由 mosquitto-init 自动生成凭据
+go run ./iot/cmd/iot-sim --broker tcp://localhost:1883 --source sim01 --classrooms 1
+```
+
+模拟器发布虚拟教室的门磁/空调/投影/幕布/环境传感器状态，并偶发告警事件。
+打开控制台「物联网」页面：设备以 **pending** 出现 → 认领并绑定教室 →
+状态变为在线 → 详情页可以下发命令（开/关门、上课/下课场景）。
+
+源凭据由 `mosquitto-init` 容器生成（见 `deploy/mosquitto/README.md`）：
+backend 用户读写整个 `iot/#`；每个源（`IOT_SOURCES`）限定在自己的子树，
+密码存于 `mosquitto_auth` 卷的 `credentials.txt`。
+
+## Topic 与载荷（摘要）
+
+```
+iot/{site}/{sourceId}/{deviceId}/{state|event|cmd|ack}   设备数据与命令
+iot/_meta/{sourceId}/{offline}                            源遗嘱（整源离线）
+```
+
+- topic 段只放稳定标识；**版本在载荷里**（`"v":1`），不进 topic。
+- `state`：retained QoS1，注册表只存最新属性集（JSON），不做时序曲线。
+- `event`：QoS1 至少一次，注册表按 `(deviceId, type, at, payload)` 去重；
+  事件时间与到达时间双记，离线缓冲补传后仍能还原真实时序。
+- `cmd`：非 retained QoS1，**必须带 `expires_at`**；设备必须丢弃过期命令
+  并回 `failed` —— 断网期间排队的开门命令只允许过期，绝不允许迟到执行。
+- `ack`：设备回报 `acked/failed`；对已过期/已结算命令的迟到回执被丢弃。
+
+完整规范见 [`iot/spec/spec.md`](https://github.com/zyang4418/ocm/blob/main/iot/spec/spec.md)。
+
+## 权限
+
+| 权限 | 用途 |
+|---|---|
+| `iot:read` | 查看设备列表、状态、属性、事件与命令记录 |
+| `iot:manage` | 认领设备、绑定教室、编辑与删除设备 |
+| `iot:control` | 下发控制命令（物理世界动作，与 manage 分离授予） |
+
+未配置 `IOT_MQTT_URL` 时模块惰性：管理页可用（无设备数据），命令下发
+返回 503。
+
+## 设备侧开发
+
+用 Go 写驱动/网关/中控时直接复用 SDK `iot/mqttc`：连接与重连、最新状态
+断线重放、事件/回执的持久 FIFO 缓冲、命令订阅与过期拦截（过期命令不会
+到达驱动代码）都已实现，驱动只需实现自己的协议翻译。参考实现见
+`iot/sim`（虚拟教室）与 `cmd/iot-sim`。
+
+## 边界与合规
+
+**消防联动走消防系统硬线，不经过本系统**——不进中控、不进 MQTT、不进云。
+本平台不做任何消防功能。

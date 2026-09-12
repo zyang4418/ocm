@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/zyang4418/ocm/blob/main/iot/spec/schema/command.json",
+  "title": "Backend command (iot/{site}/{sourceId}/{deviceId}/cmd)",
+  "description": "Backend-issued downlink command. Published non-retained QoS1. SAFETY RULE: the device MUST drop any command whose expires_at has passed, and MUST never execute a command received before issuance — a command queued during an outage may only expire, never fire late.",
+  "type": "object",
+  "required": ["v", "command_id", "type", "issued_at", "expires_at"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "command_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$",
+      "description": "Globally unique command identifier; echoed in the ack."
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[\\x21-\\x7E]+$",
+      "description": "Command type from the backend whitelist (e.g. door_open, scene_start_class)."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Optional command arguments."
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Issue time, Unix milliseconds UTC."
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Hard deadline, Unix milliseconds UTC. Default 30s, door-class commands should stay under 10s."
+    }
+  }
+}

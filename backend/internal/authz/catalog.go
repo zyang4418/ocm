@@ -75,6 +75,12 @@ func sortedCatalog() []Permission {
 			Description: "创建、编辑、提交、删除自己的听课评课记录"},
 		{Code: ObservationManage, Name: "评课管理", Category: "observation", CategoryName: "听课评课",
 			Description: "查看全部听课评课记录并导出任意已提交的评课表"},
+		{Code: IotRead, Name: "查看设备", Category: "iot", CategoryName: "物联网",
+			Description: "查看物联网设备列表、状态、属性、事件与命令记录"},
+		{Code: IotManage, Name: "设备管理", Category: "iot", CategoryName: "物联网",
+			Description: "认领待接入设备、绑定教室、编辑设备信息与删除设备"},
+		{Code: IotControl, Name: "设备控制", Category: "iot", CategoryName: "物联网",
+			Description: "向设备下发控制命令（如开关门、上课/下课场景）"},
 	}
 	sort.Slice(perms, func(i, j int) bool {
 		if perms[i].Category != perms[j].Category {

@@ -1,18 +1,24 @@
-// Side-navigation configuration — the single injection point for the app
-// shell's menu. Downstream forks override THIS data file (same relative path)
-// to add, remove or regroup menu entries; AppShell.tsx renders whatever is
-// defined here. Re-merging an upstream release then costs one diff against a
-// flat list instead of a 300-line component fork.
+// Side-navigation configuration — the injection point for the app shell's
+// menu. Two injection mechanisms coexist (mirroring src/brand):
 //
-// Permission gates follow the backend catalog codes (see types/api.ts
-// PermissionCode). A gate may be one code or an array meaning ANY-of.
-// Absent gate = visible to every authenticated user.
+//   1. Injection file (file DI, preferred): create `navigation.override.ts`
+//      next to this file exporting `overrideEntries: NavEntry[]`; its entries
+//      are appended after the built-in ones (absent file = empty glob, the
+//      addition tree-shakes away).
+//   2. Whole-file override: overriding THIS data file (same relative path)
+//      keeps working exactly as before.
+//
+// AppShell.tsx renders whatever the effective list contains. Permission gates
+// follow the backend catalog codes (see types/api.ts PermissionCode): one code
+// or an array meaning ANY-of; absent gate = visible to every authenticated
+// user.
 
 import type { ComponentType } from 'react'
 import {
   Building,
   Dashboard,
   Education,
+  IotConnect,
   Settings,
   UserMultiple,
 } from '@carbon/icons-react'
@@ -46,7 +52,7 @@ export type NavEntry =
   | ({ kind: 'link'; path: string; icon: NavIcon } & Omit<NavItem, 'path'>)
   | ({ kind: 'group'; icon: NavIcon } & Omit<NavGroup, 'icon'>)
 
-export const navigation: NavEntry[] = [
+export const builtInEntries: NavEntry[] = [
   {
     kind: 'link',
     path: '/',
@@ -66,6 +72,13 @@ export const navigation: NavEntry[] = [
         permission: ['repair:create', 'repair:assign'],
       },
     ],
+  },
+  {
+    kind: 'group',
+    i18nKey: 'nav.iot',
+    icon: IotConnect,
+    permission: 'iot:read',
+    items: [{ path: '/iot', i18nKey: 'nav.iotDevices' }],
   },
   {
     kind: 'group',
@@ -109,3 +122,16 @@ export const navigation: NavEntry[] = [
     ],
   },
 ]
+
+// File DI: entries from any navigation.override.* file in this directory are
+// appended after the built-in ones (see the header comment for the contract).
+const overrideModules = import.meta.glob<{ overrideEntries?: NavEntry[] }>(
+  './navigation.override.*',
+  { eager: true },
+)
+const overrideEntries: NavEntry[] = Object.values(overrideModules).flatMap(
+  (m) => m.overrideEntries ?? [],
+)
+
+/** Effective navigation: built-ins first, then every override file's entries. */
+export const navigation: NavEntry[] = [...builtInEntries, ...overrideEntries]

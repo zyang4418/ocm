@@ -3364,6 +3364,547 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/iot/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List issued commands */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description queued|delivered|acked|failed|expired */
+                    status?: string;
+                    /** @description filter by device */
+                    device_id?: number;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged commands, newest first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description invalid filter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/iot/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List IoT devices */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description search by name/external id */
+                    q?: string;
+                    /** @description pending|online|offline */
+                    status?: string;
+                    /** @description filter by source id */
+                    source?: string;
+                    /** @description filter by category */
+                    category?: string;
+                    /** @description filter by classroom */
+                    classroom_id?: number;
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged devices */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description invalid filter */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/iot/devices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an IoT device */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description device id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description device detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iot.Device"];
+                    };
+                };
+                /** @description invalid device id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete an IoT device */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description device id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid device id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update an IoT device */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description device id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description partial update */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["iot.DeviceUpdateInput"];
+                };
+            };
+            responses: {
+                /** @description updated device */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iot.Device"];
+                    };
+                };
+                /** @description invalid body / nothing to update */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/iot/devices/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve (claim) a pending device */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description device id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description claim input */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["iot.ApproveInput"];
+                };
+            };
+            responses: {
+                /** @description approved device */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iot.Device"];
+                    };
+                };
+                /** @description invalid body */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/iot/devices/{id}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue a command to a device */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description device id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            /** @description command input */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["iot.CommandInput"];
+                };
+            };
+            responses: {
+                /** @description created command (delivered when the broker accepted it) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["iot.DeviceCommand"];
+                    };
+                };
+                /** @description invalid body / unknown command type */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device is pending approval */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description could not publish command */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description iot messaging not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/iot/devices/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a device's events */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 1-based page */
+                    page?: number;
+                    /** @description page size */
+                    page_size?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description device id */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description paged events, newest first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.Paged"];
+                    };
+                };
+                /** @description invalid device id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description device not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+                /** @description internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/logs": {
         parameters: {
             query?: never;
@@ -7156,6 +7697,48 @@ export interface components {
             jobs: components["schemas"]["importer.SplitJobRef"][];
             stats: components["schemas"]["jwc.Stats"];
             warnings: string[];
+        };
+        "iot.ApproveInput": {
+            category: string;
+            classroomId: number;
+            name: string;
+        };
+        "iot.CommandInput": {
+            expiresInSeconds?: number;
+            payload?: Record<string, never>;
+            type: string;
+        };
+        "iot.Device": {
+            category: string;
+            classroomId?: number;
+            createdAt: string;
+            externalId: string;
+            id: number;
+            lastSeenAt?: string;
+            name: string;
+            site: string;
+            sourceId: string;
+            state?: Record<string, never>;
+            status: string;
+            updatedAt: string;
+        };
+        "iot.DeviceCommand": {
+            commandId: string;
+            createdAt: string;
+            detail: string;
+            deviceId: number;
+            expiresAt: string;
+            id: number;
+            issuedBy: string;
+            payload?: Record<string, never>;
+            status: string;
+            type: string;
+            updatedAt: string;
+        };
+        "iot.DeviceUpdateInput": {
+            category?: string;
+            classroomId?: number;
+            name?: string;
         };
         "jwc.Stats": {
             /** @description 去重后行政班数 */

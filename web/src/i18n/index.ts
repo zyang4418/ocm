@@ -36,6 +36,8 @@ import observationsZh from './locales/zh-CN/observations.json'
 import observationsEn from './locales/en/observations.json'
 import repairsZh from './locales/zh-CN/repairs.json'
 import repairsEn from './locales/en/repairs.json'
+import iotZh from './locales/zh-CN/iot.json'
+import iotEn from './locales/en/iot.json'
 import { brand } from '../brand'
 import logsZh from './locales/zh-CN/logs.json'
 import logsEn from './locales/en/logs.json'
@@ -49,7 +51,7 @@ export type Language = 'zh-CN' | 'en'
 const NAMESPACES = [
   'common', 'login', 'dashboard', 'classrooms', 'bookings', 'users', 'groups',
   'roles', 'adminClasses', 'teachingClasses', 'courses', 'scheduleConfig',
-  'timetable', 'attendance', 'imports', 'observations', 'repairs', 'logs',
+  'timetable', 'attendance', 'imports', 'observations', 'repairs', 'iot', 'logs',
   'settings', 'aiChat',
 ] as const
 
@@ -73,6 +75,7 @@ const resources = {
     imports: importsZh,
     observations: observationsZh,
     repairs: repairsZh,
+    iot: iotZh,
     logs: logsZh,
     settings: settingsZh,
     aiChat: aiChatZh,
@@ -95,6 +98,7 @@ const resources = {
     imports: importsEn,
     observations: observationsEn,
     repairs: repairsEn,
+    iot: iotEn,
     logs: logsEn,
     settings: settingsEn,
     aiChat: aiChatEn,

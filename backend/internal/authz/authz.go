@@ -44,6 +44,13 @@ const (
 	ObservationRead   = "observation:read"
 	ObservationWrite  = "observation:write"
 	ObservationManage = "observation:manage"
+	// IotRead/Manage/Control govern the IoT device registry. Control is
+	// deliberately separate from Manage: issuing commands (door open/close,
+	// classroom scenes) drives physical-world equipment, so it must be
+	// grantable — and auditable — independently of registry administration.
+	IotRead    = "iot:read"
+	IotManage  = "iot:manage"
+	IotControl = "iot:control"
 )
 
 // Wildcard is the special permission that grants everything. It is only held

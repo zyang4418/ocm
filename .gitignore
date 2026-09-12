@@ -49,6 +49,7 @@ pnpm-debug.log*
 Windsurf/
 .tabnine/
 .copilot/
+.zcode/
 
 # WeChat Mini Program
 miniprogram_npm/

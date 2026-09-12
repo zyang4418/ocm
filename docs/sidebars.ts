@@ -15,6 +15,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: '物联网',
+      items: ['guide/iot'],
+    },
+    {
+      type: 'category',
       label: '开发',
       items: ['guide/miniapp', 'guide/web', 'guide/backend'],
     },
