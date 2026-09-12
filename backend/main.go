@@ -248,15 +248,21 @@ func main() {
 
 	// 听课评课. The record CRUD/submit lives here in the open-source layer; the
 	// school-specific document backend (form templates + .docx fillers) is
-	// injected as a Renderer by a customization layer. Shipping nil keeps the
-	// module fully functional for CRUD/submit and disables the templates/export
-	// endpoints until a deployment plugs its own backend in.
+	// injected as a Renderer by a customization layer via
+	// observation.RegisterRendererFactory (package init). Shipping no factory
+	// keeps the module fully functional for CRUD/submit and disables the
+	// templates/export endpoints until a deployment plugs its own backend in.
 	observationStore := observation.NewStore(database)
 	if err := observationStore.Migrate(ctx); err != nil {
 		logging.L.Error("observation migration", "err", err)
 		os.Exit(1)
 	}
-	observation.NewHandler(observationStore, nil).RegisterRoutes(mux, authenticate)
+	observationRenderer, err := observation.ResolveRenderer(database)
+	if err != nil {
+		logging.L.Error("observation renderer", "err", err)
+		os.Exit(1)
+	}
+	observation.NewHandler(observationStore, observationRenderer).RegisterRoutes(mux, authenticate)
 
 	// AI assistant: settings (admin-only) + streaming chat. Its tools query
 	// classrooms/schedule/course/booking, so it wires after all of them.
