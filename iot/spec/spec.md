@@ -97,13 +97,15 @@ queued → delivered → acked | failed
 
 ## 8. 安全基线
 
-- 每个**源**一个 broker 凭证（mosquitto dynsec），ACL 限定：
+- 每个**源**一个 broker 凭证（v1 由 `deploy/mosquitto/auth-init.sh` 以
+  password_file + acl_file 静态引导），ACL 限定：
   - 发布：`iot/{site}/{sourceId}/#`、`iot/_meta/{sourceId}/#`
   - 订阅：`iot/{site}/{sourceId}/+/cmd`
 - 后端凭证只存在于部署环境变量（`IOT_MQTT_USERNAME/PASSWORD`）。
 - 生产启用 8883 TLS；设备侧校验 broker 证书，杜绝明文上公网。
-- 凭证生命周期 v1 由 `deploy/mosquitto/dynsec-init.sh` 带外创建；按设备
-  发放/吊销（认领/解绑联动）属中控阶段工作。
+- 凭证生命周期 v1 带外创建；按设备发放/吊销（认领/解绑联动）属中控阶段
+  工作，届时切换 mosquitto dynamic security（后端侧接口已预留：
+  `backend/internal/iot/mqtt/dynsec.go`）。
 
 ## 9. 明确的边界
 
