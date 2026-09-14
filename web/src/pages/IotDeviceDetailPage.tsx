@@ -7,6 +7,7 @@ import {
   Grid,
   InlineNotification,
   Modal,
+  Slider,
   Table,
   TableBody,
   TableCell,
@@ -33,9 +34,33 @@ const STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   offline: 'gray',
 }
 
-// The command types the console renders as dedicated buttons; they match the
-// backend whitelist (internal/iot model.go CommandTypes).
+// The command types the console renders as dedicated buttons; they are part
+// of the backend command vocabulary (internal/iot model.go KnownCommandType).
 const COMMAND_BUTTONS = ['door_open', 'door_close', 'scene_start_class', 'scene_end_class'] as const
+
+// Classroom-node devices (spec §11) report one entity per room with a
+// functions namespace: peripherals are addressed via payload.function, so
+// function commands live on the function cards and only node-level commands
+// (scenes) stay as plain buttons.
+const NODE_COMMAND_BUTTONS = ['scene_start_class', 'scene_end_class'] as const
+
+type NodeFunction = {
+  kind?: string
+  state?: string
+  locked?: boolean
+  power_w?: number
+  electric?: number
+  run_seconds?: number
+}
+
+const isNodeDevice = (attrs: Record<string, unknown>): boolean =>
+  Boolean(attrs.functions) && typeof attrs.functions === 'object'
+
+const nodeFunctions = (attrs: Record<string, unknown>): [string, NodeFunction][] =>
+  Object.entries((attrs.functions ?? {}) as Record<string, unknown>).map(([key, value]) => [
+    key,
+    value && typeof value === 'object' ? (value as NodeFunction) : { state: String(value) },
+  ])
 
 export default function IotDeviceDetailPage() {
   const { t } = useTranslation('iot')
@@ -64,6 +89,12 @@ export default function IotDeviceDetailPage() {
     void load()
   }, [load])
 
+  // Same-route navigation (param change) does not remount this page — the
+  // volume draft must not leak from one classroom's node into the next.
+  useEffect(() => {
+    setVolumeDraft(null)
+  }, [id])
+
   // Live status: the backend broadcasts device.updated on every state report.
   // The frame is a trimmed view, so refresh the full record for this device.
   useEffect(() => {
@@ -86,11 +117,17 @@ export default function IotDeviceDetailPage() {
     token,
   })
 
-  // Known-command confirm dialog.
-  const [commandTarget, setCommandTarget] = useState<string | null>(null)
+  // Known-command confirm dialog. Node-model function cards pass a payload
+  // (payload.function) alongside the type.
+  const [commandTarget, setCommandTarget] = useState<{ type: string; payload?: Record<string, unknown> } | null>(null)
   const [commandSending, setCommandSending] = useState(false)
   const [commandError, setCommandError] = useState('')
   const [commandSent, setCommandSent] = useState('')
+
+  // Node-model volume: the slider keeps a local draft until volume_set is
+  // accepted (then it returns to the device-confirmed attr); on failure the
+  // draft stays for retry, and navigation between nodes resets it.
+  const [volumeDraft, setVolumeDraft] = useState<number | null>(null)
 
   // Custom (JSON) command dialog.
   const [customOpen, setCustomOpen] = useState(false)
@@ -100,8 +137,8 @@ export default function IotDeviceDetailPage() {
 
   const [showRaw, setShowRaw] = useState(false)
 
-  const sendCommand = async (type: string, payload?: Record<string, unknown>) => {
-    if (!device) return
+  const sendCommand = async (type: string, payload?: Record<string, unknown>): Promise<boolean> => {
+    if (!device) return false
     try {
       setCommandSending(true)
       setCommandError('')
@@ -115,11 +152,20 @@ export default function IotDeviceDetailPage() {
       setCommandSent(t('command.sent', { status: t('status.' + cmd.status, { defaultValue: cmd.status }) }))
       setCommandTarget(null)
       setCustomOpen(false)
+      return true
     } catch (err) {
       setCommandError((err as Error).message)
+      return false
     } finally {
       setCommandSending(false)
     }
+  }
+
+  // Volume draft is per-device UI state: cleared once the command is accepted
+  // so the slider returns to the device-confirmed attr, kept on failure for
+  // retry, and reset on navigation between node pages (see the effect below).
+  const sendVolume = async (value: number) => {
+    if (await sendCommand('volume_set', { value })) setVolumeDraft(null)
   }
 
   const handleCustomSend = async () => {
@@ -156,6 +202,19 @@ export default function IotDeviceDetailPage() {
     device && device.state ? (device.state as Record<string, unknown>) : {}
   const attrEntries = Object.entries(attrs)
 
+  // Function-card state (spec §11): door/relay states render as human badges,
+  // everything else keeps the device-reported raw value — the console never
+  // invents semantics the node did not declare.
+  const renderFunctionState = (f: NodeFunction) => {
+    if (f.kind === 'door' && f.state === '1') return <Tag type="green" size="sm">{t('node.doorClosed')}</Tag>
+    if (f.kind === 'door' && f.state === '0') return <Tag type="red" size="sm">{t('node.doorOpened')}</Tag>
+    if (f.kind === 'relay') {
+      return <Tag type={f.state === '1' ? 'green' : 'gray'} size="sm">{f.state === '1' ? t('node.on') : t('node.off')}</Tag>
+    }
+    if (f.state !== undefined) return <Tag size="sm">{f.state}</Tag>
+    return <Tag type="gray" size="sm">—</Tag>
+  }
+
   const deviceName = device?.name || device?.externalId || `#${id}`
 
   return (
@@ -187,6 +246,13 @@ export default function IotDeviceDetailPage() {
           {device && (
             <Tag type={STATUS_KIND[device.status] ?? 'gray'} size="sm">
               {t('status.' + device.status, { defaultValue: device.status })}
+            </Tag>
+          )}
+          {/* Node model (spec §11): the controller link is a node attr, distinct
+              from registry presence (which is the gateway's uplink). */}
+          {isNodeDevice(attrs) && typeof attrs.online === 'boolean' && (
+            <Tag type={attrs.online ? 'green' : 'red'} size="sm">
+              {t('node.online')}: {attrs.online ? t('node.onlineOn') : t('node.onlineOff')}
             </Tag>
           )}
         </div>
@@ -227,19 +293,21 @@ export default function IotDeviceDetailPage() {
       </Column>
 
       {/* Commands — issuing one is a physical-world action gated by
-          iot:control on the server; manage alone never issues any. */}
+          iot:control on the server; manage alone never issues any. Node-model
+          devices only expose node-level buttons here (scenes); function
+          commands live on the function cards below. */}
       {device && device.status !== 'pending' && canControl && (
         <Column sm={4} md={8} lg={16}>
           <h3>{t('detail.commands')}</h3>
           <div className="classrooms-page__actions">
-            {COMMAND_BUTTONS.map((type) => (
+            {(isNodeDevice(attrs) ? NODE_COMMAND_BUTTONS : COMMAND_BUTTONS).map((type) => (
               <Button
                 key={type}
                 kind={type === 'door_open' ? 'danger--ghost' : 'ghost'}
                 size="sm"
                 onClick={() => {
                   setCommandError('')
-                  setCommandTarget(type)
+                  setCommandTarget({ type })
                 }}
               >
                 {t('command.' + type)}
@@ -260,31 +328,135 @@ export default function IotDeviceDetailPage() {
         </Column>
       )}
 
-      {/* Latest attributes */}
+      {/* Latest attributes / classroom function cards (spec §11) */}
       <Column sm={4} md={8} lg={16}>
-        <h3>{t('detail.attrs')}</h3>
-        <Table size="sm">
-          <TableHead>
-            <TableRow>
-              <TableHeader>#</TableHeader>
-              <TableHeader>{t('detail.attrs')}</TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {attrEntries.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={2}>{t('detail.attrsEmpty')}</TableCell>
-              </TableRow>
-            ) : (
-              attrEntries.map(([k, v]) => (
-                <TableRow key={k}>
-                  <TableCell>{k}</TableCell>
-                  <TableCell>{typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}</TableCell>
-                </TableRow>
-              ))
+        <h3>{isNodeDevice(attrs) ? t('node.functions') : t('detail.attrs')}</h3>
+        {isNodeDevice(attrs) ? (
+          <div className="iot-function-grid">
+            {typeof attrs.volume === 'number' && (
+              <div className="iot-function-card">
+                <div className="iot-function-card__head">
+                  <span className="iot-function-card__title">{t('node.volume')}</span>
+                  <Tag size="sm">{String(attrs.volume)}</Tag>
+                </div>
+                {canControl && (
+                  <div className="iot-function-card__actions">
+                    <Slider
+                      id="iot-node-volume"
+                      labelText={t('node.volume')}
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={volumeDraft ?? (attrs.volume as number)}
+                      onChange={(data: { value: number }) => setVolumeDraft(data.value)}
+                      hideTextInput
+                    />
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => void sendVolume(volumeDraft ?? (attrs.volume as number))}
+                    >
+                      {t('command.volume_set')}
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
-          </TableBody>
-        </Table>
+            {nodeFunctions(attrs).map(([key, f]) => (
+              <div className="iot-function-card" key={key}>
+                <div className="iot-function-card__head">
+                  <span className="iot-function-card__title">{key}</span>
+                  <Tag size="sm" type="cool-gray">
+                    {t('node.kind.' + (f.kind ?? 'generic'), { defaultValue: f.kind ?? 'generic' })}
+                  </Tag>
+                </div>
+                <div className="iot-function-card__body">
+                  {renderFunctionState(f)}
+                  {typeof f.power_w === 'number' && (
+                    <span className="iot-function-card__meter">{t('node.powerWatts', { watts: Math.round(f.power_w * 10) / 10 })}</span>
+                  )}
+                  {typeof f.electric === 'number' && (
+                    <span className="iot-function-card__meter">{t('node.powerWatts', { watts: Math.round(f.electric * 10) / 10 })}</span>
+                  )}
+                  {typeof f.run_seconds === 'number' && (
+                    <span className="iot-function-card__meter">{t('node.runtimeHours', { hours: Math.round(f.run_seconds / 360) / 10 })}</span>
+                  )}
+                </div>
+                {canControl && f.kind === 'door' && (
+                  <div className="iot-function-card__actions">
+                    <Button
+                      kind="danger--ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCommandError('')
+                        setCommandTarget({ type: 'door_open', payload: { function: key } })
+                      }}
+                    >
+                      {t('command.door_open')}
+                    </Button>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCommandError('')
+                        setCommandTarget({ type: 'door_close', payload: { function: key } })
+                      }}
+                    >
+                      {t('command.door_close')}
+                    </Button>
+                  </div>
+                )}
+                {canControl && f.kind === 'relay' && (
+                  <div className="iot-function-card__actions">
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCommandError('')
+                        setCommandTarget({ type: 'device_on', payload: { function: key } })
+                      }}
+                    >
+                      {t('node.on')}
+                    </Button>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCommandError('')
+                        setCommandTarget({ type: 'device_off', payload: { function: key } })
+                      }}
+                    >
+                      {t('node.off')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Table size="sm">
+            <TableHead>
+              <TableRow>
+                <TableHeader>#</TableHeader>
+                <TableHeader>{t('detail.attrs')}</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {attrEntries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2}>{t('detail.attrsEmpty')}</TableCell>
+                </TableRow>
+              ) : (
+                attrEntries.map(([k, v]) => (
+                  <TableRow key={k}>
+                    <TableCell>{k}</TableCell>
+                    <TableCell>{typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
         {attrEntries.length > 0 && (
           <>
             <Button kind="ghost" size="sm" onClick={() => setShowRaw((v) => !v)}>
@@ -319,7 +491,10 @@ export default function IotDeviceDetailPage() {
             ) : (
               events.items.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell>{e.type}</TableCell>
+                  <TableCell>
+                    {e.type}
+                    {typeof e.payload?.function === 'string' ? ` · ${e.payload.function}` : ''}
+                  </TableCell>
                   <TableCell>{e.payload ? JSON.stringify(e.payload) : '—'}</TableCell>
                   <TableCell>{formatDateTime(e.occurredAt)}</TableCell>
                   <TableCell>{formatDateTime(e.receivedAt)}</TableCell>
@@ -344,13 +519,13 @@ export default function IotDeviceDetailPage() {
         primaryButtonText={t('modal.commandSubmit')}
         secondaryButtonText={t('action.cancel', { ns: 'common' })}
         onRequestClose={() => setCommandTarget(null)}
-        onRequestSubmit={() => commandTarget && void sendCommand(commandTarget)}
+        onRequestSubmit={() => commandTarget && void sendCommand(commandTarget.type, commandTarget.payload)}
         primaryButtonDisabled={commandSending}
       >
         <p className="classrooms-page__confirm-text">
           {t('modal.commandLine', {
             device: deviceName,
-            command: commandTarget ? t('command.' + commandTarget) : '',
+            command: commandTarget ? t('command.' + commandTarget.type) : '',
           })}
         </p>
         {commandError && <InlineNotification kind="error" title={t('error.action')} subtitle={commandError} lowContrast hideCloseButton />}

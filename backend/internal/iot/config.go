@@ -18,8 +18,12 @@ const (
 	DefaultEventRetentionDays = 90
 	// DefaultOnlineTTL is how long an approved device stays "online" after
 	// its last state message before the stale sweep flips it offline. Sources
-	// that vanish politely flip it earlier via their will message.
-	DefaultOnlineTTL = 5 * time.Minute
+	// that vanish politely flip it earlier via their will message, so this is
+	// only the safety net — but it must exceed the slowest legitimate report
+	// period of any attached source, or healthy devices flap offline/online
+	// every cycle (a classroom controller pushing telemetry every ~5m10s was
+	// misjudged by the 5m default on real hardware).
+	DefaultOnlineTTL = 15 * time.Minute
 )
 
 // Config is the IoT data-plane configuration, read once at startup.

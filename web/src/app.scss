@@ -1809,3 +1809,52 @@
   display: inline-block;
   min-width: 5rem;
 }
+
+// ---- IoT 教室节点功能卡（spec §11：functions 命名空间的控制台渲染）----
+.iot-function-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: $spacing-05;
+}
+
+.iot-function-card {
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  padding: $spacing-05;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-04;
+}
+
+.iot-function-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-03;
+}
+
+.iot-function-card__title {
+  @include type-style('productive-heading-01');
+  color: var(--cds-text-primary);
+  word-break: break-all;
+}
+
+.iot-function-card__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-03;
+  min-height: 2rem;
+}
+
+.iot-function-card__meter {
+  @include type-style('body-short-01');
+  color: var(--cds-text-secondary);
+}
+
+.iot-function-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+  margin-top: auto;
+}

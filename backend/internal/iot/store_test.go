@@ -2,6 +2,7 @@ package iot
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -56,16 +57,72 @@ func TestClampCommandTTL(t *testing.T) {
 }
 
 func TestCommandTypeWhitelist(t *testing.T) {
-	// The four scene/door commands from the field protocol must stay
-	// whitelisted; the map is the things:control gate.
-	for _, cmd := range []string{CmdDoorOpen, CmdDoorClose, CmdSceneStartClass, CmdSceneEndClass} {
-		if !CommandTypes[cmd] {
-			t.Fatalf("command %s missing from whitelist", cmd)
+	// The core vocabulary must stay registered; the set is the
+	// things:control vocabulary gate.
+	for _, cmd := range []string{
+		CmdDoorOpen, CmdDoorClose,
+		CmdDeviceOn, CmdDeviceOff, CmdVolumeSet, CmdStateQuery,
+		CmdSceneStartClass, CmdSceneEndClass,
+	} {
+		if !KnownCommandType(cmd) {
+			t.Fatalf("command %s missing from vocabulary", cmd)
 		}
 	}
-	if CommandTypes["format_disk"] {
-		t.Fatal("unexpected command in whitelist")
+	if KnownCommandType("format_disk") {
+		t.Fatal("unexpected command in vocabulary")
 	}
+}
+
+func TestValidCommandType(t *testing.T) {
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"door_open", true},
+		{"a", true},
+		{"door1_open2", true},
+		{strings.Repeat("a", 64), true},  // grammar bound
+		{strings.Repeat("a", 65), false}, // over the bound
+		{"", false},
+		{"Door_Open", false}, // uppercase
+		{"door-open", false}, // hyphen is not part of the grammar
+		{"door open", false}, // space
+		{"_door", false},     // must start with a letter
+		{"1door", false},     // must start with a letter
+	}
+	for _, tc := range cases {
+		if got := validCommandType(tc.in); got != tc.want {
+			t.Fatalf("validCommandType(%q) = %v, want %v", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestRegisterCommandTypes(t *testing.T) {
+	// A registered deployment type becomes known immediately.
+	RegisterCommandTypes("curtain_open")
+	if !KnownCommandType("curtain_open") {
+		t.Fatal("registered type not known")
+	}
+
+	// Duplicates — against the core set and against an earlier registration —
+	// are wiring errors, not silently-ignored no-ops.
+	assertRegisterPanic(t, CmdDoorOpen)
+	assertRegisterPanic(t, "curtain_open")
+
+	// Malformed names are wiring errors too.
+	for _, bad := range []string{"", "Door_Open", "door-open", "door open", "_door"} {
+		assertRegisterPanic(t, bad)
+	}
+}
+
+func assertRegisterPanic(t *testing.T, cmdType string) {
+	t.Helper()
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("RegisterCommandTypes(%q) should have panicked", cmdType)
+		}
+	}()
+	RegisterCommandTypes(cmdType)
 }
 
 // The wire DTOs must keep their JSON field names — they are generated-client

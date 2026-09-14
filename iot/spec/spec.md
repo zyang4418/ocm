@@ -80,6 +80,31 @@ queued → delivered → acked | failed
 - 命令签发走 REST（`POST /api/iot/devices/{id}/commands`），受
   `iot:control` 权限门控并进入系统审计日志。
 
+### 5.1 命令类型词表
+
+`type` 是平台与设备之间的受控词汇：后端在 API 入口按词表拒绝未知类型
+（typo 进不了 broker，审计词汇保持统一）；设备侧对不认识但仍到达的 type
+一律回 `failed` ack——词表是词汇门，不是能力门。核心词表：
+
+| type | 寻址层级 | payload | 语义 |
+|---|---|---|---|
+| `door_open` / `door_close` | 功能 | `{"function": "<功能键或功能类型>"}` | 开门 / 关门 |
+| `device_on` / `device_off` | 功能 | `{"function": "<功能键或功能类型>"}` | 通用开关 |
+| `volume_set` | 教室 | `{"value": <0-100>}` | 音量等连续量 |
+| `scene_start_class` / `scene_end_class` | 教室 | 无 | 一键上课 / 一键下课（教室级全开 / 全关） |
+| `state_query` | 节点 | `{"types": [...]}` 可选 | 触发一轮状态回读 |
+
+- `type` 说做什么，`payload.function` 说对谁做。`function` 取**功能键**
+  （具体设备编码）或**功能类型**（作用于该类型的全部功能）；缺省 = 命令
+  所寻址设备对应的功能，寻址实体无对应功能时设备必须回 `failed`——缺省
+  不做隐式广播。功能键即设备侧状态上报使用的编码，平台透传不解释。
+- 词表语法 `[a-z][a-z0-9_]*`、≤64 字符。部署可在后端注册点追加部署词表
+  （`iot.RegisterCommandTypes`，从下游组装文件的 init 调入）；注册与设备
+  侧实现必须同一次变更成对交付，与既有词冲突属接线错误（启动即 panic），
+  核心词表名为平台保留。
+- 按源声明能力做校验（设备上线自述接受的命令集）属后续工作，注册点是其
+  前置位。
+
 ## 6. 源生命周期（_meta）
 
 - **遗嘱**：源连接时设置 will 到 `iot/_meta/{sourceId}/offline`（retained
@@ -103,7 +128,8 @@ queued → delivered → acked | failed
 
 - 每个**源**一个 broker 凭证（v1 由 `deploy/mosquitto/auth-init.sh` 以
   password_file + acl_file 静态引导），ACL 限定：
-  - 发布：`iot/{site}/{sourceId}/#`、`iot/_meta/{sourceId}/#`
+  - 发布：`iot/{site}/{sourceId}/+/state|event|ack`（数据 topic 按设备分层，
+    通道前一级是 `+`）、遗嘱 `iot/_meta/{sourceId}/offline`
   - 订阅：`iot/{site}/{sourceId}/+/cmd`
 - 后端凭证只存在于部署环境变量（`IOT_MQTT_USERNAME/PASSWORD`）。
 - 生产启用 8883 TLS；设备侧校验 broker 证书，杜绝明文上公网。
@@ -126,3 +152,32 @@ queued → delivered → acked | failed
 - 可执行样例与开发工具：`iot/sim` + `cmd/iot-sim`（虚拟教室）
 - 契约一致性由 e2e 集成测试保证（`go test -tags=integration`，CI 中对
   真 broker + 真 MySQL 运行）。
+
+## 11. 教室节点模式（推荐的部署形态）
+
+规范对设备颗粒度保持中立：一个源可按"每台设备一实体"或"每教室一节点"
+上报，topic/载荷契约对两者同样成立（两种拓扑各有合法实现）。教室类部署
+推荐**节点模式**：
+
+- **每间教室一个设备实体**（deviceId 约定 `{教室}-CTL`，与控制器代次无关
+  ——更换控制器硬件是同一实体的续用）。在位性 = 该实体的上报能力本身：
+  控制器可达，实体就有新 state；控制器失联，由遗嘱/TTL 判离。**不给外围
+  设备编造在位性**——门磁、继电器、屏不各自联网，为它们各建实体只会在
+  控制器离线时制造 N 条症状（一次根因变成 N 次告警）。
+- **外围是节点的功能，不是独立实体**：功能不可独立寻址，控制命令按
+  `payload.function` 寻址（§5.1）；状态是节点实体的属性命名空间，推荐
+  形态：
+
+      { "online": true, "volume": 96,
+        "functions": { "<功能键>": { "kind": "...", "state": "...", ... } } }
+
+  `functions` 的键即功能键（§5.1 的取值空间）；`kind` 是节点自报的功能
+  类型——**上报配置单**是节点控制器的义务，也是它相对黑箱控制器的进步
+  空间。整包替换语义（§4）适用于节点级：每次状态变化发布合并后的完整
+  attrs，一帧多设备变化只发一次。
+- **事件带功能字段**：功能域事件（门磁、继电器、报警等）发布在节点实体
+  上，`data.function` 携带功能键；节点域事件（如控制器连接断开）不带。
+  事件只属于真实翻转/发生，节点重连后的首包状态回读只入属性、不发事件。
+- **认领与台账**：节点实体按 pending→approve 流程认领一次；外围的型号/
+  SN/安装位/更换记录等功能语义的家在台账（管理面数据，随管理面演进），
+  不进 topic、不做运行时发现。

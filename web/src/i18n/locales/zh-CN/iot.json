@@ -71,6 +71,10 @@
   "command": {
     "door_open": "开门",
     "door_close": "关门",
+    "device_on": "打开设备",
+    "device_off": "关闭设备",
+    "volume_set": "设置音量",
+    "state_query": "查询状态",
     "scene_start_class": "一键上课",
     "scene_end_class": "一键下课",
     "send": "下发",
@@ -97,6 +101,35 @@
   "validation": {
     "nameRequired": "请填写设备名称",
     "classroomRequired": "请选择教室"
+  },
+  "node": {
+    "functions": "教室功能",
+    "online": "控制器连接",
+    "onlineOn": "在线",
+    "onlineOff": "失联",
+    "volume": "教室音量",
+    "kind": {
+      "door": "门磁",
+      "relay": "继电器",
+      "pc": "教师机",
+      "display": "交互屏",
+      "projector": "投影机",
+      "screen": "幕布",
+      "audio": "功放",
+      "fan": "风扇",
+      "light": "灯光",
+      "curtain": "窗帘",
+      "dimmer": "调光",
+      "clock": "时钟",
+      "panel": "中控面板",
+      "generic": "功能"
+    },
+    "doorClosed": "已关闭",
+    "doorOpened": "已打开",
+    "on": "开",
+    "off": "关",
+    "runtimeHours": "累计 {{hours}} 小时",
+    "powerWatts": "{{watts}} W"
   },
   "error": {
     "action": "操作失败",
