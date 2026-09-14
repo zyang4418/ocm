@@ -49,7 +49,9 @@
     "loading": "Loading…",
     "rowsCap": "Showing first {{shown}} of {{total}} rows",
     "errorRow": "Row {{row}}: ",
-    "noErrors": "No errors"
+    "noErrors": "No errors",
+    "emptyPreview": "No preview rows available",
+    "emptyPreviewAllFailed": "All rows failed validation; no preview rows"
   },
   "detail": {
     "heading": "Import detail: {{label}}"
@@ -65,6 +67,8 @@
     "finish": "Finish",
     "retry": "Retry commit",
     "timeout": "Processing timed out; check the job status in the list.",
+    "processingNote": "The job is still processing. Please wait; you can resume once it finishes.",
+    "resume": "Keep waiting",
     "skippedTag": "skipped",
     "skippedNote": "Skipped: not committed, can be handled individually in the job list. Downstream steps may fail because the dependency is missing.",
     "failedNote": "Commit failed; you can retry or skip.",

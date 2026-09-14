@@ -49,7 +49,9 @@
     "loading": "加载中…",
     "rowsCap": "仅显示前 {{shown}} 行，共 {{total}} 行",
     "errorRow": "第 {{row}} 行：",
-    "noErrors": "无错误"
+    "noErrors": "无错误",
+    "emptyPreview": "暂无可预览的行",
+    "emptyPreviewAllFailed": "全部行解析失败，无可用预览行"
   },
   "detail": {
     "heading": "导入明细：{{label}}"
@@ -65,6 +67,8 @@
     "finish": "完成",
     "retry": "重新提交",
     "timeout": "处理超时，请在列表中查看该任务状态。",
+    "processingNote": "任务正在处理中，请稍候；完成后可继续。",
+    "resume": "继续等待结果",
     "skippedTag": "跳过",
     "skippedNote": "已跳过：未提交，可在任务列表中单独处理。下游步骤可能因缺少依赖而失败。",
     "failedNote": "提交失败，可重新提交或跳过。",

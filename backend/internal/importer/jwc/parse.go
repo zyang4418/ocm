@@ -38,6 +38,9 @@ const (
 	hRoomCapacity = "教室人数"
 )
 
+// requiredHeaders 是拆分必需的中文表头，缺任一列说明上传的不是教务处课表。
+var requiredHeaders = []string{hCourseSeq, hCourseName, hAdminClasses, hWeekday, hPeriod, hWeeks, hClassroom}
+
 // jwcRow 是教务处源表一行的强类型视图。数值列保留原始字符串由后续阶段按需解析，
 // 便于在解析失败时定位到具体行。
 type jwcRow struct {
@@ -73,9 +76,18 @@ type jwcRow struct {
 // （含空行政班行、解析失败的星期行），由后续阶段决定跳过还是报错。仅当表头缺失或
 // 文件无法打开时返回错误。
 func parseRows(data []byte) (rows []jwcRow, err error) {
-	_, recs, err := xlsx.MapRows(data)
+	headers, recs, err := xlsx.MapRows(data)
 	if err != nil {
 		return nil, fmt.Errorf("读取教务处 xlsx 失败：%w", err)
+	}
+	var missing []string
+	for _, h := range requiredHeaders {
+		if !xlsx.Has(headers, h) {
+			missing = append(missing, h)
+		}
+	}
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("缺少必需列：%s（请确认上传的是教务处课表）", strings.Join(missing, "、"))
 	}
 	for i, rec := range recs {
 		rows = append(rows, jwcRow{
