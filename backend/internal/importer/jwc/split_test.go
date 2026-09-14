@@ -222,6 +222,9 @@ func TestExpandWeeks(t *testing.T) {
 	if _, err := expandWeeks(""); err == nil {
 		t.Error("expandWeeks(\"\") 期望错误")
 	}
+	if _, err := expandWeeks("1-99999"); err == nil {
+		t.Error("expandWeeks(\"1-99999\") 期望超出周次上限错误")
+	}
 }
 
 // TestTeachingClassName 单测教学班命名（区间压缩 + 回退）。
@@ -277,6 +280,64 @@ func TestGradeFor(t *testing.T) {
 		if got := gradeFor(c.name, c.src); got != c.want {
 			t.Errorf("gradeFor(%q,%q) = %q, want %q", c.name, c.src, got, c.want)
 		}
+	}
+}
+
+var (
+	splitWeek1  = time.Date(2024, 9, 2, 0, 0, 0, 0, time.UTC)
+	splitRegime = []schedule.Regime{{Name: "测试作息", EffectiveMonth: 1, EffectiveDay: 1, Periods: allPeriods()}}
+)
+
+// splitHeaders 是教务处课表拆分所需的必需列。
+var splitHeaders = []string{"课程序号", "课程名称", "行政班", "星期", "节次", "起止周", "上课教室"}
+
+func buildTable(t *testing.T, headers []string, rows [][]any) []byte {
+	t.Helper()
+	b, err := xlsx.BuildBytes("jwc", headers, rows)
+	if err != nil {
+		t.Fatalf("构造 xlsx 失败：%v", err)
+	}
+	return b
+}
+
+// TestSplitEmptyTable 纯空表（有表头无数据行）报「无数据行」。
+func TestSplitEmptyTable(t *testing.T) {
+	_, err := Split(buildTable(t, splitHeaders, nil), "2024-2025-1", splitWeek1, splitRegime)
+	if err == nil || !strings.Contains(err.Error(), "无数据行") {
+		t.Fatalf("期望「无数据行」错误，got %v", err)
+	}
+}
+
+// TestSplitWrongHeaders 表头不匹配时 fail-fast 并列出缺失列。
+func TestSplitWrongHeaders(t *testing.T) {
+	data := buildTable(t, []string{"姓名", "学号"}, [][]any{{"张三", "2024001"}})
+	_, err := Split(data, "2024-2025-1", splitWeek1, splitRegime)
+	if err == nil || !strings.Contains(err.Error(), "缺少必需列") {
+		t.Fatalf("期望「缺少必需列」错误，got %v", err)
+	}
+}
+
+// TestSplitNoOfferings 全无效行（空序号 + 无行政班的解析失败行）报 0 产出并附告警。
+func TestSplitNoOfferings(t *testing.T) {
+	rows := [][]any{
+		{"", "高数", "机电241", "1", "3-4", "1-8", "A101"},
+		{"S1", "英语", "", "1", "abc", "1-8", "A101"},
+	}
+	_, err := Split(buildTable(t, splitHeaders, rows), "2024-2025-1", splitWeek1, splitRegime)
+	if err == nil || !strings.Contains(err.Error(), "未解析出任何有效开课") {
+		t.Fatalf("期望「未解析出任何有效开课」错误，got %v", err)
+	}
+	if !strings.Contains(err.Error(), "近期告警") {
+		t.Errorf("错误应附告警定位，got %v", err)
+	}
+}
+
+// TestSplitOfferingsNoSessions 有开课但槽位全为停课占位时报「均未生成课次」。
+func TestSplitOfferingsNoSessions(t *testing.T) {
+	rows := [][]any{{"S1", "英语", "机电241", "1", "1-2", "1-8", "停课"}}
+	_, err := Split(buildTable(t, splitHeaders, rows), "2024-2025-1", splitWeek1, splitRegime)
+	if err == nil || !strings.Contains(err.Error(), "均未生成课次") {
+		t.Fatalf("期望「均未生成课次」错误，got %v", err)
 	}
 }
 

@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// maxWeek 是起止周的合理上界（一学期约 20~30 周，取 52 留余量）。
+const maxWeek = 52
+
 // parsePeriods 把「节次」解析为连续区间 [start, end]。
 //
 // 格式：区间 "3-4"/"1-4"/"9-10"，或单节 "1-1"/"2-2"/"3-3"（等价于单节）。
@@ -66,14 +69,14 @@ func expandWeeks(s string) ([]int, error) {
 		if i := strings.Index(seg, "-"); i >= 0 {
 			x, err1 := strconv.Atoi(strings.TrimSpace(seg[:i]))
 			y, err2 := strconv.Atoi(strings.TrimSpace(seg[i+1:]))
-			if err1 != nil || err2 != nil || x < 1 || y < x {
-				return nil, fmt.Errorf("起止周格式非法：%q", s)
+			if err1 != nil || err2 != nil || x < 1 || y < x || y > maxWeek {
+				return nil, fmt.Errorf("起止周非法（周次须在 1-%d 内）：%q", maxWeek, s)
 			}
 			a, b = x, y
 		} else {
 			x, err := strconv.Atoi(seg)
-			if err != nil || x < 1 {
-				return nil, fmt.Errorf("起止周格式非法：%q", s)
+			if err != nil || x < 1 || x > maxWeek {
+				return nil, fmt.Errorf("起止周非法（周次须在 1-%d 内）：%q", maxWeek, s)
 			}
 			a, b = x, x
 		}
