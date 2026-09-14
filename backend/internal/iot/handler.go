@@ -355,7 +355,7 @@ func (h *Handler) createCommand(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if !CommandTypes[in.Type] {
+	if !KnownCommandType(in.Type) {
 		httpx.RespondError(w, http.StatusBadRequest, "unknown command type")
 		return
 	}
