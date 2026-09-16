@@ -20,7 +20,10 @@ mkdir -p "$AUTH_DIR"
 touch "$CRED_FILE"
 
 # ACL: the backend user may read/write the whole namespace; every source is
-# scoped to its own subtree (state/event/ack publish, cmd subscribe, will).
+# scoped to its own subtree (per-device state/event/ack publish — the device
+# segment is a `+` because data topics are iot/{site}/{src}/{deviceId}/{chan},
+# cmd subscribe, will). A flat iot/{site}/{src}/state rule would not match any
+# real publish and the source gets kicked on its first one.
 {
   echo "user $BACKEND_USER"
   echo "topic readwrite iot/#"
@@ -55,9 +58,9 @@ for src in $SOURCES; do
   {
     echo ""
     echo "user $user"
-    echo "topic write iot/$SITE/$src/state"
-    echo "topic write iot/$SITE/$src/event"
-    echo "topic write iot/$SITE/$src/ack"
+    echo "topic write iot/$SITE/$src/+/state"
+    echo "topic write iot/$SITE/$src/+/event"
+    echo "topic write iot/$SITE/$src/+/ack"
     echo "topic read iot/$SITE/$src/+/cmd"
     echo "topic write iot/_meta/$src/offline"
   } >> "$AUTH_DIR/acl"

@@ -71,6 +71,10 @@
   "command": {
     "door_open": "Open door",
     "door_close": "Close door",
+    "device_on": "Turn on device",
+    "device_off": "Turn off device",
+    "volume_set": "Set volume",
+    "state_query": "Query state",
     "scene_start_class": "Start class",
     "scene_end_class": "End class",
     "send": "Send",
@@ -97,6 +101,37 @@
   "validation": {
     "nameRequired": "Device name is required",
     "classroomRequired": "Please select a classroom"
+  },
+  "node": {
+    "functions": "Classroom functions",
+    "online": "Controller link",
+    "onlineOn": "Online",
+    "onlineOff": "Lost",
+    "volume": "Classroom volume",
+    "volumePending": "Awaiting device report",
+    "volumeTimeout": "The volume command was delivered, but the device did not confirm within 30 s — showing the last device-reported value",
+    "kind": {
+      "door": "Door sensor",
+      "relay": "Relay",
+      "pc": "Teacher PC",
+      "display": "Interactive display",
+      "projector": "Projector",
+      "screen": "Screen",
+      "audio": "Amplifier",
+      "fan": "Fan",
+      "light": "Lighting",
+      "curtain": "Curtain",
+      "dimmer": "Dimmer",
+      "clock": "Clock",
+      "panel": "Control panel",
+      "generic": "Function"
+    },
+    "doorClosed": "Closed",
+    "doorOpened": "Open",
+    "on": "On",
+    "off": "Off",
+    "runtimeHours": "{{hours}} h total",
+    "powerWatts": "{{watts}} W"
   },
   "error": {
     "action": "Action failed",

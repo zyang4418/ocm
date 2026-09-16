@@ -15,8 +15,9 @@ docker compose -f docker-compose.yml -f docker-compose.iot.yml up -d
   - backend 用户（`IOT_MQTT_USERNAME/PASSWORD`，后者必填、fail-fast），
     ACL 为整个 `iot/#` 读写；
   - 每个 `IOT_SOURCES` 中声明的源一个用户 `src-<sourceId>`，ACL 限定其
-    子树：发布 `iot/{site}/{src}/{state,event,ack}`、订阅
-    `iot/{site}/{src}/+/cmd`、发布遗嘱 `iot/_meta/{src}/offline`。
+    子树：发布 `iot/{site}/{src}/+/{state,event,ack}`（数据 topic 按设备
+    分层，通道前一级为 `+`）、订阅 `iot/{site}/{src}/+/cmd`、发布遗嘱
+    `iot/_meta/{src}/offline`。
   - 源密码随机生成并持久化在 `mosquitto_auth` 卷的 `credentials.txt`
     （`src-<sourceId> <password>` 一行一条），重启不轮换；接入网关/
     模拟器时从这里取密码。

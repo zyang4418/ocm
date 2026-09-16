@@ -3,6 +3,8 @@ package iot
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sync"
 	"time"
 )
 
@@ -20,24 +22,86 @@ const (
 // declare one in its state payload. Operators can re-categorize via PATCH.
 const GenericCategory = "generic"
 
-// Controlled vocabulary for command types (the things:control whitelist).
-// Values are stored in English; the frontend maps them to Chinese labels and
-// renders known types as dedicated buttons. A deployment's drivers decide
-// which of these their devices actually accept; unknown types are rejected at
-// the API so typos can never reach the broker.
+// Command type vocabulary. Types are stored in English; the frontend maps
+// them to Chinese labels and renders known types as dedicated buttons. The
+// set is a registry rather than a hardcoded map: unknown types are rejected
+// at the API so typos can never reach the broker, while deployments with
+// device classes beyond the core vocabulary extend it at wiring time via
+// RegisterCommandTypes (a downstream fork adds an init file — the observation
+// renderer-registry precedent). The registry is a vocabulary gate, not a
+// capability check: a device that cannot execute a registered type still
+// answers a failed ack (spec §5.1).
 const (
 	CmdDoorOpen        = "door_open"
 	CmdDoorClose       = "door_close"
+	CmdDeviceOn        = "device_on"
+	CmdDeviceOff       = "device_off"
+	CmdVolumeSet       = "volume_set"
+	CmdStateQuery      = "state_query"
 	CmdSceneStartClass = "scene_start_class"
 	CmdSceneEndClass   = "scene_end_class"
 )
 
-// CommandTypes is the command whitelist enforced by POST /commands.
-var CommandTypes = map[string]bool{
-	CmdDoorOpen:        true,
-	CmdDoorClose:       true,
-	CmdSceneStartClass: true,
-	CmdSceneEndClass:   true,
+var (
+	commandTypesMu sync.RWMutex
+	commandTypes   = map[string]bool{
+		CmdDoorOpen:        true,
+		CmdDoorClose:       true,
+		CmdDeviceOn:        true,
+		CmdDeviceOff:       true,
+		CmdVolumeSet:       true,
+		CmdStateQuery:      true,
+		CmdSceneStartClass: true,
+		CmdSceneEndClass:   true,
+	}
+)
+
+// RegisterCommandTypes extends the command vocabulary with deployment
+// specific types. Call it from package init in a package the backend binary
+// actually imports — for a downstream fork that is the internal/modules
+// file-level assembly, where a new file runs its init without any manual
+// wiring. A registered type must ship together with the device-side code
+// that implements it (same change); a duplicate, a collision with the core
+// vocabulary, or a malformed name is a wiring error, not a recoverable
+// condition.
+func RegisterCommandTypes(types ...string) {
+	commandTypesMu.Lock()
+	defer commandTypesMu.Unlock()
+	for _, t := range types {
+		if !validCommandType(t) {
+			panic(fmt.Sprintf("iot: RegisterCommandTypes: malformed command type %q (want [a-z][a-z0-9_]*, max 64 chars)", t))
+		}
+		if commandTypes[t] {
+			panic("iot: command type already registered: " + t)
+		}
+		commandTypes[t] = true
+	}
+}
+
+// KnownCommandType reports whether t is in the core or a registered
+// deployment vocabulary. Enforced by POST /commands.
+func KnownCommandType(t string) bool {
+	commandTypesMu.RLock()
+	defer commandTypesMu.RUnlock()
+	return commandTypes[t]
+}
+
+// validCommandType enforces the wire grammar of a command type: lowercase
+// snake_case, 1-64 chars (the same bound as topic segments and event names).
+func validCommandType(s string) bool {
+	if s == "" || len(s) > 64 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c >= 'a' && c <= 'z':
+		case i > 0 && (c == '_' || (c >= '0' && c <= '9')):
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // Command lifecycle. queued = accepted and persisted; delivered = the broker
