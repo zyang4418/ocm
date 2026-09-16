@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -89,11 +89,50 @@ export default function IotDeviceDetailPage() {
     void load()
   }, [load])
 
+  // Node-model volume, optimistic like a native control panel: the slider
+  // echoes the operator's value locally and keeps it until the DEVICE
+  // confirms — sendCommand's success only confirms broker delivery, not that
+  // the controller applied and reported the value. volumePending drives the
+  // badge; volumeDraftRef backs the reconcile effect; volumeTimerRef arms a
+  // 30 s fallback (the command TTL) that reverts to the last device-reported
+  // value when no confirmation arrives.
+  const [volumeDraft, setVolumeDraft] = useState<number | null>(null)
+  const [volumePending, setVolumePending] = useState(false)
+  const volumeDraftRef = useRef<number | null>(null)
+  const volumeTimerRef = useRef<number | null>(null)
+
   // Same-route navigation (param change) does not remount this page — the
-  // volume draft must not leak from one classroom's node into the next.
+  // optimistic volume state must not leak from one classroom's node into the
+  // next. The cleanup also runs on unmount, dropping the confirmation timer.
   useEffect(() => {
-    setVolumeDraft(null)
+    return () => {
+      if (volumeTimerRef.current !== null) window.clearTimeout(volumeTimerRef.current)
+      volumeTimerRef.current = null
+      volumeDraftRef.current = null
+      setVolumeDraft(null)
+      setVolumePending(false)
+    }
   }, [id])
+
+  // Reconcile the optimistic volume: the only trustworthy confirmation is a
+  // state report (the panel channel has no sync ack — spec §11 notes the
+  // controller confirms via readback). A report matching the draft resolves
+  // the pending state; a differing report (another operator's write) is left
+  // to the timeout, which falls back to the device-reported value.
+  useEffect(() => {
+    if (!volumePending) return
+    const reported = (device?.state ?? null) as Record<string, unknown> | null
+    const confirmed = typeof reported?.volume === 'number' ? reported.volume : null
+    if (confirmed !== null && volumeDraftRef.current !== null && confirmed === volumeDraftRef.current) {
+      if (volumeTimerRef.current !== null) {
+        window.clearTimeout(volumeTimerRef.current)
+        volumeTimerRef.current = null
+      }
+      volumeDraftRef.current = null
+      setVolumeDraft(null)
+      setVolumePending(false)
+    }
+  }, [device, volumePending])
 
   // Live status: the backend broadcasts device.updated on every state report.
   // The frame is a trimmed view, so refresh the full record for this device.
@@ -123,11 +162,6 @@ export default function IotDeviceDetailPage() {
   const [commandSending, setCommandSending] = useState(false)
   const [commandError, setCommandError] = useState('')
   const [commandSent, setCommandSent] = useState('')
-
-  // Node-model volume: the slider keeps a local draft until volume_set is
-  // accepted (then it returns to the device-confirmed attr); on failure the
-  // draft stays for retry, and navigation between nodes resets it.
-  const [volumeDraft, setVolumeDraft] = useState<number | null>(null)
 
   // Custom (JSON) command dialog.
   const [customOpen, setCustomOpen] = useState(false)
@@ -161,11 +195,27 @@ export default function IotDeviceDetailPage() {
     }
   }
 
-  // Volume draft is per-device UI state: cleared once the command is accepted
-  // so the slider returns to the device-confirmed attr, kept on failure for
-  // retry, and reset on navigation between node pages (see the effect below).
+  // Optimistic volume: the draft shows immediately (local echo, like the
+  // native panel) and stays until the device confirms via a state report
+  // (reconcile effect) or the 30 s TTL fallback reverts it. A REST-level
+  // failure (not queued / not delivered) keeps the draft for retry.
   const sendVolume = async (value: number) => {
-    if (await sendCommand('volume_set', { value })) setVolumeDraft(null)
+    volumeDraftRef.current = value
+    setVolumeDraft(value)
+    setVolumePending(true)
+    const ok = await sendCommand('volume_set', { value })
+    if (!ok) {
+      setVolumePending(false)
+      return
+    }
+    if (volumeTimerRef.current !== null) window.clearTimeout(volumeTimerRef.current)
+    volumeTimerRef.current = window.setTimeout(() => {
+      volumeTimerRef.current = null
+      volumeDraftRef.current = null
+      setVolumeDraft(null)
+      setVolumePending(false)
+      setCommandError(t('node.volumeTimeout'))
+    }, 30_000)
   }
 
   const handleCustomSend = async () => {
@@ -337,7 +387,11 @@ export default function IotDeviceDetailPage() {
               <div className="iot-function-card">
                 <div className="iot-function-card__head">
                   <span className="iot-function-card__title">{t('node.volume')}</span>
-                  <Tag size="sm">{String(attrs.volume)}</Tag>
+                  <Tag size="sm" type={volumePending ? 'blue' : undefined}>
+                    {volumePending
+                      ? `${volumeDraft ?? String(attrs.volume)} · ${t('node.volumePending')}`
+                      : String(attrs.volume)}
+                  </Tag>
                 </div>
                 {canControl && (
                   <div className="iot-function-card__actions">

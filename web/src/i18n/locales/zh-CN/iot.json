@@ -108,6 +108,8 @@
     "onlineOn": "在线",
     "onlineOff": "失联",
     "volume": "教室音量",
+    "volumePending": "等待设备回报",
+    "volumeTimeout": "音量命令已下发，但设备未在 30 秒内回报确认，已恢复显示设备上报值",
     "kind": {
       "door": "门磁",
       "relay": "继电器",

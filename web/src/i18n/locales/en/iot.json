@@ -108,6 +108,8 @@
     "onlineOn": "Online",
     "onlineOff": "Lost",
     "volume": "Classroom volume",
+    "volumePending": "Awaiting device report",
+    "volumeTimeout": "The volume command was delivered, but the device did not confirm within 30 s — showing the last device-reported value",
     "kind": {
       "door": "Door sensor",
       "relay": "Relay",
