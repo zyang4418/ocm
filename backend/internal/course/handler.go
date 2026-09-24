@@ -547,7 +547,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		httpx.Error500(w, r, "could not create session", err)
 		return
 	}
-	systemlog.WithSummary(r.Context(), fmt.Sprintf("创建课次 %s %s", v.CourseName, v.Date))
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("加课 %s", sessionAuditLabel(v)))
 	httpx.RespondJSON(w, http.StatusCreated, v)
 }
 
@@ -607,6 +607,17 @@ func (h *Handler) updateSession(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, msg)
 		return
 	}
+	// Capture the pre-update state first: the audit row must show the 调课
+	// before AND after, otherwise the old date/periods/classroom are lost.
+	before, err := h.store.GetSession(r.Context(), id)
+	if errors.Is(err, ErrSessionNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "session not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load session", err)
+		return
+	}
 	v, err := h.store.UpdateSession(r.Context(), id, in)
 	if errors.Is(err, ErrClassroomConflict) {
 		httpx.RespondError(w, http.StatusConflict, "classroom already booked for this date and period")
@@ -620,7 +631,7 @@ func (h *Handler) updateSession(w http.ResponseWriter, r *http.Request) {
 		httpx.Error500(w, r, "could not update session", err)
 		return
 	}
-	systemlog.WithSummary(r.Context(), fmt.Sprintf("更新课次 %s %s", v.CourseName, v.Date))
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("调课 %s → %s", sessionAuditLabel(before), sessionAuditLabel(v)))
 	httpx.RespondJSON(w, http.StatusOK, v)
 }
 
@@ -639,6 +650,17 @@ func (h *Handler) deleteSession(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "invalid session id")
 		return
 	}
+	// The row is about to disappear, so the audit summary must carry its full
+	// identity — "删除课次 #42" leaves nothing to trace.
+	before, err := h.store.GetSession(r.Context(), id)
+	if errors.Is(err, ErrSessionNotFound) {
+		httpx.RespondError(w, http.StatusNotFound, "session not found")
+		return
+	}
+	if err != nil {
+		httpx.Error500(w, r, "could not load session", err)
+		return
+	}
 	if err := h.store.DeleteSession(r.Context(), id); err != nil {
 		if errors.Is(err, ErrSessionNotFound) {
 			httpx.RespondError(w, http.StatusNotFound, "session not found")
@@ -647,8 +669,19 @@ func (h *Handler) deleteSession(w http.ResponseWriter, r *http.Request) {
 		httpx.Error500(w, r, "could not delete session", err)
 		return
 	}
-	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除课次 #%d", id))
+	systemlog.WithSummary(r.Context(), fmt.Sprintf("删课 %s", sessionAuditLabel(before)))
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// sessionAuditLabel renders a session's audit identity, e.g.
+// "高等数学 2026-09-25 第3–4节 A-302". Both sides of a 调课/删课 summary carry
+// their own label so an offering change stays visible in the log row too.
+func sessionAuditLabel(v SessionView) string {
+	periods := fmt.Sprintf("第%d–%d节", v.PeriodStart, v.PeriodEnd)
+	if v.PeriodStart == v.PeriodEnd {
+		periods = fmt.Sprintf("第%d节", v.PeriodStart)
+	}
+	return fmt.Sprintf("%s %s %s %s", v.CourseName, v.Date, periods, v.ClassroomName)
 }
 
 // ---- Timetable ----
