@@ -33,8 +33,20 @@ func NewStore(db *sql.DB) *Store { return &Store{db: db} }
 // classrooms.id (no FK, matching the repo convention); the unique identity
 // key is the data plane's (site, source_id, external_id) triple. iot_events
 // carries the dedup unique index that collapses QoS1 at-least-once
-// redeliveries; occurred_at is TIMESTAMP(3) because device event time is
-// millisecond precision.
+// redeliveries; occurred_at has millisecond precision because device event
+// time is millisecond precision.
+//
+// Every temporal column declares its default explicitly. occurred_at and
+// expires_at are DATETIME(3), not TIMESTAMP(3): a TIMESTAMP column that is
+// neither the table's first TIMESTAMP nor declared NULL/DEFAULT is assigned
+// an implicit '0000-00-00 00:00:00' default whenever the server runs with
+// explicit_defaults_for_timestamp=OFF (which managed MySQL 8.0 offerings
+// such as Tencent CynosDB do by default), and NO_ZERO_DATE in sql_mode then
+// rejects the CREATE TABLE with Error 1067. DATETIME is outside that
+// nonstandard behavior entirely, so these columns cannot break again — and
+// DATETIME also drops the implicit ON UPDATE CURRENT_TIMESTAMP that a bare
+// first TIMESTAMP column silently picks up, which would be wrong for an
+// event time.
 func (s *Store) Migrate(ctx context.Context) error {
 	for _, stmt := range []string{
 		`CREATE TABLE IF NOT EXISTS iot_devices (
@@ -59,7 +71,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 		    device_id   BIGINT      NOT NULL,
 		    type        VARCHAR(64) NOT NULL,
 		    payload     JSON        NULL,
-		    occurred_at TIMESTAMP(3) NOT NULL,
+		    occurred_at DATETIME(3) NOT NULL,
 		    received_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		    dedup_hash  CHAR(16)    NOT NULL,
 		    UNIQUE KEY uk_iot_event_dedup (device_id, type, occurred_at, dedup_hash),
@@ -76,7 +88,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 		    issued_by  VARCHAR(64) NOT NULL DEFAULT '',
 		    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 		    updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-		    expires_at TIMESTAMP(3) NOT NULL,
+		    expires_at DATETIME(3) NOT NULL,
 		    UNIQUE KEY uk_iot_command_id (command_id),
 		    KEY idx_iot_command_sweep (status, expires_at),
 		    KEY idx_iot_command_device (device_id, created_at)
