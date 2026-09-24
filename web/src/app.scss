@@ -384,6 +384,10 @@
 // --- Dashboard -------------------------------------------------------------
 .dashboard {
   padding-block: $spacing-07 $spacing-09;
+  // One vertical rhythm for every band (KPI row, charts, panels, quick
+  // start): the grid row-gap replaces per-column margins, which silently
+  // missed any band added later.
+  row-gap: $spacing-07;
 }
 
 .dashboard__heading {
@@ -394,12 +398,8 @@
 .dashboard__greeting {
   @include type-style('body-01');
   color: var(--cds-text-secondary);
-  margin-block: $spacing-03 $spacing-07;
-}
-
-.dashboard__error {
-  // InlineNotification keeps its own margins; undo the grid row gap visually.
-  margin-block-end: $spacing-05;
+  // No bottom margin: the space before the next band is the grid row-gap.
+  margin-block: $spacing-03 0;
 }
 
 // KPI row: a responsive card grid independent of the Carbon grid so the cards
@@ -454,15 +454,8 @@
   height: 5rem;
 }
 
-// Section panels (today's sessions, to-do center, recent activity)
-.dashboard__main-col {
-  margin-block-start: $spacing-07;
-
-  &:first-of-type {
-    margin-block-start: 0;
-  }
-}
-
+// Section panels (today's sessions, to-do center, recent activity). Vertical
+// spacing between bands comes from the .dashboard grid row-gap.
 .dashboard__panel {
   display: flex;
   flex-direction: column;
@@ -495,10 +488,6 @@
 }
 
 // Charts band (@carbon/charts, lazy-loaded with its own chunk)
-.dashboard__charts-col {
-  margin-block-start: $spacing-07;
-}
-
 .dashboard__charts {
   // Nested grid: the outer column already pads, so the two chart panels line
   // up with the KPI/list panels above them.

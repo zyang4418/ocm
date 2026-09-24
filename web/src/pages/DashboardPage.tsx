@@ -207,7 +207,6 @@ export default function DashboardPage() {
             subtitle={error}
             actionButtonLabel={t('error.retry')}
             onActionButtonClick={reload}
-            className="dashboard__error"
             hideCloseButton
           />
         </Column>
@@ -247,7 +246,7 @@ export default function DashboardPage() {
       {/* Charts band: same omitempty semantics as the sections - a chart with
           no server data (permission or an empty day) collapses its column */}
       {!loading && (data?.sessionPeriods?.length || 0) + (data?.bookingLoad?.length || 0) > 0 && (
-        <Column sm={4} md={8} lg={16} className="dashboard__charts-col">
+        <Column sm={4} md={8} lg={16}>
           <Suspense
             fallback={
               <Grid className="dashboard__charts">
@@ -274,7 +273,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main band: today's sessions + to-do center */}
-      <Column sm={4} md={8} lg={10} className="dashboard__main-col">
+      <Column sm={4} md={8} lg={10}>
         {loading ? (
           <Tile className="dashboard__panel">
             <SkeletonText heading width="30%" />
@@ -309,7 +308,7 @@ export default function DashboardPage() {
         ) : null}
       </Column>
 
-      <Column sm={4} md={8} lg={6} className="dashboard__main-col">
+      <Column sm={4} md={8} lg={6}>
         {loading ? (
           <Tile className="dashboard__panel">
             <SkeletonText heading width="40%" />
