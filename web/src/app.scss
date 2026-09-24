@@ -1705,6 +1705,11 @@
   margin: 0;
 }
 
+.ai-chat-item__proposal-success {
+  @include type-style('body-01');
+  margin: 0;
+}
+
 /* ---- observations page (听课评课) ---- */
 .observations-page__form-modal {
   .cds--modal-container {
