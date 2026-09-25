@@ -92,7 +92,7 @@
     <block wx:elif="{{detailView}}">
       <text class="detail-file">{{detailView.filename}}</text>
       <text class="detail-summary">
-        {{detailView.isPreview ? '将导入' : '成功'}} {{detailView.succeededRows}} / 失败 {{detailView.failedRows}} / 总 {{detailView.totalRows}} 行
+        {{detailView.isPreview ? '将导入' : '成功'}} {{detailView.succeededRows}} / 失败 {{detailView.failedRows}} / 总 {{detailView.totalRows}} {{detailView.unit}}
       </text>
 
       <view class="preview-table">

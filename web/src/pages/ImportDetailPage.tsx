@@ -16,6 +16,13 @@ const STATUS_KIND: Record<string, TagProps<'div'>['type']> = {
   cancelled: 'gray',
 }
 
+// 扁平化导入（教学班/作息制度）的后端计数单位是组而非文件行，汇总行按类型带单位。
+function summaryUnit(type: string): string {
+  if (type === 'teaching_classes') return 'modal.unitTeachingClasses'
+  if (type === 'regimes') return 'modal.unitRegimes'
+  return 'modal.unitRows'
+}
+
 // ImportDetailPage (/imports/:id) is the full-page preview for one import job,
 // replacing the old detail modal so the (potentially very large) preview table
 // gets the full content width. Loads job metadata, polls while pending/
@@ -153,9 +160,10 @@ export default function ImportDetailPage() {
             </div>
 
             <p className="imports-page__summary">
-              {job.status === 'preview'
-                ? t('modal.previewSummary', { succeeded: job.succeededRows, failed: job.failedRows, total: job.totalRows })
-                : t('modal.detailSummary', { succeeded: job.succeededRows, failed: job.failedRows, total: job.totalRows })}
+              {/* 扁平化导入（教学班/作息制度）的后端计数单位是组而非文件行，汇总行按类型带单位。 */}
+              {(job.status === 'preview'
+                ? t('modal.previewSummary', { succeeded: job.succeededRows, failed: job.failedRows, total: job.totalRows, unit: t(summaryUnit(job.type)) })
+                : t('modal.detailSummary', { succeeded: job.succeededRows, failed: job.failedRows, total: job.totalRows, unit: t(summaryUnit(job.type)) }))}
             </p>
 
             {canCommit && (

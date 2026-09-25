@@ -69,7 +69,13 @@ func (r regimeInsert) toPreviewMap() map[string]any {
 // each regime and its period set using the schedule package's normalizers. No
 // writes. A group whose month/day disagree across its rows is rejected (the
 // regime fields must be consistent within a group).
-func parseRegimes(payload string) (clean []regimeInsert, errs []RowError, dataRows int, err error) {
+//
+// The returned count is the number of regime groups (len(order)), not the
+// flattened row count: the file carries one row per period, but the preview
+// table and the Result accounting (Total/Succeeded/Failed rows) all speak in
+// regimes, so every unit stays comparable. Rows rejected before or during
+// grouping (empty name, inconsistent month/day) surface only as RowErrors.
+func parseRegimes(payload string) (clean []regimeInsert, errs []RowError, groupCount int, err error) {
 	headers, rows, headerErr := parseWorkbook(payload)
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
@@ -91,7 +97,6 @@ func parseRegimes(payload string) (clean []regimeInsert, errs []RowError, dataRo
 
 	for i, rec := range rows {
 		rowNum := i + 2
-		dataRows++
 		name := rec[ColRegimeName]
 		if name == "" {
 			errs = append(errs, RowError{Row: rowNum, Error: "regime_name 为空"})
@@ -133,42 +138,42 @@ func parseRegimes(payload string) (clean []regimeInsert, errs []RowError, dataRo
 		}
 		clean = append(clean, ri)
 	}
-	return clean, errs, dataRows, nil
+	return clean, errs, len(order), nil
 }
 
 func analyzeRegimes(ctx context.Context, db *sql.DB, payload string) (Result, error) {
-	clean, errs, dataRows, err := parseRegimes(payload)
+	clean, errs, groupCount, err := parseRegimes(payload)
 	if err != nil {
-		return Result{TotalRows: dataRows, FailedRows: dataRows, Errors: errs}, err
+		return Result{TotalRows: groupCount, FailedRows: groupCount, Errors: errs}, err
 	}
 	rows := make([]map[string]any, 0, len(clean))
 	for _, c := range clean {
 		rows = append(rows, c.toPreviewMap())
 	}
 	return Result{
-		TotalRows:     dataRows,
+		TotalRows:     groupCount,
 		SucceededRows: len(clean),
-		FailedRows:    dataRows - len(clean),
+		FailedRows:    groupCount - len(clean),
 		Errors:        errs,
 		Rows:          rows,
 	}, nil
 }
 
 func commitRegimes(ctx context.Context, db *sql.DB, payload string) (Result, error) {
-	clean, errs, dataRows, err := parseRegimes(payload)
+	clean, errs, groupCount, err := parseRegimes(payload)
 	if err != nil {
-		return Result{TotalRows: dataRows, FailedRows: dataRows, Errors: errs}, err
+		return Result{TotalRows: groupCount, FailedRows: groupCount, Errors: errs}, err
 	}
 
-	res := Result{TotalRows: dataRows, Errors: errs}
+	res := Result{TotalRows: groupCount, Errors: errs}
 	if len(clean) == 0 {
-		res.FailedRows = dataRows
+		res.FailedRows = groupCount
 		return res, nil
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		res.FailedRows = dataRows
+		res.FailedRows = groupCount
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
 		return res, fmt.Errorf("begin tx: %w", err)
 	}
@@ -181,7 +186,7 @@ func commitRegimes(ctx context.Context, db *sql.DB, payload string) (Result, err
 VALUES (?, ?, ?)
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), effective_month=VALUES(effective_month), effective_day=VALUES(effective_day)`)
 	if err != nil {
-		res.FailedRows = dataRows
+		res.FailedRows = groupCount
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
 		return res, fmt.Errorf("prepare regime upsert: %w", err)
 	}
@@ -189,7 +194,7 @@ ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), effective_month=VALUES(effective_
 
 	delStmt, err := tx.PrepareContext(ctx, `DELETE FROM schedule_periods WHERE regime_id = ?`)
 	if err != nil {
-		res.FailedRows = dataRows
+		res.FailedRows = groupCount
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
 		return res, fmt.Errorf("prepare period delete: %w", err)
 	}
@@ -197,7 +202,7 @@ ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), effective_month=VALUES(effective_
 
 	insStmt, err := tx.PrepareContext(ctx, `INSERT INTO schedule_periods (regime_id, period_index, start_time, end_time) VALUES (?, ?, ?, ?)`)
 	if err != nil {
-		res.FailedRows = dataRows
+		res.FailedRows = groupCount
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
 		return res, fmt.Errorf("prepare period insert: %w", err)
 	}
@@ -206,35 +211,35 @@ ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), effective_month=VALUES(effective_
 	for _, r := range clean {
 		r2, err := upsertStmt.ExecContext(ctx, r.name, r.month, r.day)
 		if err != nil {
-			res.FailedRows = dataRows
+			res.FailedRows = groupCount
 			res.Errors = append(res.Errors, RowError{Row: r.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("upsert regime: %w", err)
 		}
 		regimeID, err := r2.LastInsertId()
 		if err != nil {
-			res.FailedRows = dataRows
+			res.FailedRows = groupCount
 			res.Errors = append(res.Errors, RowError{Row: r.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("regime last insert id: %w", err)
 		}
 		if _, err := delStmt.ExecContext(ctx, regimeID); err != nil {
-			res.FailedRows = dataRows
+			res.FailedRows = groupCount
 			res.Errors = append(res.Errors, RowError{Row: r.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("delete periods: %w", err)
 		}
 		for _, p := range r.periods {
 			if _, err := insStmt.ExecContext(ctx, regimeID, p.PeriodIndex, p.StartTime, p.EndTime); err != nil {
-				res.FailedRows = dataRows
+				res.FailedRows = groupCount
 				res.Errors = append(res.Errors, RowError{Row: r.rowNum, Error: "导入中断：" + err.Error()})
 				return res, fmt.Errorf("insert period: %w", err)
 			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		res.FailedRows = dataRows
+		res.FailedRows = groupCount
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
 		return res, fmt.Errorf("commit: %w", err)
 	}
 	res.SucceededRows = len(clean)
-	res.FailedRows = dataRows - res.SucceededRows
+	res.FailedRows = groupCount - res.SucceededRows
 	return res, nil
 }
