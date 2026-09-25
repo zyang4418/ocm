@@ -7,8 +7,10 @@ import { request } from '../../utils/request'
 // 首帧渲染即需正确高度（避免 100vh 在部分机型初始计算偏差），故在模块级同步取值。
 const nav = getNavInfo()
 
-// 自定义 tabBar 不再由原生扣除视口，页面根高需减去 tabBar 高度（内容区 ~50px +
-// 底部安全区），否则底部输入栏会被 tabBar 遮住。
+// 自定义 tabBar 不由原生扣除视口，页面根高需减去 tabBar 高度。tabBar 内容区在
+// custom-tab-bar/index.wxss 中钉死为 50px（不随屏宽 rpx 缩放），安全区由 tabBar
+// 自身的 env(safe-area-inset-bottom) 覆盖，两侧常量必须一致，否则输入栏与
+// tabBar 会重叠或留缝。
 const TAB_BAR_HEIGHT = 50 + nav.safeAreaBottom
 
 interface ToolState {
@@ -59,8 +61,7 @@ const suggestions = [
 Page({
   data: {
     statusBarHeight: nav.statusBarHeight,
-    safeAreaBottom: nav.safeAreaBottom,
-    pageHeight: nav.pageHeight - nav.statusBarHeight - TAB_BAR_HEIGHT,
+    pageHeight: nav.pageHeight - TAB_BAR_HEIGHT,
     canUse: false,
     messages: [] as Message[],
     inputValue: '',

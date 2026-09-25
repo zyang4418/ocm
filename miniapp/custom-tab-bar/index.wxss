@@ -1,4 +1,5 @@
-/* 复刻原生 tabBar:内容区 ~100rpx + 安全区,颜色与 app.json 一致 */
+/* 复刻原生 tabBar:内容区钉死 50px(与各 tab 页 TAB_BAR_HEIGHT 常量对齐,不随屏宽
+   rpx 缩放,否则宽屏上会高出预留、盖住页面底部)+ 安全区,颜色与 app.json 一致 */
 .tab-bar {
   position: fixed;
   left: 0;
@@ -7,6 +8,8 @@
   z-index: 1000;
   display: flex;
   flex-direction: row;
+  height: 50px;
+  box-sizing: content-box;
   background: #FFFFFF;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -18,7 +21,6 @@
   align-items: center;
   justify-content: center;
   gap: 4rpx;
-  padding: 10rpx 0 8rpx;
 }
 
 .tab-bar-icon {
