@@ -126,12 +126,7 @@ interface Job {
   totalRows: number
   succeededRows: number
   failedRows: number
-  errorReport: string
   createdAt: string
-}
-
-interface JobDetail extends Job {
-  rows: Record<string, any>[]
 }
 
 /** 预览单元格展示:数组/对象格式化成可读文本。 */
@@ -330,17 +325,19 @@ Page({
     const { id } = e.currentTarget.dataset
     this.setData({ detailOpen: true, detailLoading: true, detail: null, detailView: null, detailError: '' })
     try {
-      const job = await request<JobDetail>({ path: `/api/imports/${id}` })
+      // 错误报告与预览行刻意不随 meta 返回（列表/轮询响应保持轻量），需分别调
+      // 专用端点；rows 单页上限 500（服务端钳制），total 为预览总行数。
+      const [job, errorsRes, rowsRes] = await Promise.all([
+        request<Job>({ path: `/api/imports/${id}` }),
+        request<{ errors: { row: number; error: string }[] }>({ path: `/api/imports/${id}/errors` }),
+        request<{ rows: Record<string, any>[]; total: number }>({
+          path: `/api/imports/${id}/rows`,
+          params: { page: 1, pageSize: 500 }
+        })
+      ])
       const cfg = IMPORT_TYPES[job.type] || { columns: [] }
-      const errors: { row: number; error: string }[] = (() => {
-        try {
-          return JSON.parse(job.errorReport || '[]')
-        } catch {
-          return []
-        }
-      })()
-      const maxPreview = 1000
-      const rows = (job.rows || []).slice(0, maxPreview)
+      const errors = errorsRes.errors || []
+      const rows = rowsRes.rows || []
       this.setData({
         detail: job,
         detailView: {
@@ -349,8 +346,8 @@ Page({
           columns: cfg.columns,
           // 预览行:每行按 columns 顺序取单元格文本
           rows: rows.map((r) => cfg.columns.map((c) => fmtCell(r[c.key]))),
-          truncated: (job.rows || []).length > maxPreview,
-          rowCount: (job.rows || []).length,
+          truncated: rowsRes.total > rows.length,
+          rowCount: rowsRes.total,
           errors: errors.slice(0, 100),
           errorCount: errors.length
         }
