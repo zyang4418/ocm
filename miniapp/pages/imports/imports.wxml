@@ -92,7 +92,7 @@
     <block wx:elif="{{detailView}}">
       <text class="detail-file">{{detailView.filename}}</text>
       <text class="detail-summary">
-        {{detailView.isPreview ? '将导入' : '成功'}} {{detailView.succeededRows}} / 失败 {{detailView.failedRows}} / 总 {{detailView.totalRows}} 行
+        {{detailView.isPreview ? '将导入' : '成功'}} {{detailView.succeededRows}} / 失败 {{detailView.failedRows}} / 总 {{detailView.totalRows}} {{detailView.unit}}
       </text>
 
       <view class="preview-table">
@@ -103,7 +103,7 @@
           <text wx:for="{{row}}" wx:key="index" wx:for-item="cell" class="preview-cell">{{cell}}</text>
         </view>
       </view>
-      <text wx:if="{{detailView.truncated}}" class="detail-note">仅显示前 1000 行（共 {{detailView.rowCount}} 行）</text>
+      <text wx:if="{{detailView.truncated}}" class="detail-note">仅显示前 500 行（共 {{detailView.rowCount}} 行）</text>
       <text wx:if="{{detailView.rows.length === 0}}" class="detail-note">无预览行</text>
 
       <text class="detail-subtitle">错误报告</text>

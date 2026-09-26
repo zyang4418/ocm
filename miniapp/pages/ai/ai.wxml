@@ -92,8 +92,8 @@
     </block>
   </scroll-view>
 
-  <!-- 底部输入框 -->
-  <view wx:if="{{canUse}}" class="input-bar" style="padding-bottom: calc(12px + {{safeAreaBottom}}px)">
+  <!-- 底部输入框（安全区由 tabBar 覆盖，这里只留 12px 呼吸间距，见 ai.wxss） -->
+  <view wx:if="{{canUse}}" class="input-bar">
     <view class="input-wrapper">
       <input
         class="input"

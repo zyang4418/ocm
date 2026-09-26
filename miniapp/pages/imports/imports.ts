@@ -5,7 +5,8 @@ import { uploadFile } from '../../utils/upload'
 import { importStatus, formatDateTime } from '../../utils/format'
 
 // 8 类导入的契约,与 web 端 IMPORT_TYPES 一致(schema/note/columns)。
-const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string; columns: { key: string; header: string }[] }> = {
+// unit 是汇总行的计数单位:教学班/作息制度为父子表扁平化,后端按组(而非文件行)记账。
+const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string; unit?: string; columns: { key: string; header: string }[] }> = {
   sessions: {
     label: '课表（课次）',
     schema: 'date, period_start, period_end, classroom, course, teaching_class, semester, note',
@@ -48,6 +49,7 @@ const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string
   },
   teaching_classes: {
     label: '教学班',
+    unit: '个教学班',
     schema: 'name, note, admin_grade, admin_name',
     note: '父子表扁平化：每个成员行政班一行，按 name 分组。被开课引用的教学班成员不可修改。',
     columns: [
@@ -91,6 +93,7 @@ const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string
   },
   regimes: {
     label: '作息制度',
+    unit: '套',
     schema: 'regime_name, effective_month, effective_day, period_index, start_time, end_time',
     note: '父子表扁平化：每节次一行，按 regime_name 分组；提交时整套替换该制度的节次。',
     columns: [
@@ -126,12 +129,7 @@ interface Job {
   totalRows: number
   succeededRows: number
   failedRows: number
-  errorReport: string
   createdAt: string
-}
-
-interface JobDetail extends Job {
-  rows: Record<string, any>[]
 }
 
 /** 预览单元格展示:数组/对象格式化成可读文本。 */
@@ -330,27 +328,30 @@ Page({
     const { id } = e.currentTarget.dataset
     this.setData({ detailOpen: true, detailLoading: true, detail: null, detailView: null, detailError: '' })
     try {
-      const job = await request<JobDetail>({ path: `/api/imports/${id}` })
-      const cfg = IMPORT_TYPES[job.type] || { columns: [] }
-      const errors: { row: number; error: string }[] = (() => {
-        try {
-          return JSON.parse(job.errorReport || '[]')
-        } catch {
-          return []
-        }
-      })()
-      const maxPreview = 1000
-      const rows = (job.rows || []).slice(0, maxPreview)
+      // 错误报告与预览行刻意不随 meta 返回（列表/轮询响应保持轻量），需分别调
+      // 专用端点；rows 单页上限 500（服务端钳制），total 为预览总行数。
+      const [job, errorsRes, rowsRes] = await Promise.all([
+        request<Job>({ path: `/api/imports/${id}` }),
+        request<{ errors: { row: number; error: string }[] }>({ path: `/api/imports/${id}/errors` }),
+        request<{ rows: Record<string, any>[]; total: number }>({
+          path: `/api/imports/${id}/rows`,
+          params: { page: 1, pageSize: 500 }
+        })
+      ])
+      const cfg = IMPORT_TYPES[job.type] || { columns: [], unit: '行' }
+      const errors = errorsRes.errors || []
+      const rows = rowsRes.rows || []
       this.setData({
         detail: job,
         detailView: {
           ...this.jobView(job),
           isPreview: job.status === 'preview',
+          unit: cfg.unit || '行',
           columns: cfg.columns,
           // 预览行:每行按 columns 顺序取单元格文本
           rows: rows.map((r) => cfg.columns.map((c) => fmtCell(r[c.key]))),
-          truncated: (job.rows || []).length > maxPreview,
-          rowCount: (job.rows || []).length,
+          truncated: rowsRes.total > rows.length,
+          rowCount: rowsRes.total,
           errors: errors.slice(0, 100),
           errorCount: errors.length
         }

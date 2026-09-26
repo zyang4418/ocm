@@ -185,10 +185,18 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
     done: 'green', active: 'blue', todo: 'gray', skipped: 'gray', failed: 'red',
   }
 
+  // 扁平化导入（教学班/作息制度）的后端计数单位是组而非文件行，汇总行按类型带单位。
+  const unit =
+    job?.type === 'teaching_classes'
+      ? t('modal.unitTeachingClasses')
+      : job?.type === 'regimes'
+        ? t('modal.unitRegimes')
+        : t('modal.unitRows')
+
   const summary =
     r === 'succeeded' || r === 'failed'
-      ? t('modal.detailSummary', { succeeded: job?.succeededRows ?? 0, failed: job?.failedRows ?? 0, total: job?.totalRows ?? 0 })
-      : t('modal.previewSummary', { succeeded: job?.succeededRows ?? 0, failed: job?.failedRows ?? 0, total: job?.totalRows ?? 0 })
+      ? t('modal.detailSummary', { succeeded: job?.succeededRows ?? 0, failed: job?.failedRows ?? 0, total: job?.totalRows ?? 0, unit })
+      : t('modal.previewSummary', { succeeded: job?.succeededRows ?? 0, failed: job?.failedRows ?? 0, total: job?.totalRows ?? 0, unit })
 
   return (
     <section className="imports-page__wizard">

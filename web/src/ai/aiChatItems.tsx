@@ -145,9 +145,14 @@ function ProposalCard({ proposal }: { proposal: AiProposal }) {
       </div>
       {state === 'proposed' && <ConflictNote conflicts={proposal.payload.conflicts} />}
       {state === 'confirmed' && (
-        <InlineNotification kind="success" lowContrast hideCloseButton title={t('proposal.successTitle')}>
-          <Link to="/bookings">{t('proposal.successLink')}</Link>
-        </InlineNotification>
+        // InlineNotification forbids interactive children (its dev assertion
+        // throws and unmounts the whole app), so the link sits below it.
+        <>
+          <InlineNotification kind="success" lowContrast hideCloseButton title={t('proposal.successTitle')} />
+          <p className="ai-chat-item__proposal-success">
+            <Link to="/bookings">{t('proposal.successLink')}</Link>
+          </p>
+        </>
       )}
       {state === 'failed' && (
         <InlineNotification kind="error" lowContrast hideCloseButton title={t('proposal.failedTitle')} subtitle={error} />

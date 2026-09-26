@@ -22,7 +22,8 @@ export function getNavInfo(): NavInfo {
   cached = {
     statusBarHeight: sbh,
     safeAreaBottom: info.safeArea ? info.screenHeight - info.safeArea.bottom : 0,
-    pageHeight: info.windowHeight + sbh,
+    // custom 导航下 windowHeight 即全屏可用高（已含状态栏），可直接作页面根总高。
+    pageHeight: info.windowHeight,
   }
   return cached
 }
