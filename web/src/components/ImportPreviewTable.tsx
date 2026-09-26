@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { InlineNotification } from '@carbon/react'
 import type { TFunction } from 'i18next'
 import ListPagination from './ListPagination'
 import { apiFetch } from '../auth/api'
@@ -92,6 +93,7 @@ export default function ImportPreviewTable({ job, token, t }: ImportPreviewTable
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [rowsJobId, setRowsJobId] = useState<number | null>(null) // rows 所属 job：与当前 job 不一致时不渲染旧数据
   const [errors, setErrors] = useState<ImportRowError[]>([])
   const [errorsLoaded, setErrorsLoaded] = useState(false)
 
@@ -125,7 +127,10 @@ export default function ImportPreviewTable({ job, token, t }: ImportPreviewTable
           setTotal(0)
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setRowsJobId(job.id)
+        }
       }
     })()
     return () => { cancelled = true }
@@ -161,9 +166,17 @@ export default function ImportPreviewTable({ job, token, t }: ImportPreviewTable
   const lastPage = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, lastPage)
 
+  const rowsAreCurrent = rowsJobId === job?.id
+  const emptyTitle =
+    job?.status === 'processing'
+      ? t('modal.loadingPreview')
+      : (job?.failedRows ?? 0) > 0 && (job?.succeededRows ?? 0) === 0
+        ? t('modal.emptyPreviewAllFailed')
+        : t('modal.emptyPreview')
+
   return (
     <>
-      {loading && rows.length === 0 ? (
+      {!rowsAreCurrent || (loading && rows.length === 0) ? (
         <p className="imports-page__summary">{t('modal.loadingPreview')}</p>
       ) : rows.length > 0 ? (
         <div className="imports-page__rows">
@@ -186,7 +199,15 @@ export default function ImportPreviewTable({ job, token, t }: ImportPreviewTable
             </tbody>
           </table>
         </div>
-      ) : null}
+      ) : (
+        <InlineNotification
+          kind="info"
+          title={emptyTitle}
+          lowContrast
+          hideCloseButton
+          className="imports-page__upload-err"
+        />
+      )}
 
       {total > 0 && (
         <ListPagination

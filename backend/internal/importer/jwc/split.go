@@ -49,7 +49,7 @@ type Result struct {
 // 入参：data 为教务处 xlsx 字节；semester 为学期标签（如 2024-2025-2）；week1Monday
 // 为该学期第一周周一（必须是周一）；regimes 为已加载的作息制度，用于预校验展开日期。
 //
-// 致命错误（作息未覆盖、入参非法、文件无法解析）以 error 返回且不产出文件；
+// 致命错误（表头缺失、入参非法、文件无法解析、产出为空、作息未覆盖）以 error 返回且不产出文件；
 // 行级问题（空行政班、平行教学班、无教师、节次/起止周解析失败）记入 Stats.Warnings
 // 并跳过相关开课/课次，不中断整体拆分。
 func Split(data []byte, semester string, week1Monday time.Time, regimes []schedule.Regime) (*Result, error) {
@@ -90,6 +90,14 @@ func Split(data []byte, semester string, week1Monday time.Time, regimes []schedu
 
 	// 7. 开课 + 课次展开。
 	offerings, sessions := buildOfferingsSessions(seqs, tcs, semester, week1Monday, &st)
+
+	// 产出为空说明文件内容无效（全空序号/全停课/全解析失败），fail-fast 不建任务。
+	if len(offerings) == 0 {
+		return nil, fmt.Errorf("拆分结果为空：未解析出任何有效开课（共 %d 行）。%s", len(rows), firstWarnings(st.Warnings, 5))
+	}
+	if len(sessions) == 0 {
+		return nil, fmt.Errorf("拆分结果为空：%d 个开课均未生成课次（节次/起止周/教室可能全部无效或全部停课）。%s", len(offerings), firstWarnings(st.Warnings, 5))
+	}
 
 	// 8. 作息制度预校验：每个展开日期都要有 active regime 且含所用节次。
 	if err := validateRegimes(sessions, regimes); err != nil {
@@ -207,7 +215,6 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 		if g.slotSeen[slotKey] {
 			continue
 		}
-		g.slotSeen[slotKey] = true
 		periodStart, periodEnd, perr := parsePeriods(r.periodStr)
 		weeks, werr := expandWeeks(r.weekStr)
 		if perr != nil {
@@ -228,8 +235,10 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 		}
 		if isNonPhysicalClassroom(r.classroom) {
 			// 停课等占位标记：不生成课次，也不计为教室。
+			g.slotSeen[slotKey] = true
 			continue
 		}
+		g.slotSeen[slotKey] = true // 解析全部通过才记入，避免首行失败连带跳过后续可解析行
 		g.slots = append(g.slots, &slot{
 			classroom:   r.classroom,
 			weekday:     r.weekday,
@@ -576,6 +585,17 @@ func joinTeachers(ts []teacher) (names, ids, titles string) {
 	return strings.Join(nb, ","), strings.Join(ib, ","), strings.Join(tb, ",")
 }
 
+// firstWarnings 拼接前 n 条告警，供 fail-fast 错误附上定位线索。
+func firstWarnings(ws []string, n int) string {
+	if len(ws) == 0 {
+		return ""
+	}
+	if len(ws) > n {
+		ws = ws[:n]
+	}
+	return "近期告警：" + strings.Join(ws, "；")
+}
+
 // validateRegimes 预校验：每个展开日期都要有 active regime，且 regime 含该日期用到的节次。
 // 不满足则返回错误（列出首批违规日期），fail-fast 避免建任务后才发现。
 func validateRegimes(sessions []sessionRec, regimes []schedule.Regime) error {
@@ -591,7 +611,13 @@ func validateRegimes(sessions []sessionRec, regimes []schedule.Regime) error {
 		}
 	}
 	var bad []string
-	for dstr, periods := range periodsByDate {
+	dates := make([]string, 0, len(periodsByDate))
+	for d := range periodsByDate {
+		dates = append(dates, d)
+	}
+	sort.Strings(dates) // 固定报错顺序（map 遍历无序）
+	for _, dstr := range dates {
+		periods := periodsByDate[dstr]
 		date, err := time.Parse("2006-01-02", dstr)
 		if err != nil {
 			continue

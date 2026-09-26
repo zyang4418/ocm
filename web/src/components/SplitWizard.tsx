@@ -121,6 +121,26 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
       setResults((p) => ({ ...p, [id]: job }))
       if (job.status === 'succeeded' || job.status === 'failed') {
         setResolved((p) => ({ ...p, [id]: job.status as 'succeeded' | 'failed' }))
+      } else if (job.status !== 'processing') {
+        setError(t('wizard.timeout'))
+      }
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 提交超时后任务可能仍在 processing：只轮询不重复提交，避免 409。
+  async function handleResume() {
+    const id = steps[current]!.id
+    setError('')
+    setBusy(true)
+    try {
+      const job = await pollUntil(id, (s) => s === 'succeeded' || s === 'failed')
+      setResults((p) => ({ ...p, [id]: job }))
+      if (job.status === 'succeeded' || job.status === 'failed') {
+        setResolved((p) => ({ ...p, [id]: job.status as 'succeeded' | 'failed' }))
       } else {
         setError(t('wizard.timeout'))
       }
@@ -268,8 +288,13 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
               {t('wizard.skip')}
             </Button>
           )}
+          {job?.status === 'processing' && (
+            <Button kind="ghost" size="sm" onClick={handleResume} disabled={busy}>
+              {t('wizard.resume')}
+            </Button>
+          )}
           {notResolved ? (
-            <Button size="sm" onClick={handleCommit} disabled={busy || (r !== 'failed' && (job?.succeededRows ?? 0) === 0)}>
+            <Button size="sm" onClick={handleCommit} disabled={busy || job?.status === 'processing' || (r !== 'failed' && (job?.succeededRows ?? 0) === 0)}>
               {r === 'failed' ? t('wizard.retry') : t('modal.commit')}
             </Button>
           ) : (
@@ -293,6 +318,15 @@ export default function SplitWizard({ jobs, stats, warnings, token, onExit, onVi
         <InlineNotification
           kind="error"
           title={t('wizard.failedNote')}
+          lowContrast
+          hideCloseButton
+          className="imports-page__upload-err"
+        />
+      )}
+      {job?.status === 'processing' && (
+        <InlineNotification
+          kind="info"
+          title={t('wizard.processingNote')}
           lowContrast
           hideCloseButton
           className="imports-page__upload-err"
