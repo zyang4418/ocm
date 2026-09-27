@@ -39,7 +39,7 @@
   },
   "catalogForm": {
     "name": "Course name",
-    "code": "Course code",
+    "code": "Course code (required, identity key)",
     "description": "Description",
     "codePlaceholder": "e.g. MATH101"
   },

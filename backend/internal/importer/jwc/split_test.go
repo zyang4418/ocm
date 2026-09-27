@@ -88,8 +88,8 @@ func TestSplitEndToEnd(t *testing.T) {
 		{"catalog", res.Files.Catalog, []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}},
 		{"admin_classes", res.Files.AdminClasses, []string{"grade", "name", "note"}},
 		{"teaching_classes", res.Files.TeachingClasses, []string{"name", "note", "admin_grade", "admin_name"}},
-		{"offerings", res.Files.Offerings, []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}},
-		{"sessions", res.Files.Sessions, []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "note"}},
+		{"offerings", res.Files.Offerings, []string{"course", "code", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}},
+		{"sessions", res.Files.Sessions, []string{"date", "period_start", "period_end", "classroom", "course", "code", "teaching_class", "semester", "note"}},
 	}
 	for _, f := range files {
 		if len(f.data) == 0 {

@@ -59,14 +59,3 @@ func atofOr(s string, def float64) float64 {
 	}
 	return n
 }
-
-// nullIfEmpty returns nil for an empty string so the column stores NULL rather
-// than an empty value. This matters for UNIQUE columns such as
-// course_catalog.code: MySQL treats multiple empty strings as equal (collision)
-// but multiple NULL as distinct. Pass the result as a statement argument.
-func nullIfEmpty(s string) interface{} {
-	if s == "" {
-		return nil
-	}
-	return s
-}

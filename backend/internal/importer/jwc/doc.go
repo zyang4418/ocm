@@ -36,12 +36,14 @@
 //  4. teaching_classes：按「行政班集合」键控的教学班。命名默认区间压缩（机电241~245），
 //     超 64 字符回退「首班,次班等N班」并把完整成员写入 note。每个成员行政班一行
 //     （父子扁平化，匹配 teaching_classes importer 契约）。
-//  5. offerings：按 课程序号 去重。course=课程名称, teaching_class=合成教学班名,
+//  5. offerings：按 课程序号 去重。course=课程名称, code=课程代码（身份键，offerings
+//     导入按它解析课程）, teaching_class=合成教学班名,
 //     semester=入参, teacher=教师名（合班按工号去重逗号合并）, course_seq=课程序号,
 //     teacher_id/teacher_title/college/max_students/requirement/weekly_hours 同步。
 //  6. sessions：周模式展开为具体日期课次。date=week1Monday+(week-1)*7+(weekday-1),
 //     period_start/period_end=节次区间（连上多节为一个课次）, classroom=上课教室,
-//     course/teaching_class/semester 同上。
+//     course=课程名称, code=课程代码, teaching_class/semester 同上；sessions 导入按
+//     (code, teaching_class, semester) 解析开课。
 //
 // # 展开与去重
 //

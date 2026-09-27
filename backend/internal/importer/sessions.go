@@ -16,10 +16,13 @@ import (
 // name, so column order in the file does not matter. period_start / period_end
 // are shared with the bookings import (ColPeriodStart / ColPeriodEnd);
 // period_end may be empty, in which case it defaults to period_start.
+// Offerings are resolved by (code, teaching_class, semester): code is the
+// catalog identity and disambiguates same-name courses.
 const (
 	ColDate          = "date"
 	ColClassroom     = "classroom"
 	ColCourse        = "course"
+	ColSessionCode   = "code"
 	ColTeachingClass = "teaching_class"
 	ColSemester      = "semester"
 	ColNote          = "note"
@@ -75,7 +78,8 @@ func (s *SessionsImporter) Commit(ctx context.Context, payload string) (Result, 
 }
 
 // sessionInsert is a fully resolved, validated session ready to insert. The
-// *Name fields mirror the resolved IDs purely for preview display.
+// *Name fields mirror the resolved IDs purely for preview display; code is the
+// catalog identity the offering resolved against.
 type sessionInsert struct {
 	offeringID        int64
 	classroomID       int64
@@ -83,6 +87,7 @@ type sessionInsert struct {
 	periodStart       int
 	periodEnd         int
 	note              string
+	code              string
 	classroomName     string
 	courseName        string
 	teachingClassName string
@@ -97,6 +102,7 @@ func (s sessionInsert) toPreviewMap() map[string]any {
 		"periodEnd":     s.periodEnd,
 		"classroom":     s.classroomName,
 		"course":        s.courseName,
+		"code":          s.code,
 		"teachingClass": s.teachingClassName,
 		"semester":      s.semester,
 		"note":          s.note,
@@ -121,9 +127,11 @@ func parseAndValidate(
 	for _, c := range classrooms {
 		roomByID[strings.TrimSpace(c.Name)] = c.ID
 	}
+	// Offerings resolve by (课程代码, 教学班, 学期): code is the catalog identity,
+	// so same-name courses (different codes) map to distinct offerings.
 	offeringByKey := make(map[string]int64, len(offerings))
 	for _, o := range offerings {
-		key := strings.TrimSpace(o.CatalogName) + "|" + strings.TrimSpace(o.TeachingClassName) + "|" + strings.TrimSpace(o.Semester)
+		key := strings.TrimSpace(o.CatalogCode) + "|" + strings.TrimSpace(o.TeachingClassName) + "|" + strings.TrimSpace(o.Semester)
 		offeringByKey[key] = o.ID
 	}
 
@@ -131,7 +139,7 @@ func parseAndValidate(
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColDate, ColPeriodStart, ColClassroom, ColCourse, ColTeachingClass, ColSemester); !ok {
+	if rerr, ok := requireColumns(headers, ColDate, ColPeriodStart, ColClassroom, ColCourse, ColSessionCode, ColTeachingClass, ColSemester); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
@@ -320,14 +328,15 @@ func resolveSessionRow(
 	}
 
 	courseName := get(ColCourse)
+	code := strings.TrimSpace(get(ColSessionCode))
 	teachingClassName := get(ColTeachingClass)
 	semester := get(ColSemester)
-	if courseName == "" || teachingClassName == "" || semester == "" {
-		return sessionInsert{}, "course / teaching_class / semester 为空"
+	if courseName == "" || code == "" || teachingClassName == "" || semester == "" {
+		return sessionInsert{}, "course / code / teaching_class / semester 为空"
 	}
-	offeringID, ok := offerings[courseName+"|"+teachingClassName+"|"+semester]
+	offeringID, ok := offerings[code+"|"+teachingClassName+"|"+semester]
 	if !ok {
-		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", courseName, teachingClassName, semester)
+		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", code, teachingClassName, semester)
 	}
 
 	regime, ok := schedule.ActiveFor(regimes, date)
@@ -348,6 +357,7 @@ func resolveSessionRow(
 		periodStart:       periodStart,
 		periodEnd:         periodEnd,
 		note:              get(ColNote),
+		code:              code,
 		classroomName:     roomName,
 		courseName:        courseName,
 		teachingClassName: teachingClassName,

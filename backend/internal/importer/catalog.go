@@ -9,8 +9,9 @@ import (
 )
 
 // Column names for the course_catalog import (header-mapped, order-independent).
-// credits/total_hours/category/exam_type are optional 教务处-derived columns
-// (学分/总学时/课程类别二/考核方式); legacy files without them default to zero/empty.
+// code 是身份键、必填；credits/total_hours/category/exam_type are optional
+// 教务处-derived columns (学分/总学时/课程类别二/考核方式); legacy files without
+// them default to zero/empty.
 const (
 	ColCatalogName        = "name"
 	ColCatalogCode        = "code"
@@ -21,8 +22,9 @@ const (
 	ColCatalogDescription = "description"
 )
 
-// CatalogImporter imports course catalog entries, upserting each row by name
-// (the unique key). Re-importing updates code and description.
+// CatalogImporter imports course catalog entries, upserting each row by code
+// (the identity key — 教务处课程代码, required). Name is display data and may
+// repeat across codes; re-importing a code updates its name/attributes.
 type CatalogImporter struct {
 	db *sql.DB
 }
@@ -124,9 +126,11 @@ func commitCatalog(ctx context.Context, db *sql.DB, payload string) (Result, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// Upsert key is code (the catalog identity). name is now mutable payload —
+	// the same course keeps its code while its display name gets refreshed.
 	stmt, err := tx.PrepareContext(ctx, `INSERT INTO course_catalog (name, code, credits, total_hours, category, exam_type, description)
 VALUES (?, ?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE code=VALUES(code), credits=VALUES(credits), total_hours=VALUES(total_hours), category=VALUES(category), exam_type=VALUES(exam_type), description=VALUES(description)`)
+ON DUPLICATE KEY UPDATE name=VALUES(name), credits=VALUES(credits), total_hours=VALUES(total_hours), category=VALUES(category), exam_type=VALUES(exam_type), description=VALUES(description)`)
 	if err != nil {
 		res.FailedRows = dataRows
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
@@ -135,7 +139,7 @@ ON DUPLICATE KEY UPDATE code=VALUES(code), credits=VALUES(credits), total_hours=
 	defer func() { _ = stmt.Close() }()
 
 	for _, c := range clean {
-		if _, err := stmt.ExecContext(ctx, c.Name, nullIfEmpty(c.Code), c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description); err != nil {
+		if _, err := stmt.ExecContext(ctx, c.Name, c.Code, c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description); err != nil {
 			res.FailedRows = dataRows
 			res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("upsert catalog: %w", err)
