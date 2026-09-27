@@ -24,7 +24,7 @@ func allPeriods() []schedule.Period {
 // TestSplitEndToEnd 用脱敏样本（testdata/sample_timetable.xlsx）跑完整拆分，断言关键不变量：
 // 6 张 xlsx 非空且表头匹配各 importer 契约、教学班名 ≤64 且回退时 note 非空、
 // 开课教师非空、sessions 同一 (教室+日期) 内节次区间不重叠且日期合法。
-// 计数断言（Classrooms 等）基于样本重算，样本生成见 testdata/gen_sample.go 与 testdata/README.md。
+// 计数断言（Classrooms 等）基于样本重算；样本为全合成数据（见 testdata/README.md）。
 func TestSplitEndToEnd(t *testing.T) {
 	path := filepath.Join("testdata", "sample_timetable.xlsx")
 	data, err := os.ReadFile(path)
