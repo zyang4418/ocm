@@ -74,6 +74,8 @@
     "saveMember": "Failed to save"
   },
   "validation": {
+    "gradeRequired": "Grade is required",
+    "gradeFormat": "Grade must be a 4-digit enrollment year, e.g. 2024",
     "nameRequired": "Class name is required",
     "selectStudent": "Please select a student"
   }

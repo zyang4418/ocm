@@ -60,7 +60,7 @@ L2「开课」是承上启下的关键：它把一门抽象课程、一个学期
 -- 行政班
 CREATE TABLE admin_classes (
   id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-  grade      VARCHAR(64)  NOT NULL DEFAULT '',   -- 如 "2024级"
+  grade      VARCHAR(64)  NOT NULL DEFAULT '',   -- 4 位入学年份，如 "2024"（必填，^20\d{2}$）
   name       VARCHAR(64)  NOT NULL,              -- 如 "计算机244"
   note       VARCHAR(255) NOT NULL DEFAULT '',
   created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,

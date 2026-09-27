@@ -224,6 +224,8 @@ export default function AdminClassesPage() {
   }
 
   const validate = (form: typeof emptyForm) => {
+    if (!form.grade.trim()) return t('validation.gradeRequired')
+    if (!/^20\d{2}$/.test(form.grade.trim())) return t('validation.gradeFormat')
     if (!form.name.trim()) return t('validation.nameRequired')
     return ''
   }

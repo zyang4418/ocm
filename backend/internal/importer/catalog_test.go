@@ -2,6 +2,7 @@ package importer
 
 import (
 	"encoding/base64"
+	"strings"
 	"testing"
 
 	"ocm-backend/internal/xlsx"
@@ -46,5 +47,21 @@ func TestParseCatalogMissingCodeRejected(t *testing.T) {
 	}
 	if len(clean) != 0 || len(errs) != 1 {
 		t.Fatalf("缺 code 应逐行拒绝：clean=%d errs=%v", len(clean), errs)
+	}
+}
+
+// 长度预检按 course_catalog 列宽（name 128 / code 64）逐行拒绝，
+// 而不是让 MySQL 1406 在 commit 时整事务回滚。
+func TestParseCatalogOverlongFieldsRejected(t *testing.T) {
+	payload := catalogPayload(t, [][]any{
+		{strings.Repeat("课", 129), "TST201", 3.0, 48, "", "", ""},
+		{"Sample Course", strings.Repeat("X", 65), 3.0, 48, "", "", ""},
+	})
+	clean, errs, _, err := parseCatalog(payload)
+	if err != nil {
+		t.Fatalf("parseCatalog: %v", err)
+	}
+	if len(clean) != 0 || len(errs) != 2 {
+		t.Fatalf("超长字段应逐行拒绝：clean=%d errs=%v", len(clean), errs)
 	}
 }

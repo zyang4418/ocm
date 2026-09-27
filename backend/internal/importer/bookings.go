@@ -10,6 +10,7 @@ import (
 
 	"ocm-backend/internal/booking"
 	"ocm-backend/internal/classroom"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -255,6 +256,11 @@ func resolveBookingRow(
 	purpose := strings.TrimSpace(rec[ColPurpose])
 	if purpose == "" {
 		return bookingInsert{}, "purpose 为空"
+	}
+	// VARCHAR(255) cap (booking/store.go): reject per row instead of letting a
+	// long cell abort the whole commit transaction with MySQL Error 1406.
+	if msg, ok := dbutil.MaxRunes("purpose", purpose, 255); !ok {
+		return bookingInsert{}, msg
 	}
 
 	// Validate the period range against the active bell-time regime, mirroring

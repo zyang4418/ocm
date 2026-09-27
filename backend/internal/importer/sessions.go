@@ -9,6 +9,7 @@ import (
 
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -349,6 +350,13 @@ func resolveSessionRow(
 			return sessionInsert{}, fmt.Sprintf("节次 %d 不在该日期作息制度「%s」中", p, regime.Name)
 		}
 	}
+	// note has no domain normalizer (sessions take no CRUD input struct), so the
+	// VARCHAR(255) cap is checked here; an overlong cell would otherwise abort
+	// the whole commit transaction with MySQL Error 1406.
+	note := get(ColNote)
+	if msg, ok := dbutil.MaxRunes("note", note, 255); !ok {
+		return sessionInsert{}, msg
+	}
 
 	return sessionInsert{
 		offeringID:        offeringID,
@@ -356,7 +364,7 @@ func resolveSessionRow(
 		date:              dateStr,
 		periodStart:       periodStart,
 		periodEnd:         periodEnd,
-		note:              get(ColNote),
+		note:              note,
 		code:              code,
 		classroomName:     roomName,
 		courseName:        courseName,

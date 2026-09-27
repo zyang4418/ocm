@@ -39,7 +39,7 @@
   "removeMemberConfirm": "确定要将「{{name}}」移出该行政班吗？历史签到记录不受影响。",
   "membersSubtitle": "维护学生档案（账号 ↔ 行政班）。名单用于课堂签到的应到统计，学生可在此添加或移除。",
   "form": { "grade": "年级", "name": "班级名称", "note": "备注" },
-  "placeholder": { "grade": "如 2024级", "name": "如 计算机244", "studentNo": "如 2023001" },
+  "placeholder": { "grade": "如 2024", "name": "如 计算机244", "studentNo": "如 2023001" },
   "memberAdd": {
     "title": "添加学生",
     "placeholder": "输入姓名/用户名搜索学生",
@@ -74,6 +74,8 @@
     "saveMember": "保存失败"
   },
   "validation": {
+    "gradeRequired": "年级为必填项",
+    "gradeFormat": "年级须为 4 位入学年份，如 2024",
     "nameRequired": "班级名称为必填项",
     "selectStudent": "请选择学生"
   }

@@ -32,7 +32,8 @@
 //  2. catalog：按 课程代码 去重。name=课程名称, code=课程代码, credits=学分,
 //     total_hours=总学时, category=课程类别二, exam_type=考核方式。
 //  3. admin_classes：全局去重行政班。grade 由班名末位数字串前两位推导（241->2024）,
-//     name=行政班名。
+//     name=行政班名。grade 必填且须为 4 位入学年份（^20\d{2}$，admin_classes 导入
+//     逐行校验），推导失败的行会在导入时被拒。
 //  4. teaching_classes：按「行政班集合」键控的教学班。命名默认区间压缩（机电241~245），
 //     超 64 字符回退「首班,次班等N班」并把完整成员写入 note。每个成员行政班一行
 //     （父子扁平化，匹配 teaching_classes importer 契约）。

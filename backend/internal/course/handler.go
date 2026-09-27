@@ -770,6 +770,22 @@ func normalizeCatalog(in *CatalogInput) (string, bool) {
 	if in.Code == "" {
 		return "code is required", false
 	}
+	// Length caps mirror the course_catalog VARCHAR widths (store.go).
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"name", in.Name, 128},
+		{"code", in.Code, 64},
+		{"category", in.Category, 32},
+		{"examType", in.ExamType, 16},
+		{"description", in.Description, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
+	}
 	return "", true
 }
 
@@ -799,6 +815,25 @@ func normalizeOffering(in *OfferingInput) (string, bool) {
 	}
 	if in.Semester == "" {
 		return "semester is required", false
+	}
+	// Length caps mirror the course_offerings VARCHAR widths (store.go).
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"teacher", in.Teacher, 64},
+		{"courseSeq", in.CourseSeq, 32},
+		{"teacherId", in.TeacherID, 64},
+		{"teacherTitle", in.TeacherTitle, 32},
+		{"college", in.College, 64},
+		{"requirement", in.Requirement, 16},
+		{"semester", in.Semester, 32},
+		{"note", in.Note, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
 	}
 	return "", true
 }

@@ -278,6 +278,23 @@ func normalizeInput(in *ClassroomInput) (string, bool) {
 	} else if !validStatuses[in.Status] {
 		return "invalid classroom status", false
 	}
+	// Length caps mirror the classrooms VARCHAR widths (store.go); type/status
+	// need no cap — the enum checks above already bound their values.
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"name", in.Name, 64},
+		{"building", in.Building, 64},
+		{"floor", in.Floor, 16},
+		{"campus", in.Campus, 32},
+		{"description", in.Description, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
+	}
 	return "", true
 }
 

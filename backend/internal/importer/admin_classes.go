@@ -16,7 +16,8 @@ const (
 )
 
 // AdminClassesImporter imports admin classes, upserting each row by the
-// (grade, name) unique key. Re-importing updates the note.
+// (grade, name) unique key. grade is required and must be a 4-digit enrollment
+// year (user.NormalizeAdminClass); re-importing updates the note.
 type AdminClassesImporter struct {
 	db *sql.DB
 }
@@ -51,7 +52,7 @@ func parseAdminClasses(payload string) (clean []adminClassRow, errs []RowError, 
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColAdminName); !ok {
+	if rerr, ok := requireColumns(headers, ColAdminGrade, ColAdminName); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
