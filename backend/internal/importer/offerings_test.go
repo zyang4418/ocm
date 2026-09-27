@@ -25,7 +25,7 @@ func offeringsPayload(t *testing.T, rows [][]any) string {
 // 长度预检按 course_offerings 列宽（teacher 64 / requirement 16 等）逐行拒绝；
 // 合法行不受影响。
 func TestParseOfferingsOverlongFieldsRejected(t *testing.T) {
-	catalog := map[string]int64{"TST101": 1}
+	catalog := map[string]catalogRef{"TST101": {id: 1, name: "Sample Course"}}
 	teaching := map[string]int64{"Class A-241": 2}
 	payload := offeringsPayload(t, [][]any{
 		{"Sample Course", "TST101", "Class A-241", "2026-2027-1", "Teacher One", "", "", "", "", 0, "必修课", 0, ""},
@@ -43,7 +43,7 @@ func TestParseOfferingsOverlongFieldsRejected(t *testing.T) {
 
 // 严格数值解析：max_students / weekly_hours 非法值逐行拒绝且消息带原文。
 func TestParseOfferingsStrictNumerics(t *testing.T) {
-	catalog := map[string]int64{"TST101": 1}
+	catalog := map[string]catalogRef{"TST101": {id: 1, name: "Sample Course"}}
 	teaching := map[string]int64{"Class A-241": 2}
 	payload := offeringsPayload(t, [][]any{
 		{"Sample Course", "TST101", "Class A-241", "2026-2027-1", "Teacher One", "", "", "", "", "50人", "", "", ""},
@@ -61,5 +61,25 @@ func TestParseOfferingsStrictNumerics(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("错误消息应带原文 %q：%v", want, errs)
 		}
+	}
+}
+
+// course 是显示列、code 是解析键：两者指向不同课程时按行拒绝。
+func TestParseOfferingsNameMismatch(t *testing.T) {
+	catalog := map[string]catalogRef{"TST101": {id: 1, name: "Sample Course"}}
+	teaching := map[string]int64{"Class A-241": 2}
+	payload := offeringsPayload(t, [][]any{
+		{"Wrong Course", "TST101", "Class A-241", "2026-2027-1", "Teacher One", "", "", "", "", 0, "", 0, ""},
+		{"Sample Course", "TST101", "Class A-241", "2026-2027-1", "Teacher Two", "", "", "", "", 0, "", 0, ""},
+	})
+	clean, errs, _, err := parseOfferings(catalog, teaching, payload)
+	if err != nil {
+		t.Fatalf("parseOfferings: %v", err)
+	}
+	if len(clean) != 1 || len(errs) != 1 {
+		t.Fatalf("不符行拒绝、一致行通过：clean=%d errs=%v", len(clean), errs)
+	}
+	if !strings.Contains(errs[0].Error, "课程名称与代码不符") || !strings.Contains(errs[0].Error, "Wrong Course") {
+		t.Fatalf("错误消息应带文件名：%v", errs)
 	}
 }

@@ -1939,6 +1939,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "classroom referenced by sessions or bookings",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "internal error",
                         "schema": {

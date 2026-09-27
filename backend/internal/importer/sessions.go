@@ -129,11 +129,12 @@ func parseAndValidate(
 		roomByID[strings.TrimSpace(c.Name)] = c.ID
 	}
 	// Offerings resolve by (课程代码, 教学班, 学期): code is the catalog identity,
-	// so same-name courses (different codes) map to distinct offerings.
-	offeringByKey := make(map[string]int64, len(offerings))
+	// so same-name courses (different codes) map to distinct offerings. The ref
+	// carries the canonical catalog name for the file's display-column check.
+	offeringByKey := make(map[string]offeringRef, len(offerings))
 	for _, o := range offerings {
 		key := strings.TrimSpace(o.CatalogCode) + "|" + strings.TrimSpace(o.TeachingClassName) + "|" + strings.TrimSpace(o.Semester)
-		offeringByKey[key] = o.ID
+		offeringByKey[key] = offeringRef{id: o.ID, catalogName: strings.TrimSpace(o.CatalogName)}
 	}
 
 	headers, rows, headerErr := parseWorkbook(payload)
@@ -287,10 +288,17 @@ func commitSessions(
 
 // resolveSessionRow maps one row to a sessionInsert, returning a non-empty error
 // string on the first failure encountered for that row.
+// offeringRef is a resolved offering: the id to write plus the canonical
+// catalog name the file's display column is cross-checked against.
+type offeringRef struct {
+	id          int64
+	catalogName string
+}
+
 func resolveSessionRow(
 	rec map[string]string,
 	rooms map[string]int64,
-	offerings map[string]int64,
+	offerings map[string]offeringRef,
 	regimes []schedule.Regime,
 ) (sessionInsert, string) {
 	get := func(col string) string { return rec[col] }
@@ -335,10 +343,18 @@ func resolveSessionRow(
 	if courseName == "" || code == "" || teachingClassName == "" || semester == "" {
 		return sessionInsert{}, "course / code / teaching_class / semester 为空"
 	}
-	offeringID, ok := offerings[code+"|"+teachingClassName+"|"+semester]
+	offering, ok := offerings[code+"|"+teachingClassName+"|"+semester]
 	if !ok {
 		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", code, teachingClassName, semester)
 	}
+	// course 是显示列、code 是解析键：两者必须指向同一门课（仅手改文件会不符；
+	// split 产物同源）。不符按行拒绝，避免数据落到 code 对应的课下而 preview
+	// 显示文件里的名字，误导操作者。
+	if courseName != offering.catalogName {
+		return sessionInsert{}, fmt.Sprintf(
+			"课程名称与代码不符：code=%s 的课程为「%s」，文件中为「%s」", code, offering.catalogName, courseName)
+	}
+	offeringID := offering.id
 
 	regime, ok := schedule.ActiveFor(regimes, date)
 	if !ok {
