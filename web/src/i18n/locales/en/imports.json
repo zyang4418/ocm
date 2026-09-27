@@ -103,7 +103,7 @@
     },
     "catalog": {
       "label": "Course catalog",
-      "note": "Upsert by course name. code has a unique index (blank stored as NULL, mutually non-conflicting); credits/total_hours/category/exam_type are optional academic-affairs attributes."
+      "note": "Upsert by course code (identity key): an existing code has its name and attributes refreshed; name is display-only and may repeat. code is required. credits/total_hours/category/exam_type are optional academic-affairs attributes."
     },
     "offerings": {
       "label": "Offerings",

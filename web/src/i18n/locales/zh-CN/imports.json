@@ -103,7 +103,7 @@
     },
     "catalog": {
       "label": "课程库",
-      "note": "按课程名称 upsert。code 加唯一索引（留空存 NULL，互不冲突）；credits/total_hours/category/exam_type 为可选的教务处属性。"
+      "note": "按课程代码（身份键）upsert：同码更新名称与属性，name 仅展示、可重名；code 必填。credits/total_hours/category/exam_type 为可选的教务处属性。"
     },
     "offerings": {
       "label": "开课",

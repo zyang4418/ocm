@@ -50,6 +50,20 @@ func TestParseCatalogMissingCodeRejected(t *testing.T) {
 	}
 }
 
+// 缺整列 code 的文件在表头闸门报一条错误，而不是 N 行「code is required」。
+func TestParseCatalogMissingCodeColumn(t *testing.T) {
+	b, err := xlsx.BuildBytes("catalog", []string{"name", "credits"}, [][]any{
+		{"Sample Course", 3.0},
+	})
+	if err != nil {
+		t.Fatalf("BuildBytes: %v", err)
+	}
+	_, errs, _, err := parseCatalog(base64.StdEncoding.EncodeToString(b))
+	if err == nil || len(errs) != 1 || !strings.Contains(errs[0].Error, "code") {
+		t.Fatalf("缺 code 列应报表头错误：err=%v errs=%v", err, errs)
+	}
+}
+
 // 长度预检按 course_catalog 列宽（name 128 / code 64）逐行拒绝，
 // 而不是让 MySQL 1406 在 commit 时整事务回滚。
 func TestParseCatalogOverlongFieldsRejected(t *testing.T) {

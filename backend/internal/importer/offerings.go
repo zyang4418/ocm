@@ -142,7 +142,8 @@ func parseOfferings(catalog map[string]catalogRef, teaching map[string]int64, pa
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColCourse, ColOfferingCode, ColTeachingClass, ColSemester, ColTeacher, ColNote); !ok {
+	// note 列可选（缺列按空串处理），与 sessions 导入一致，不作表头要求。
+	if rerr, ok := requireColumns(headers, ColCourse, ColOfferingCode, ColTeachingClass, ColSemester, ColTeacher); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 

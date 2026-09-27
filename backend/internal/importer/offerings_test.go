@@ -83,3 +83,24 @@ func TestParseOfferingsNameMismatch(t *testing.T) {
 		t.Fatalf("错误消息应带文件名：%v", errs)
 	}
 }
+
+// note 列可选（与 sessions 一致）：整列缺失不影响解析。
+func TestParseOfferingsMissingNoteColumnOk(t *testing.T) {
+	headers := []string{"course", "code", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours"}
+	rows := [][]any{
+		{"Sample Course", "TST101", "Class A-241", "2026-2027-1", "Teacher One", "", "", "", "", 0, "", 0},
+	}
+	b, err := xlsx.BuildBytes("offerings", headers, rows)
+	if err != nil {
+		t.Fatalf("BuildBytes: %v", err)
+	}
+	catalog := map[string]catalogRef{"TST101": {id: 1, name: "Sample Course"}}
+	teaching := map[string]int64{"Class A-241": 2}
+	clean, errs, dataRows, err := parseOfferings(catalog, teaching, base64.StdEncoding.EncodeToString(b))
+	if err != nil {
+		t.Fatalf("parseOfferings: %v", err)
+	}
+	if dataRows != 1 || len(clean) != 1 || len(errs) != 0 {
+		t.Fatalf("缺 note 列应正常解析：clean=%d errs=%v dataRows=%d", len(clean), errs, dataRows)
+	}
+}

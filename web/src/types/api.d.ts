@@ -2085,6 +2085,15 @@ export interface paths {
                         "*/*": components["schemas"]["httpx.ErrorResponse"];
                     };
                 };
+                /** @description classroom referenced by sessions or bookings */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["httpx.ErrorResponse"];
+                    };
+                };
                 /** @description internal error */
                 500: {
                     headers: {

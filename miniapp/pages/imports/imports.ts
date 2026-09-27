@@ -62,7 +62,7 @@ const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string
   catalog: {
     label: '课程库',
     schema: 'name, code, credits, total_hours, category, exam_type, description',
-    note: '按课程名称 upsert。code 留空存 NULL；credits/total_hours/category/exam_type 为可选的教务处属性。',
+    note: '按课程代码（身份键）upsert：同码更新名称与属性，name 仅展示、可重名；code 必填。credits/total_hours/category/exam_type 为可选的教务处属性。',
     columns: [
       { key: 'name', header: '课程' },
       { key: 'code', header: '代码' },

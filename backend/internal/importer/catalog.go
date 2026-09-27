@@ -63,7 +63,9 @@ func parseCatalog(payload string) (clean []catalogRow, errs []RowError, dataRows
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColCatalogName); !ok {
+	// code 是身份键：缺整列的文件在表头闸门就报一条错误，而不是 N 行逐行
+	// 「code is required」。
+	if rerr, ok := requireColumns(headers, ColCatalogName, ColCatalogCode); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
