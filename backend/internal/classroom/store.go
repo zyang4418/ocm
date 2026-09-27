@@ -12,7 +12,24 @@ import (
 var (
 	ErrNotFound  = errors.New("classroom not found")
 	ErrNameTaken = errors.New("classroom name already taken")
+	// ErrInUse reports a delete refused because course sessions or classroom
+	// bookings still reference the room; InUseError carries the counts.
+	ErrInUse = errors.New("classroom in use")
 )
+
+// InUseError is returned by Delete when the classroom is still referenced.
+// errors.Is(err, ErrInUse) matches it; the counts feed the handler's 409
+// message so the operator sees what still points at the room.
+type InUseError struct {
+	Sessions int64 // course_sessions rows (past and future meetings)
+	Bookings int64 // classroom_bookings rows, any status (records must keep their room)
+}
+
+func (e *InUseError) Error() string {
+	return fmt.Sprintf("classroom in use: %d sessions, %d bookings", e.Sessions, e.Bookings)
+}
+
+func (e *InUseError) Is(target error) bool { return target == ErrInUse }
 
 // Controlled vocabulary for classroom type and status. Values are stored in
 // English; the frontend maps them to Chinese labels. The extended types
@@ -267,7 +284,24 @@ func (s *Store) Update(ctx context.Context, id int64, in ClassroomInput) (Classr
 	return s.GetByID(ctx, id)
 }
 
+// Delete removes a classroom by id. A room referenced by course sessions or
+// bookings (any status — historical records must keep their room) is refused
+// with InUseError instead of leaving dangling references: retire such a room
+// via status maintenance/disabled, and fix mis-entered rooms via update
+// (rename), not delete.
 func (s *Store) Delete(ctx context.Context, id int64) error {
+	var sessions, bookings int64
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT
+			(SELECT COUNT(*) FROM course_sessions WHERE classroom_id = ?),
+			(SELECT COUNT(*) FROM classroom_bookings WHERE classroom_id = ?)`,
+		id, id,
+	).Scan(&sessions, &bookings); err != nil {
+		return fmt.Errorf("count classroom references: %w", err)
+	}
+	if sessions > 0 || bookings > 0 {
+		return &InUseError{Sessions: sessions, Bookings: bookings}
+	}
 	res, err := s.db.ExecContext(ctx, `DELETE FROM classrooms WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete classroom: %w", err)
