@@ -138,10 +138,6 @@ func (h *Handler) createCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, err := h.store.CreateCatalog(r.Context(), in)
-	if errors.Is(err, ErrNameTaken) {
-		httpx.RespondError(w, http.StatusConflict, "course name already taken")
-		return
-	}
 	if errors.Is(err, ErrCodeTaken) {
 		httpx.RespondError(w, http.StatusConflict, "course code already taken")
 		return
@@ -211,10 +207,6 @@ func (h *Handler) updateCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, err := h.store.UpdateCatalog(r.Context(), id, in)
-	if errors.Is(err, ErrNameTaken) {
-		httpx.RespondError(w, http.StatusConflict, "course name already taken")
-		return
-	}
 	if errors.Is(err, ErrCodeTaken) {
 		httpx.RespondError(w, http.StatusConflict, "course code already taken")
 		return
@@ -300,10 +292,10 @@ func (h *Handler) exportOfferings(w http.ResponseWriter, r *http.Request) {
 		httpx.Error500(w, r, "could not list offerings", err)
 		return
 	}
-	headers := []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
+	headers := []string{"course", "code", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
 	rows := make([][]any, 0, len(list))
 	for _, o := range list {
-		rows = append(rows, []any{o.CatalogName, o.TeachingClassName, o.Semester, o.Teacher, o.CourseSeq, o.TeacherID, o.TeacherTitle, o.College, o.MaxStudents, o.Requirement, o.WeeklyHours, o.Note})
+		rows = append(rows, []any{o.CatalogName, o.CatalogCode, o.TeachingClassName, o.Semester, o.Teacher, o.CourseSeq, o.TeacherID, o.TeacherTitle, o.College, o.MaxStudents, o.Requirement, o.WeeklyHours, o.Note})
 	}
 	if err := xlsx.WriteExport(w, "offerings.xlsx", "offerings", headers, rows); err != nil {
 		httpx.Error500(w, r, "could not export offerings", err)
@@ -507,10 +499,10 @@ func (h *Handler) exportSessions(w http.ResponseWriter, r *http.Request) {
 		httpx.Error500(w, r, "could not list sessions", err)
 		return
 	}
-	headers := []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "teacher", "note"}
+	headers := []string{"date", "period_start", "period_end", "classroom", "course", "code", "teaching_class", "semester", "teacher", "note"}
 	rows := make([][]any, 0, len(list))
 	for _, s := range list {
-		rows = append(rows, []any{s.Date, s.PeriodStart, s.PeriodEnd, s.ClassroomName, s.CourseName, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
+		rows = append(rows, []any{s.Date, s.PeriodStart, s.PeriodEnd, s.ClassroomName, s.CourseName, s.CatalogCode, s.TeachingClassName, s.Semester, s.Teacher, s.Note})
 	}
 	if err := xlsx.WriteExport(w, "sessions.xlsx", "sessions", headers, rows); err != nil {
 		httpx.Error500(w, r, "could not export sessions", err)
@@ -764,6 +756,8 @@ func (h *Handler) timetableExport(w http.ResponseWriter, r *http.Request) {
 
 // ---- validation ----
 
+// normalizeCatalog trims and validates catalog input. code 是课程库身份键
+// （教务处课程代码），必填且全局唯一；name 仅作展示、可重名。
 func normalizeCatalog(in *CatalogInput) (string, bool) {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Code = strings.TrimSpace(in.Code)
@@ -772,6 +766,25 @@ func normalizeCatalog(in *CatalogInput) (string, bool) {
 	in.Description = strings.TrimSpace(in.Description)
 	if in.Name == "" {
 		return "name is required", false
+	}
+	if in.Code == "" {
+		return "code is required", false
+	}
+	// Length caps mirror the course_catalog VARCHAR widths (store.go).
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"name", in.Name, 128},
+		{"code", in.Code, 64},
+		{"category", in.Category, 32},
+		{"examType", in.ExamType, 16},
+		{"description", in.Description, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
 	}
 	return "", true
 }
@@ -802,6 +815,25 @@ func normalizeOffering(in *OfferingInput) (string, bool) {
 	}
 	if in.Semester == "" {
 		return "semester is required", false
+	}
+	// Length caps mirror the course_offerings VARCHAR widths (store.go).
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"teacher", in.Teacher, 64},
+		{"courseSeq", in.CourseSeq, 32},
+		{"teacherId", in.TeacherID, 64},
+		{"teacherTitle", in.TeacherTitle, 32},
+		{"college", in.College, 64},
+		{"requirement", in.Requirement, 16},
+		{"semester", in.Semester, 32},
+		{"note", in.Note, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
 	}
 	return "", true
 }

@@ -321,6 +321,10 @@ func normalizeRegime(in *RegimeInput) (string, bool) {
 	if in.EffectiveDay < 1 || in.EffectiveDay > 31 {
 		return "effectiveDay must be 1-31", false
 	}
+	// Length cap mirrors the schedule_regimes VARCHAR(32) width (store.go).
+	if msg, ok := dbutil.MaxRunes("name", in.Name, 32); !ok {
+		return msg, false
+	}
 	return "", true
 }
 

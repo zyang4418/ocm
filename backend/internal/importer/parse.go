@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"ocm-backend/internal/xlsx"
 )
@@ -33,40 +34,33 @@ func requireColumns(headers []string, cols ...string) (RowError, bool) {
 	return RowError{}, true
 }
 
-// atoiOr parses s as an int, returning def when s is empty or not a valid
-// integer. Importers use it to read numeric columns that may be blank.
-func atoiOr(s string, def int) int {
+// parseIntCol parses an optional int column: empty returns def (the column is
+// optional), a non-empty value must parse or the caller rejects the row with
+// the message. Messages carry the raw cell so hand-edited values like "80座"
+// surface verbatim instead of silently becoming the default (atoiOr behavior).
+// For required int columns use parseIntField.
+func parseIntCol(s, name string, def int) (int, string) {
+	s = strings.TrimSpace(s)
 	if s == "" {
-		return def
+		return def, ""
 	}
 	n, err := strconv.Atoi(s)
 	if err != nil {
-		return def
+		return 0, fmt.Sprintf("%s 非法：%q（须为整数）", name, s)
 	}
-	return n
+	return n, ""
 }
 
-// atofOr parses s as a float64, returning def when s is empty or not a valid
-// float. Importers use it for numeric columns like credits (学分) that may be
-// blank or fractional.
-func atofOr(s string, def float64) float64 {
+// parseFloatCol parses an optional float column: empty returns def, a non-empty
+// value must parse or the caller rejects the row with the message.
+func parseFloatCol(s, name string, def float64) (float64, string) {
+	s = strings.TrimSpace(s)
 	if s == "" {
-		return def
+		return def, ""
 	}
 	n, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return def
+		return 0, fmt.Sprintf("%s 非法：%q（须为数字）", name, s)
 	}
-	return n
-}
-
-// nullIfEmpty returns nil for an empty string so the column stores NULL rather
-// than an empty value. This matters for UNIQUE columns such as
-// course_catalog.code: MySQL treats multiple empty strings as equal (collision)
-// but multiple NULL as distinct. Pass the result as a statement argument.
-func nullIfEmpty(s string) interface{} {
-	if s == "" {
-		return nil
-	}
-	return s
+	return n, ""
 }

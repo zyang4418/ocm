@@ -39,7 +39,7 @@
   },
   "catalogForm": {
     "name": "课程名称",
-    "code": "课程代码",
+    "code": "课程代码（必填，身份键）",
     "description": "描述",
     "codePlaceholder": "如 MATH101"
   },

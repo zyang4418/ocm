@@ -87,7 +87,7 @@
   "types": {
     "sessions": {
       "label": "Schedule (sessions)",
-      "note": "Classrooms and offerings must be created first, referenced by name; deduplicated by classroom + date + period range, conflicting rows skipped. period_end is optional, defaulting to period_start (a multi-period block such as 3-4 is one session)."
+      "note": "Classrooms and offerings must be created first; offerings are referenced by course code (the identity key) + teaching class + semester; deduplicated by classroom + date + period range, conflicting rows skipped. period_end is optional, defaulting to period_start (a multi-period block such as 3-4 is one session)."
     },
     "classrooms": {
       "label": "Classrooms",
@@ -103,11 +103,11 @@
     },
     "catalog": {
       "label": "Course catalog",
-      "note": "Upsert by course name. code has a unique index (blank stored as NULL, mutually non-conflicting); credits/total_hours/category/exam_type are optional academic-affairs attributes."
+      "note": "Upsert by course code (identity key): an existing code has its name and attributes refreshed; name is display-only and may repeat. code is required. credits/total_hours/category/exam_type are optional academic-affairs attributes."
     },
     "offerings": {
       "label": "Offerings",
-      "note": "Upsert by course + teaching class + semester; course and teaching class referenced by name, must be created first. course_seq..weekly_hours are optional academic-affairs offering metadata."
+      "note": "Upsert by course + teaching class + semester; the course is referenced by code (the catalog identity key, required — it disambiguates same-name courses) and the teaching class by name. course_seq..weekly_hours are optional academic-affairs offering metadata."
     },
     "regimes": {
       "label": "Schedule regimes",
@@ -125,6 +125,7 @@
       "periodEnd": "End period",
       "classroom": "Classroom",
       "course": "Course",
+      "code": "Course code",
       "teachingClass": "Teaching class",
       "semester": "Semester",
       "note": "Note"
@@ -160,6 +161,7 @@
     },
     "offerings": {
       "course": "Course",
+      "code": "Course code",
       "teachingClass": "Teaching class",
       "semester": "Semester",
       "teacher": "Teacher",

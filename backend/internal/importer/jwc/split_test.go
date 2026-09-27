@@ -24,7 +24,7 @@ func allPeriods() []schedule.Period {
 // TestSplitEndToEnd 用脱敏样本（testdata/sample_timetable.xlsx）跑完整拆分，断言关键不变量：
 // 6 张 xlsx 非空且表头匹配各 importer 契约、教学班名 ≤64 且回退时 note 非空、
 // 开课教师非空、sessions 同一 (教室+日期) 内节次区间不重叠且日期合法。
-// 计数断言（Classrooms 等）基于样本重算，样本生成见 testdata/gen_sample.go 与 testdata/README.md。
+// 计数断言（Classrooms 等）基于样本重算；样本为全合成数据（见 testdata/README.md）。
 func TestSplitEndToEnd(t *testing.T) {
 	path := filepath.Join("testdata", "sample_timetable.xlsx")
 	data, err := os.ReadFile(path)
@@ -88,8 +88,8 @@ func TestSplitEndToEnd(t *testing.T) {
 		{"catalog", res.Files.Catalog, []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}},
 		{"admin_classes", res.Files.AdminClasses, []string{"grade", "name", "note"}},
 		{"teaching_classes", res.Files.TeachingClasses, []string{"name", "note", "admin_grade", "admin_name"}},
-		{"offerings", res.Files.Offerings, []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}},
-		{"sessions", res.Files.Sessions, []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "note"}},
+		{"offerings", res.Files.Offerings, []string{"course", "code", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}},
+		{"sessions", res.Files.Sessions, []string{"date", "period_start", "period_end", "classroom", "course", "code", "teaching_class", "semester", "note"}},
 	}
 	for _, f := range files {
 		if len(f.data) == 0 {

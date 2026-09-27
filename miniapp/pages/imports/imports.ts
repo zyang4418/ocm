@@ -9,14 +9,15 @@ import { importStatus, formatDateTime } from '../../utils/format'
 const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string; unit?: string; columns: { key: string; header: string }[] }> = {
   sessions: {
     label: '课表（课次）',
-    schema: 'date, period_start, period_end, classroom, course, teaching_class, semester, note',
-    note: '教室与开课需预先建立，按名称引用；按教室+日期+节次区间去重，冲突行跳过。period_end 可省略，默认为 period_start。',
+    schema: 'date, period_start, period_end, classroom, course, code, teaching_class, semester, note',
+    note: '教室与开课需预先建立；开课按 课程代码（身份键）+教学班+学期 引用。按教室+日期+节次区间去重，冲突行跳过。period_end 可省略，默认为 period_start。',
     columns: [
       { key: 'date', header: '日期' },
       { key: 'periodStart', header: '起始节次' },
       { key: 'periodEnd', header: '结束节次' },
       { key: 'classroom', header: '教室' },
       { key: 'course', header: '课程' },
+      { key: 'code', header: '课程代码' },
       { key: 'teachingClass', header: '教学班' },
       { key: 'semester', header: '学期' },
       { key: 'note', header: '备注' }
@@ -61,7 +62,7 @@ const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string
   catalog: {
     label: '课程库',
     schema: 'name, code, credits, total_hours, category, exam_type, description',
-    note: '按课程名称 upsert。code 留空存 NULL；credits/total_hours/category/exam_type 为可选的教务处属性。',
+    note: '按课程代码（身份键）upsert：同码更新名称与属性，name 仅展示、可重名；code 必填。credits/total_hours/category/exam_type 为可选的教务处属性。',
     columns: [
       { key: 'name', header: '课程' },
       { key: 'code', header: '代码' },
@@ -74,10 +75,11 @@ const IMPORT_TYPES: Record<string, { label: string; schema: string; note: string
   },
   offerings: {
     label: '开课',
-    schema: 'course, teaching_class, semester, teacher, course_seq, teacher_id, teacher_title, college, max_students, requirement, weekly_hours, note',
-    note: '按课程+教学班+学期 upsert；课程与教学班按名称引用，需预先建立。course_seq..weekly_hours 为可选的教务处开课元数据。',
+    schema: 'course, code, teaching_class, semester, teacher, course_seq, teacher_id, teacher_title, college, max_students, requirement, weekly_hours, note',
+    note: '按课程+教学班+学期 upsert；课程按 课程代码（身份键，必填，可区分同名课程）引用，教学班按名称引用。course_seq..weekly_hours 为可选的教务处开课元数据。',
     columns: [
       { key: 'course', header: '课程' },
+      { key: 'code', header: '课程代码' },
       { key: 'teachingClass', header: '教学班' },
       { key: 'semester', header: '学期' },
       { key: 'teacher', header: '教师' },

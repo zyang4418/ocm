@@ -9,6 +9,7 @@ import (
 
 	"ocm-backend/internal/classroom"
 	"ocm-backend/internal/course"
+	"ocm-backend/internal/dbutil"
 	"ocm-backend/internal/schedule"
 )
 
@@ -16,10 +17,13 @@ import (
 // name, so column order in the file does not matter. period_start / period_end
 // are shared with the bookings import (ColPeriodStart / ColPeriodEnd);
 // period_end may be empty, in which case it defaults to period_start.
+// Offerings are resolved by (code, teaching_class, semester): code is the
+// catalog identity and disambiguates same-name courses.
 const (
 	ColDate          = "date"
 	ColClassroom     = "classroom"
 	ColCourse        = "course"
+	ColSessionCode   = "code"
 	ColTeachingClass = "teaching_class"
 	ColSemester      = "semester"
 	ColNote          = "note"
@@ -75,7 +79,8 @@ func (s *SessionsImporter) Commit(ctx context.Context, payload string) (Result, 
 }
 
 // sessionInsert is a fully resolved, validated session ready to insert. The
-// *Name fields mirror the resolved IDs purely for preview display.
+// *Name fields mirror the resolved IDs purely for preview display; code is the
+// catalog identity the offering resolved against.
 type sessionInsert struct {
 	offeringID        int64
 	classroomID       int64
@@ -83,6 +88,7 @@ type sessionInsert struct {
 	periodStart       int
 	periodEnd         int
 	note              string
+	code              string
 	classroomName     string
 	courseName        string
 	teachingClassName string
@@ -97,6 +103,7 @@ func (s sessionInsert) toPreviewMap() map[string]any {
 		"periodEnd":     s.periodEnd,
 		"classroom":     s.classroomName,
 		"course":        s.courseName,
+		"code":          s.code,
 		"teachingClass": s.teachingClassName,
 		"semester":      s.semester,
 		"note":          s.note,
@@ -121,17 +128,20 @@ func parseAndValidate(
 	for _, c := range classrooms {
 		roomByID[strings.TrimSpace(c.Name)] = c.ID
 	}
-	offeringByKey := make(map[string]int64, len(offerings))
+	// Offerings resolve by (课程代码, 教学班, 学期): code is the catalog identity,
+	// so same-name courses (different codes) map to distinct offerings. The ref
+	// carries the canonical catalog name for the file's display-column check.
+	offeringByKey := make(map[string]offeringRef, len(offerings))
 	for _, o := range offerings {
-		key := strings.TrimSpace(o.CatalogName) + "|" + strings.TrimSpace(o.TeachingClassName) + "|" + strings.TrimSpace(o.Semester)
-		offeringByKey[key] = o.ID
+		key := strings.TrimSpace(o.CatalogCode) + "|" + strings.TrimSpace(o.TeachingClassName) + "|" + strings.TrimSpace(o.Semester)
+		offeringByKey[key] = offeringRef{id: o.ID, catalogName: strings.TrimSpace(o.CatalogName)}
 	}
 
 	headers, rows, headerErr := parseWorkbook(payload)
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColDate, ColPeriodStart, ColClassroom, ColCourse, ColTeachingClass, ColSemester); !ok {
+	if rerr, ok := requireColumns(headers, ColDate, ColPeriodStart, ColClassroom, ColCourse, ColSessionCode, ColTeachingClass, ColSemester); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
@@ -278,10 +288,17 @@ func commitSessions(
 
 // resolveSessionRow maps one row to a sessionInsert, returning a non-empty error
 // string on the first failure encountered for that row.
+// offeringRef is a resolved offering: the id to write plus the canonical
+// catalog name the file's display column is cross-checked against.
+type offeringRef struct {
+	id          int64
+	catalogName string
+}
+
 func resolveSessionRow(
 	rec map[string]string,
 	rooms map[string]int64,
-	offerings map[string]int64,
+	offerings map[string]offeringRef,
 	regimes []schedule.Regime,
 ) (sessionInsert, string) {
 	get := func(col string) string { return rec[col] }
@@ -320,15 +337,24 @@ func resolveSessionRow(
 	}
 
 	courseName := get(ColCourse)
+	code := strings.TrimSpace(get(ColSessionCode))
 	teachingClassName := get(ColTeachingClass)
 	semester := get(ColSemester)
-	if courseName == "" || teachingClassName == "" || semester == "" {
-		return sessionInsert{}, "course / teaching_class / semester 为空"
+	if courseName == "" || code == "" || teachingClassName == "" || semester == "" {
+		return sessionInsert{}, "course / code / teaching_class / semester 为空"
 	}
-	offeringID, ok := offerings[courseName+"|"+teachingClassName+"|"+semester]
+	offering, ok := offerings[code+"|"+teachingClassName+"|"+semester]
 	if !ok {
-		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", courseName, teachingClassName, semester)
+		return sessionInsert{}, fmt.Sprintf("开课不存在：%s / %s / %s", code, teachingClassName, semester)
 	}
+	// course 是显示列、code 是解析键：两者必须指向同一门课（仅手改文件会不符；
+	// split 产物同源）。不符按行拒绝，避免数据落到 code 对应的课下而 preview
+	// 显示文件里的名字，误导操作者。
+	if courseName != offering.catalogName {
+		return sessionInsert{}, fmt.Sprintf(
+			"课程名称与代码不符：code=%s 的课程为「%s」，文件中为「%s」", code, offering.catalogName, courseName)
+	}
+	offeringID := offering.id
 
 	regime, ok := schedule.ActiveFor(regimes, date)
 	if !ok {
@@ -340,6 +366,13 @@ func resolveSessionRow(
 			return sessionInsert{}, fmt.Sprintf("节次 %d 不在该日期作息制度「%s」中", p, regime.Name)
 		}
 	}
+	// note has no domain normalizer (sessions take no CRUD input struct), so the
+	// VARCHAR(255) cap is checked here; an overlong cell would otherwise abort
+	// the whole commit transaction with MySQL Error 1406.
+	note := get(ColNote)
+	if msg, ok := dbutil.MaxRunes("note", note, 255); !ok {
+		return sessionInsert{}, msg
+	}
 
 	return sessionInsert{
 		offeringID:        offeringID,
@@ -347,7 +380,8 @@ func resolveSessionRow(
 		date:              dateStr,
 		periodStart:       periodStart,
 		periodEnd:         periodEnd,
-		note:              get(ColNote),
+		note:              note,
+		code:              code,
 		classroomName:     roomName,
 		courseName:        courseName,
 		teachingClassName: teachingClassName,

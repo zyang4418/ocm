@@ -177,8 +177,8 @@ func newSeqGroup(r jwcRow) *seqGroup {
 	return g
 }
 
-// groupBySeq 按课程序号聚合行，合并同槽位多教师（合班上课）。节次/起止周解析失败的行
-// 记为告警并跳过该槽位。
+// groupBySeq 按课程序号聚合行，合并同槽位多教师（合班上课）。节次/起止周/星期
+// 解析失败的行记为告警并跳过该槽位。
 func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 	seqs := make(map[string]*seqGroup)
 	for _, r := range rows {
@@ -203,7 +203,7 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 			}
 		}
 		// 槽位去重（合班上课的多行同槽位只保留一次）。
-		slotKey := fmt.Sprintf("%s|%d|%s|%s", r.classroom, r.weekday, r.periodStr, r.weekStr)
+		slotKey := fmt.Sprintf("%s|%s|%s|%s", r.classroom, r.weekdayStr, r.periodStr, r.weekStr)
 		if g.slotSeen[slotKey] {
 			continue
 		}
@@ -218,8 +218,9 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 			st.Warnings = append(st.Warnings, fmt.Sprintf("第 %d 行（%s）：%v", r.rowNum, r.courseSeq, werr))
 			continue
 		}
-		if r.weekday < 1 || r.weekday > 7 {
-			st.Warnings = append(st.Warnings, fmt.Sprintf("第 %d 行（%s）：星期 %d 非法", r.rowNum, r.courseSeq, r.weekday))
+		weekday, werr := parseWeekday(r.weekdayStr)
+		if werr != nil {
+			st.Warnings = append(st.Warnings, fmt.Sprintf("第 %d 行（%s）：%v", r.rowNum, r.courseSeq, werr))
 			continue
 		}
 		if r.classroom == "" {
@@ -232,7 +233,7 @@ func groupBySeq(rows []jwcRow, st *Stats) map[string]*seqGroup {
 		}
 		g.slots = append(g.slots, &slot{
 			classroom:   r.classroom,
-			weekday:     r.weekday,
+			weekday:     weekday,
 			periodStart: periodStart,
 			periodEnd:   periodEnd,
 			weeks:       weeks,
@@ -427,9 +428,11 @@ func buildTeachingClasses(seqs map[string]*seqGroup, st *Stats) []teachingClass 
 	return out
 }
 
-// offeringRec 是一个开课记录（匹配 offerings importer 列契约）。
+// offeringRec 是一个开课记录（匹配 offerings importer 列契约）。code 是课程库
+// 身份键，offerings 导入按它解析课程。
 type offeringRec struct {
 	course        string
+	code          string
 	teachingClass string
 	semester      string
 	teacher       string
@@ -444,13 +447,14 @@ type offeringRec struct {
 }
 
 // sessionRec 是一个课次记录（匹配 sessions importer 列契约）。连上多节的槽位
-// 保持为一个记录（period_start..period_end），不逐节展开。
+// 保持为一个记录（period_start..period_end），不逐节展开。code 用于解析开课。
 type sessionRec struct {
 	date          string
 	periodStart   int
 	periodEnd     int
 	classroom     string
 	course        string
+	code          string
 	teachingClass string
 	semester      string
 }
@@ -515,6 +519,7 @@ func buildOfferingsSessions(
 		}
 		off := offeringRec{
 			course:        g.courseName,
+			code:          g.courseCode,
 			teachingClass: tcName[g.adminKey],
 			semester:      semester,
 			teacher:       teacherName,
@@ -539,6 +544,7 @@ func buildOfferingsSessions(
 					periodEnd:     c.periodEnd,
 					classroom:     c.classroom,
 					course:        g.courseName,
+					code:          g.courseCode,
 					teachingClass: tcName[g.adminKey],
 					semester:      semester,
 				})
@@ -661,7 +667,7 @@ func emitCatalog(cs []catalogRec) ([]byte, error) {
 	headers := []string{"name", "code", "credits", "total_hours", "category", "exam_type", "description"}
 	rows := make([][]any, 0, len(cs))
 	for _, c := range cs {
-		rows = append(rows, []any{c.name, c.code, atofOr(c.credits, 0), atoiOr(c.totalHours, 0), c.category, c.examType, ""})
+		rows = append(rows, []any{c.name, c.code, c.credits, c.totalHours, c.category, c.examType, ""})
 	}
 	return xlsx.BuildBytes("catalog", headers, rows)
 }
@@ -692,19 +698,19 @@ func emitTeachingClasses(tcs []teachingClass, adminGrades map[string]string) ([]
 }
 
 func emitOfferings(ofs []offeringRec) ([]byte, error) {
-	headers := []string{"course", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
+	headers := []string{"course", "code", "teaching_class", "semester", "teacher", "course_seq", "teacher_id", "teacher_title", "college", "max_students", "requirement", "weekly_hours", "note"}
 	rows := make([][]any, 0, len(ofs))
 	for _, o := range ofs {
-		rows = append(rows, []any{o.course, o.teachingClass, o.semester, o.teacher, o.courseSeq, o.teacherID, o.teacherTitle, o.college, atoiOr(o.maxStudents, 0), o.requirement, atoiOr(o.weeklyHours, 0), o.note})
+		rows = append(rows, []any{o.course, o.code, o.teachingClass, o.semester, o.teacher, o.courseSeq, o.teacherID, o.teacherTitle, o.college, o.maxStudents, o.requirement, o.weeklyHours, o.note})
 	}
 	return xlsx.BuildBytes("offerings", headers, rows)
 }
 
 func emitSessions(ss []sessionRec) ([]byte, error) {
-	headers := []string{"date", "period_start", "period_end", "classroom", "course", "teaching_class", "semester", "note"}
+	headers := []string{"date", "period_start", "period_end", "classroom", "course", "code", "teaching_class", "semester", "note"}
 	rows := make([][]any, 0, len(ss))
 	for _, s := range ss {
-		rows = append(rows, []any{s.date, s.periodStart, s.periodEnd, s.classroom, s.course, s.teachingClass, s.semester, ""})
+		rows = append(rows, []any{s.date, s.periodStart, s.periodEnd, s.classroom, s.course, s.code, s.teachingClass, s.semester, ""})
 	}
 	return xlsx.BuildBytes("sessions", headers, rows)
 }

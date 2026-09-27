@@ -14,7 +14,6 @@ var (
 	ErrCatalogNotFound       = errors.New("course not found")
 	ErrOfferingNotFound      = errors.New("course offering not found")
 	ErrSessionNotFound       = errors.New("session not found")
-	ErrNameTaken             = errors.New("course name already taken")
 	ErrCodeTaken             = errors.New("course code already taken")
 	ErrOfferingTaken         = errors.New("course offering already exists")
 	ErrTeachingClassNotFound = errors.New("teaching class not found")
@@ -31,36 +30,29 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-// nullableCode returns nil for an empty code so the column stores NULL (not ”).
-// Multiple NULLs are distinct under UNIQUE(code); multiple ” would collide.
-// Callers that read the value back get "" either way (NULL scans to the zero
-// string), so the empty-means-uncoded convention is preserved on read.
-func nullableCode(code string) interface{} {
-	if code == "" {
-		return nil
-	}
-	return code
-}
-
 // Migrate creates the catalog, offering and session tables. It is idempotent.
 // See backend/internal/course/README.md for the column rationale.
+//
+// ⚠️ 删库重建要求：2026-09 起课程库身份键由 name 改为 code（name 可重名，
+// code 唯一必填）。本函数只 CREATE IF NOT EXISTS，旧库不会自动升级——部署本版
+// 本前必须 DROP 旧库让表按新结构重建，否则同名课程导入会撞旧表的 name 唯一键。
 func (s *Store) Migrate(ctx context.Context) error {
 	stmts := []string{
-		// code is NULL-able so courses without a code (NULL) do not collide:
-		// MySQL treats multiple NULLs as distinct in a UNIQUE index, while
-		// empty strings '' would all compare equal. The app writes NULL for
-		// uncoded courses (see nullableCode).
+		// 课程库身份键是 code（教务处课程代码），NOT NULL 且唯一；name 仅作展示，
+		// 可重名（同一门课面向不同年级/学院开课时代码不同、学分不同），建普通索引
+		// 供搜索。绝不允许无码课程：NULL/空串语义已随 nullableCode 一并退役。
 		`CREATE TABLE IF NOT EXISTS course_catalog (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(128) NOT NULL UNIQUE,
-    code        VARCHAR(64)  NULL DEFAULT NULL,
+    name        VARCHAR(128) NOT NULL,
+    code        VARCHAR(64)  NOT NULL,
     credits     DECIMAL(4,1) NOT NULL DEFAULT 0,
     total_hours INT          NOT NULL DEFAULT 0,
     category    VARCHAR(32)  NOT NULL DEFAULT '',
     exam_type   VARCHAR(16)  NOT NULL DEFAULT '',
     description VARCHAR(255) NOT NULL DEFAULT '',
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_catalog_code (code)
+    UNIQUE KEY uq_catalog_code (code),
+    INDEX idx_catalog_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 		// idx_offering_tclass gives the in-use check (SELECT COUNT(*) ...
 		// WHERE teaching_class_id = ? FOR UPDATE) a precise range/gap lock
@@ -181,16 +173,11 @@ func (s *Store) GetCatalog(ctx context.Context, id int64) (CatalogCourse, error)
 func (s *Store) CreateCatalog(ctx context.Context, in CatalogInput) (CatalogCourse, error) {
 	res, err := s.db.ExecContext(ctx,
 		`INSERT INTO course_catalog (name, code, credits, total_hours, category, exam_type, description) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		in.Name, nullableCode(in.Code), in.Credits, in.TotalHours, in.Category, in.ExamType, in.Description,
+		in.Name, in.Code, in.Credits, in.TotalHours, in.Category, in.ExamType, in.Description,
 	)
 	if err != nil {
-		switch dbutil.DuplicateKeyName(err) {
-		case "uq_catalog_code":
+		if dbutil.IsDuplicateEntry(err) {
 			return CatalogCourse{}, ErrCodeTaken
-		case "name", "":
-			if dbutil.IsDuplicateEntry(err) {
-				return CatalogCourse{}, ErrNameTaken
-			}
 		}
 		return CatalogCourse{}, fmt.Errorf("create catalog: %w", err)
 	}
@@ -204,16 +191,11 @@ func (s *Store) CreateCatalog(ctx context.Context, in CatalogInput) (CatalogCour
 func (s *Store) UpdateCatalog(ctx context.Context, id int64, in CatalogInput) (CatalogCourse, error) {
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE course_catalog SET name = ?, code = ?, credits = ?, total_hours = ?, category = ?, exam_type = ?, description = ? WHERE id = ?`,
-		in.Name, nullableCode(in.Code), in.Credits, in.TotalHours, in.Category, in.ExamType, in.Description, id,
+		in.Name, in.Code, in.Credits, in.TotalHours, in.Category, in.ExamType, in.Description, id,
 	)
 	if err != nil {
-		switch dbutil.DuplicateKeyName(err) {
-		case "uq_catalog_code":
+		if dbutil.IsDuplicateEntry(err) {
 			return CatalogCourse{}, ErrCodeTaken
-		case "name", "":
-			if dbutil.IsDuplicateEntry(err) {
-				return CatalogCourse{}, ErrNameTaken
-			}
 		}
 		return CatalogCourse{}, fmt.Errorf("update catalog: %w", err)
 	}

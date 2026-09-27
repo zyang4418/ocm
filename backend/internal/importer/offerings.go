@@ -12,10 +12,13 @@ import (
 
 // Column names for the course_offerings import. course / teaching_class /
 // semester / note are shared with the sessions import (same header values);
-// teacher is specific to offerings. The course_seq..weekly_hours columns are
-// optional 教务处 section-metadata (课程序号/教师工号/教师职称/开课学院/人数上限/
-// 课程类别一/周学时); legacy files without them default to empty/zero.
+// teacher is specific to offerings. Offerings reference the catalog by code
+// (the identity key — required, disambiguates same-name courses); the course
+// column is display-only. The course_seq..weekly_hours columns are optional
+// 教务处 section-metadata (课程序号/教师工号/教师职称/开课学院/人数上限/课程类别一/
+// 周学时); legacy files without them default to empty/zero.
 const (
+	ColOfferingCode = "code"
 	ColTeacher      = "teacher"
 	ColCourseSeq    = "course_seq"
 	ColTeacherID    = "teacher_id"
@@ -41,16 +44,24 @@ func NewOfferingsImporter(db *sql.DB, courses *course.Store, org *user.Store) *O
 	return &OfferingsImporter{db: db, courses: courses, org: org}
 }
 
-// loadRefs builds name->id lookup maps for catalog courses and teaching
-// classes. The returned error already carries a user-facing Chinese prefix.
-func (i *OfferingsImporter) loadRefs(ctx context.Context) (catalog, teaching map[string]int64, err error) {
+// catalogRef is a resolved catalog entry: the id an offering must write and
+// the canonical name the file's display column is cross-checked against.
+type catalogRef struct {
+	id   int64
+	name string
+}
+
+// loadRefs builds the code->entry lookup for catalog courses (code is the
+// catalog identity, unique) and the name->id map for teaching classes. The
+// returned error already carries a user-facing Chinese prefix.
+func (i *OfferingsImporter) loadRefs(ctx context.Context) (catalog map[string]catalogRef, teaching map[string]int64, err error) {
 	list, err := i.courses.ListCatalog(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("加载课程目录失败：%w", err)
 	}
-	catalog = make(map[string]int64, len(list))
+	catalog = make(map[string]catalogRef, len(list))
 	for _, c := range list {
-		catalog[strings.TrimSpace(c.Name)] = c.ID
+		catalog[c.Code] = catalogRef{id: c.ID, name: strings.TrimSpace(c.Name)}
 	}
 	tcs, err := i.org.ListTeachingClasses(ctx)
 	if err != nil {
@@ -80,9 +91,11 @@ func (i *OfferingsImporter) Commit(ctx context.Context, payload string) (Result,
 }
 
 // offeringInsert is a fully resolved, validated offering ready to upsert. The
-// name fields mirror the resolved IDs purely for preview display.
+// name fields mirror the resolved IDs purely for preview display; code carries
+// the catalog identity the row resolved against.
 type offeringInsert struct {
 	catalogID         int64
+	code              string
 	teachingClassID   int64
 	teacher           string
 	courseSeq         string
@@ -102,6 +115,7 @@ type offeringInsert struct {
 func (o offeringInsert) toPreviewMap() map[string]any {
 	return map[string]any{
 		"course":        o.courseName,
+		"code":          o.code,
 		"teachingClass": o.teachingClassName,
 		"semester":      o.semester,
 		"teacher":       o.teacher,
@@ -123,12 +137,13 @@ func (o offeringInsert) naturalKey() string {
 
 // parseOfferings parses the workbook, resolves names, validates, and dedups
 // within the file. No writes.
-func parseOfferings(catalog, teaching map[string]int64, payload string) (clean []offeringInsert, errs []RowError, dataRows int, err error) {
+func parseOfferings(catalog map[string]catalogRef, teaching map[string]int64, payload string) (clean []offeringInsert, errs []RowError, dataRows int, err error) {
 	headers, rows, headerErr := parseWorkbook(payload)
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColCourse, ColTeachingClass, ColSemester, ColTeacher, ColNote); !ok {
+	// note 列可选（缺列按空串处理），与 sessions 导入一致，不作表头要求。
+	if rerr, ok := requireColumns(headers, ColCourse, ColOfferingCode, ColTeachingClass, ColSemester, ColTeacher); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
@@ -138,23 +153,43 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 		dataRows++
 
 		courseName := strings.TrimSpace(rec[ColCourse])
+		code := strings.TrimSpace(rec[ColOfferingCode])
 		teachingClassName := strings.TrimSpace(rec[ColTeachingClass])
 		semester := strings.TrimSpace(rec[ColSemester])
-		if courseName == "" || teachingClassName == "" || semester == "" {
-			errs = append(errs, RowError{Row: rowNum, Error: "course / teaching_class / semester 为空"})
+		if courseName == "" || code == "" || teachingClassName == "" || semester == "" {
+			errs = append(errs, RowError{Row: rowNum, Error: "course / code / teaching_class / semester 为空"})
 			continue
 		}
-		catalogID, ok := catalog[courseName]
+		entry, ok := catalog[code]
 		if !ok {
-			errs = append(errs, RowError{Row: rowNum, Error: "课程不存在：" + courseName})
+			errs = append(errs, RowError{Row: rowNum, Error: "课程代码不存在：" + code})
 			continue
 		}
+		// course 是显示列、code 是解析键：两者必须指向同一门课，否则数据会落到
+		// code 对应的课下而 preview 显示文件里的名字，误导操作者（仅手改文件会
+		// 触发；split 产物两者同源）。
+		if courseName != entry.name {
+			errs = append(errs, RowError{Row: rowNum, Error: fmt.Sprintf(
+				"课程名称与代码不符：code=%s 的课程为「%s」，文件中为「%s」", code, entry.name, courseName)})
+			continue
+		}
+		catalogID := entry.id
 		teachingClassID, ok := teaching[teachingClassName]
 		if !ok {
 			errs = append(errs, RowError{Row: rowNum, Error: "教学班不存在：" + teachingClassName})
 			continue
 		}
 
+		maxStudents, msg := parseIntCol(rec[ColMaxStudents], ColMaxStudents, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
+		weeklyHours, msg := parseIntCol(rec[ColWeeklyHours], ColWeeklyHours, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
 		in := course.OfferingInput{
 			CatalogID:       catalogID,
 			TeachingClassID: teachingClassID,
@@ -163,9 +198,9 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 			TeacherID:       rec[ColTeacherID],
 			TeacherTitle:    rec[ColTeacherTitle],
 			College:         rec[ColCollege],
-			MaxStudents:     atoiOr(rec[ColMaxStudents], 0),
+			MaxStudents:     maxStudents,
 			Requirement:     rec[ColRequirement],
-			WeeklyHours:     atoiOr(rec[ColWeeklyHours], 0),
+			WeeklyHours:     weeklyHours,
 			Semester:        semester,
 			Note:            rec[ColNote],
 		}
@@ -176,6 +211,7 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 
 		ins := offeringInsert{
 			catalogID:         in.CatalogID,
+			code:              code,
 			teachingClassID:   in.TeachingClassID,
 			teacher:           in.Teacher,
 			courseSeq:         in.CourseSeq,
@@ -202,7 +238,7 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 	return clean, errs, dataRows, nil
 }
 
-func analyzeOfferings(catalog, teaching map[string]int64, payload string) (Result, error) {
+func analyzeOfferings(catalog map[string]catalogRef, teaching map[string]int64, payload string) (Result, error) {
 	clean, errs, dataRows, err := parseOfferings(catalog, teaching, payload)
 	if err != nil {
 		return Result{TotalRows: dataRows, FailedRows: dataRows, Errors: errs}, err
@@ -220,7 +256,7 @@ func analyzeOfferings(catalog, teaching map[string]int64, payload string) (Resul
 	}, nil
 }
 
-func commitOfferings(ctx context.Context, db *sql.DB, catalog, teaching map[string]int64, payload string) (Result, error) {
+func commitOfferings(ctx context.Context, db *sql.DB, catalog map[string]catalogRef, teaching map[string]int64, payload string) (Result, error) {
 	clean, errs, dataRows, err := parseOfferings(catalog, teaching, payload)
 	if err != nil {
 		return Result{TotalRows: dataRows, FailedRows: dataRows, Errors: errs}, err

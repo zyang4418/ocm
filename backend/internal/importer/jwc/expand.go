@@ -33,6 +33,20 @@ func parsePeriods(s string) (int, int, error) {
 	return a, b, nil
 }
 
+// parseWeekday 把「星期」解析为 1-7（周一到周日）。空串或非法值返回错误，
+// 便于上层定位到行；解析失败的行不生成课次。
+func parseWeekday(s string) (int, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, fmt.Errorf("星期为空")
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 1 || n > 7 {
+		return 0, fmt.Errorf("星期非法：%q", s)
+	}
+	return n, nil
+}
+
 // expandWeeks 把「起止周」展开为具体周次集合（升序去重）。
 //
 // 格式：逗号分隔的段，每段为 [a-b] 或 a-b（区间）或 n（单周），可带「单」/「双」

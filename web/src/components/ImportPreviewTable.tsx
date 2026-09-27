@@ -13,8 +13,8 @@ import type { ImportJob, ImportRowError } from '../types/api'
 // the SplitWizard so the contract lives in one place.
 export const IMPORT_TYPES: Record<string, { schema: string; columns: string[] }> = {
   sessions: {
-    schema: 'date, period_start, period_end, classroom, course, teaching_class, semester, note',
-    columns: ['date', 'periodStart', 'periodEnd', 'classroom', 'course', 'teachingClass', 'semester', 'note'],
+    schema: 'date, period_start, period_end, classroom, course, code, teaching_class, semester, note',
+    columns: ['date', 'periodStart', 'periodEnd', 'classroom', 'course', 'code', 'teachingClass', 'semester', 'note'],
   },
   classrooms: {
     schema: 'name, building, capacity, type, floor, campus, status, description',
@@ -33,8 +33,8 @@ export const IMPORT_TYPES: Record<string, { schema: string; columns: string[] }>
     columns: ['name', 'code', 'credits', 'totalHours', 'category', 'examType', 'description'],
   },
   offerings: {
-    schema: 'course, teaching_class, semester, teacher, course_seq, teacher_id, teacher_title, college, max_students, requirement, weekly_hours, note',
-    columns: ['course', 'teachingClass', 'semester', 'teacher', 'courseSeq', 'teacherId', 'teacherTitle', 'college', 'maxStudents', 'requirement', 'weeklyHours', 'note'],
+    schema: 'course, code, teaching_class, semester, teacher, course_seq, teacher_id, teacher_title, college, max_students, requirement, weekly_hours, note',
+    columns: ['course', 'code', 'teachingClass', 'semester', 'teacher', 'courseSeq', 'teacherId', 'teacherTitle', 'college', 'maxStudents', 'requirement', 'weeklyHours', 'note'],
   },
   regimes: {
     schema: 'regime_name, effective_month, effective_day, period_index, start_time, end_time',

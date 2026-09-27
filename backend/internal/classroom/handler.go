@@ -216,6 +216,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 // @Success      204 "no content"
 // @Failure      400 {object} httpx.ErrorResponse "invalid classroom id"
 // @Failure      404 {object} httpx.ErrorResponse "classroom not found"
+// @Failure      409 {object} httpx.ErrorResponse "classroom referenced by sessions or bookings"
 // @Failure      500 {object} httpx.ErrorResponse "internal error"
 // @Security     BearerAuth
 // @Router       /api/classrooms/{id} [delete]
@@ -235,16 +236,21 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = h.store.Delete(r.Context(), id)
-	if errors.Is(err, ErrNotFound) {
+	switch {
+	case errors.Is(err, ErrNotFound):
 		httpx.RespondError(w, http.StatusNotFound, "classroom not found")
-		return
-	}
-	if err != nil {
+	case errors.Is(err, ErrInUse):
+		var u *InUseError
+		_ = errors.As(err, &u)
+		httpx.RespondError(w, http.StatusConflict, fmt.Sprintf(
+			"该教室有 %d 条课次、%d 条预约记录，无法删除；如需下线请将状态改为维护中或停用",
+			u.Sessions, u.Bookings))
+	case err != nil:
 		httpx.Error500(w, r, "could not delete classroom", err)
-		return
+	default:
+		systemlog.WithSummary(r.Context(), fmt.Sprintf("删除教室 %s", existing.Name))
+		w.WriteHeader(http.StatusNoContent)
 	}
-	systemlog.WithSummary(r.Context(), fmt.Sprintf("删除教室 %s", existing.Name))
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // NormalizeInput trims string fields, applies defaults for type and status,
@@ -277,6 +283,23 @@ func normalizeInput(in *ClassroomInput) (string, bool) {
 		in.Status = StatusAvailable
 	} else if !validStatuses[in.Status] {
 		return "invalid classroom status", false
+	}
+	// Length caps mirror the classrooms VARCHAR widths (store.go); type/status
+	// need no cap — the enum checks above already bound their values.
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"name", in.Name, 64},
+		{"building", in.Building, 64},
+		{"floor", in.Floor, 16},
+		{"campus", in.Campus, 32},
+		{"description", in.Description, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
 	}
 	return "", true
 }

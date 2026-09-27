@@ -9,8 +9,9 @@ import (
 )
 
 // Column names for the course_catalog import (header-mapped, order-independent).
-// credits/total_hours/category/exam_type are optional 教务处-derived columns
-// (学分/总学时/课程类别二/考核方式); legacy files without them default to zero/empty.
+// code 是身份键、必填；credits/total_hours/category/exam_type are optional
+// 教务处-derived columns (学分/总学时/课程类别二/考核方式); legacy files without
+// them default to zero/empty.
 const (
 	ColCatalogName        = "name"
 	ColCatalogCode        = "code"
@@ -21,8 +22,9 @@ const (
 	ColCatalogDescription = "description"
 )
 
-// CatalogImporter imports course catalog entries, upserting each row by name
-// (the unique key). Re-importing updates code and description.
+// CatalogImporter imports course catalog entries, upserting each row by code
+// (the identity key — 教务处课程代码, required). Name is display data and may
+// repeat across codes; re-importing a code updates its name/attributes.
 type CatalogImporter struct {
 	db *sql.DB
 }
@@ -61,18 +63,31 @@ func parseCatalog(payload string) (clean []catalogRow, errs []RowError, dataRows
 	if headerErr != nil {
 		return nil, []RowError{{Row: 1, Error: headerErr.Error()}}, 1, headerErr
 	}
-	if rerr, ok := requireColumns(headers, ColCatalogName); !ok {
+	// code 是身份键：缺整列的文件在表头闸门就报一条错误，而不是 N 行逐行
+	// 「code is required」。
+	if rerr, ok := requireColumns(headers, ColCatalogName, ColCatalogCode); !ok {
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
+	seenCode := make(map[string]bool)
 	for i, rec := range rows {
 		rowNum := i + 2
 		dataRows++
+		credits, msg := parseFloatCol(rec[ColCatalogCredits], ColCatalogCredits, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
+		totalHours, msg := parseIntCol(rec[ColCatalogTotalHours], ColCatalogTotalHours, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
 		in := course.CatalogInput{
 			Name:        rec[ColCatalogName],
 			Code:        rec[ColCatalogCode],
-			Credits:     atofOr(rec[ColCatalogCredits], 0),
-			TotalHours:  atoiOr(rec[ColCatalogTotalHours], 0),
+			Credits:     credits,
+			TotalHours:  totalHours,
 			Category:    rec[ColCatalogCategory],
 			ExamType:    rec[ColCatalogExamType],
 			Description: rec[ColCatalogDescription],
@@ -81,6 +96,13 @@ func parseCatalog(payload string) (clean []catalogRow, errs []RowError, dataRows
 			errs = append(errs, RowError{Row: rowNum, Error: msg})
 			continue
 		}
+		// Upsert 键是 code：文件内两行同码会让第二行静默覆盖第一行（last-wins），
+		// 这里对齐 offerings 的「本文件内重复开课」逐行报错。
+		if seenCode[in.Code] {
+			errs = append(errs, RowError{Row: rowNum, Error: "本文件内重复课程代码：" + in.Code})
+			continue
+		}
+		seenCode[in.Code] = true
 		clean = append(clean, catalogRow{CatalogInput: in, rowNum: rowNum})
 	}
 	return clean, errs, dataRows, nil
@@ -124,9 +146,11 @@ func commitCatalog(ctx context.Context, db *sql.DB, payload string) (Result, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// Upsert key is code (the catalog identity). name is now mutable payload —
+	// the same course keeps its code while its display name gets refreshed.
 	stmt, err := tx.PrepareContext(ctx, `INSERT INTO course_catalog (name, code, credits, total_hours, category, exam_type, description)
 VALUES (?, ?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE code=VALUES(code), credits=VALUES(credits), total_hours=VALUES(total_hours), category=VALUES(category), exam_type=VALUES(exam_type), description=VALUES(description)`)
+ON DUPLICATE KEY UPDATE name=VALUES(name), credits=VALUES(credits), total_hours=VALUES(total_hours), category=VALUES(category), exam_type=VALUES(exam_type), description=VALUES(description)`)
 	if err != nil {
 		res.FailedRows = dataRows
 		res.Errors = append(res.Errors, RowError{Row: 0, Error: "导入中断：" + err.Error()})
@@ -135,7 +159,7 @@ ON DUPLICATE KEY UPDATE code=VALUES(code), credits=VALUES(credits), total_hours=
 	defer func() { _ = stmt.Close() }()
 
 	for _, c := range clean {
-		if _, err := stmt.ExecContext(ctx, c.Name, nullIfEmpty(c.Code), c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description); err != nil {
+		if _, err := stmt.ExecContext(ctx, c.Name, c.Code, c.Credits, c.TotalHours, c.Category, c.ExamType, c.Description); err != nil {
 			res.FailedRows = dataRows
 			res.Errors = append(res.Errors, RowError{Row: c.rowNum, Error: "导入中断：" + err.Error()})
 			return res, fmt.Errorf("upsert catalog: %w", err)

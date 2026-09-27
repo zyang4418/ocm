@@ -60,7 +60,7 @@ L2「开课」是承上启下的关键：它把一门抽象课程、一个学期
 -- 行政班
 CREATE TABLE admin_classes (
   id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-  grade      VARCHAR(64)  NOT NULL DEFAULT '',   -- 如 "2024级"
+  grade      VARCHAR(64)  NOT NULL DEFAULT '',   -- 4 位入学年份，如 "2024"（必填，^20\d{2}$）
   name       VARCHAR(64)  NOT NULL,              -- 如 "计算机244"
   note       VARCHAR(255) NOT NULL DEFAULT '',
   created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,18 +86,26 @@ CREATE TABLE teaching_class_members (
 
 ### 3.2 课程表（`internal/course/store.go`，由 `course.Store.Migrate` 创建）
 
+> ⚠️ **删库重建要求（2026-09）**：课程库身份键已由 `name` 改为 `code`——`name`
+> 可重名（同一门课面向不同年级/学院开课时代码与学分不同），`code` 必填且唯一。
+> `Migrate` 只 `CREATE IF NOT EXISTS`，旧库不会自动升级：**部署本版本前必须
+> DROP 旧库让全部表按新结构重建**，否则同名课程导入会撞旧表的 name 唯一键，
+> 且旧表残留的 NULL code 会让读取端 Scan 失败。开发阶段无迁移负担，不提供
+> ALTER 路径。
+
 ```sql
 CREATE TABLE course_catalog (
   id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-  name        VARCHAR(128) NOT NULL UNIQUE,
-  code        VARCHAR(64)  NULL DEFAULT NULL,        -- 课程代码；留空存 NULL，见下方「code 唯一性」
+  name        VARCHAR(128) NOT NULL,                 -- 展示名；可重名（同名不同码是合法形态）
+  code        VARCHAR(64)  NOT NULL,                 -- 课程代码 = 身份键，必填且唯一（教务处代码）
   credits     DECIMAL(4,1) NOT NULL DEFAULT 0,       -- 学分（教务处属性）
   total_hours INT          NOT NULL DEFAULT 0,       -- 总学时
   category    VARCHAR(32)  NOT NULL DEFAULT '',      -- 课程类别
   exam_type   VARCHAR(16)  NOT NULL DEFAULT '',      -- 考核方式
   description VARCHAR(255) NOT NULL DEFAULT '',
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_catalog_code (code)                 -- NULL 互不冲突；'' 会冲突，故留空须存 NULL
+  UNIQUE KEY uq_catalog_code (code),                 -- 身份键
+  INDEX idx_catalog_name (name)                      -- 搜索用普通索引
 );
 
 CREATE TABLE course_offerings (
@@ -143,7 +151,7 @@ CREATE TABLE course_sessions (
 - **唯一约束**：
   - `admin_classes`：`UNIQUE(grade, name)`
   - `teaching_classes`：`UNIQUE(name)`
-  - `course_catalog`：`UNIQUE(name)` + `UNIQUE(code)`（`code` 为 NULL-able，多个 NULL 互不冲突；但 `''` 会冲突，故代码留空须存 NULL 而非空串。重复代码返回 `ErrCodeTaken`，HTTP 409）
+  - `course_catalog`：`UNIQUE(code)`——**code 是身份键**（教务处课程代码），必填（`normalizeCatalog` 强制）且全局唯一，重复返回 `ErrCodeTaken`（HTTP 409）；`name` 可重名，仅建普通索引供搜索。同一门课面向不同群体开课时代码不同（学分也可不同），是**合法的多行形态**，导入器按 code upsert、开课按 code 解析引用。
   - `course_offerings`：`UNIQUE(catalog_id, teaching_class_id, semester)`
 - **课次重叠约束（应用层）**：`course_sessions` 存节次区间 `[period_start, period_end]`，区间重叠无法用唯一索引表达，故由应用层双向校验：`course.Store.Create/UpdateSession` 与 `booking.Store.Create/Review` 均检查「与任一课次区间重叠、或与任一 pending/approved 预约区间重叠」（创建/更新在教室行 `FOR UPDATE` 锁下进行，防并发插入）。导入器同样做区间重叠预检。
 

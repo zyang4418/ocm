@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -221,12 +222,37 @@ func (h *Handler) deleteAdminClass(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// gradeRe is the admin-class grade format: a 4-digit enrollment year (2024).
+// grade is half of the UNIQUE (grade, name) key and the key teaching-class
+// imports match members by, so an empty or malformed grade silently breaks
+// that chain downstream.
+var gradeRe = regexp.MustCompile(`^20\d{2}$`)
+
 func normalizeAdminClass(in *AdminClassInput) (string, bool) {
 	in.Grade = strings.TrimSpace(in.Grade)
 	in.Name = strings.TrimSpace(in.Name)
 	in.Note = strings.TrimSpace(in.Note)
+	if in.Grade == "" {
+		return "grade is required", false
+	}
+	if !gradeRe.MatchString(in.Grade) {
+		return "grade must be a 4-digit year (e.g. 2024)", false
+	}
 	if in.Name == "" {
 		return "name is required", false
+	}
+	// Length caps mirror the admin_classes VARCHAR widths (org_store.go).
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"name", in.Name, 64},
+		{"note", in.Note, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
 	}
 	return "", true
 }
@@ -450,6 +476,19 @@ func normalizeTeachingClass(in *TeachingClassInput) (string, bool) {
 	}
 	if len(in.ClassIDs) == 0 {
 		return "至少选择一个行政班", false
+	}
+	// Length caps mirror the teaching_classes VARCHAR widths (org_store.go).
+	for _, c := range []struct {
+		field string
+		value string
+		max   int
+	}{
+		{"name", in.Name, 64},
+		{"note", in.Note, 255},
+	} {
+		if msg, ok := dbutil.MaxRunes(c.field, c.value, c.max); !ok {
+			return msg, false
+		}
 	}
 	return "", true
 }
