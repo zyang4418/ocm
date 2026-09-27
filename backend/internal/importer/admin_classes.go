@@ -56,6 +56,7 @@ func parseAdminClasses(payload string) (clean []adminClassRow, errs []RowError, 
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
+	seenKey := make(map[string]bool)
 	for i, rec := range rows {
 		rowNum := i + 2
 		dataRows++
@@ -68,6 +69,13 @@ func parseAdminClasses(payload string) (clean []adminClassRow, errs []RowError, 
 			errs = append(errs, RowError{Row: rowNum, Error: msg})
 			continue
 		}
+		// Upsert 键是 (grade, name)：文件内两行同键会让第二行静默覆盖第一行，逐行报错。
+		key := in.Grade + "|" + in.Name
+		if seenKey[key] {
+			errs = append(errs, RowError{Row: rowNum, Error: "本文件内重复行政班：" + in.Grade + "/" + in.Name})
+			continue
+		}
+		seenKey[key] = true
 		clean = append(clean, adminClassRow{AdminClassInput: in, rowNum: rowNum})
 	}
 	return clean, errs, dataRows, nil

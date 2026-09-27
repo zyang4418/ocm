@@ -67,14 +67,25 @@ func parseCatalog(payload string) (clean []catalogRow, errs []RowError, dataRows
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
+	seenCode := make(map[string]bool)
 	for i, rec := range rows {
 		rowNum := i + 2
 		dataRows++
+		credits, msg := parseFloatCol(rec[ColCatalogCredits], ColCatalogCredits, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
+		totalHours, msg := parseIntCol(rec[ColCatalogTotalHours], ColCatalogTotalHours, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
 		in := course.CatalogInput{
 			Name:        rec[ColCatalogName],
 			Code:        rec[ColCatalogCode],
-			Credits:     atofOr(rec[ColCatalogCredits], 0),
-			TotalHours:  atoiOr(rec[ColCatalogTotalHours], 0),
+			Credits:     credits,
+			TotalHours:  totalHours,
 			Category:    rec[ColCatalogCategory],
 			ExamType:    rec[ColCatalogExamType],
 			Description: rec[ColCatalogDescription],
@@ -83,6 +94,13 @@ func parseCatalog(payload string) (clean []catalogRow, errs []RowError, dataRows
 			errs = append(errs, RowError{Row: rowNum, Error: msg})
 			continue
 		}
+		// Upsert 键是 code：文件内两行同码会让第二行静默覆盖第一行（last-wins），
+		// 这里对齐 offerings 的「本文件内重复开课」逐行报错。
+		if seenCode[in.Code] {
+			errs = append(errs, RowError{Row: rowNum, Error: "本文件内重复课程代码：" + in.Code})
+			continue
+		}
+		seenCode[in.Code] = true
 		clean = append(clean, catalogRow{CatalogInput: in, rowNum: rowNum})
 	}
 	return clean, errs, dataRows, nil

@@ -69,3 +69,18 @@ func TestParseAdminClassesOverlongNameRejected(t *testing.T) {
 		t.Fatalf("超长 name 应逐行拒绝：clean=%d errs=%v", len(clean), errs)
 	}
 }
+
+// Upsert 键是 (grade, name)：文件内两行同键报行错误，不静默 last-wins。
+func TestParseAdminClassesDuplicateKeyRejected(t *testing.T) {
+	payload := adminClassesPayload(t, [][]any{
+		{"2024", "Class A-241", "note one"},
+		{"2024", "Class A-241", "note two"},
+	})
+	clean, errs, _, err := parseAdminClasses(payload)
+	if err != nil {
+		t.Fatalf("parseAdminClasses: %v", err)
+	}
+	if len(clean) != 1 || len(errs) != 1 || !strings.Contains(errs[0].Error, "重复行政班") {
+		t.Fatalf("同键两行应报重复：clean=%d errs=%v", len(clean), errs)
+	}
+}

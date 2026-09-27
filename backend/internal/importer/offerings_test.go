@@ -40,3 +40,26 @@ func TestParseOfferingsOverlongFieldsRejected(t *testing.T) {
 		t.Fatalf("1 行通过、2 行拒绝：clean=%d errs=%v dataRows=%d", len(clean), errs, dataRows)
 	}
 }
+
+// 严格数值解析：max_students / weekly_hours 非法值逐行拒绝且消息带原文。
+func TestParseOfferingsStrictNumerics(t *testing.T) {
+	catalog := map[string]int64{"TST101": 1}
+	teaching := map[string]int64{"Class A-241": 2}
+	payload := offeringsPayload(t, [][]any{
+		{"Sample Course", "TST101", "Class A-241", "2026-2027-1", "Teacher One", "", "", "", "", "50人", "", "", ""},
+		{"Sample Course", "TST101", "Class A-241", "2026-2027-1", "Teacher Two", "", "", "", "", "", "", "4.5学时", ""},
+	})
+	clean, errs, _, err := parseOfferings(catalog, teaching, payload)
+	if err != nil {
+		t.Fatalf("parseOfferings: %v", err)
+	}
+	if len(clean) != 0 || len(errs) != 2 {
+		t.Fatalf("2 行应全部拒绝：clean=%d errs=%v", len(clean), errs)
+	}
+	joined := errs[0].Error + errs[1].Error
+	for _, want := range []string{"50人", "4.5学时"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("错误消息应带原文 %q：%v", want, errs)
+		}
+	}
+}

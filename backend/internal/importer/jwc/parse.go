@@ -2,8 +2,6 @@ package jwc
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"ocm-backend/internal/xlsx"
 )
@@ -45,7 +43,7 @@ type jwcRow struct {
 	classroom    string
 	roomType     string
 	floor        string
-	weekday      int
+	weekdayStr   string
 	periodStr    string
 	weekStr      string
 	courseSeq    string
@@ -83,7 +81,7 @@ func parseRows(data []byte) (rows []jwcRow, err error) {
 			classroom:    rec[hClassroom],
 			roomType:     rec[hRoomType],
 			floor:        rec[hFloor],
-			weekday:      atoiOr(rec[hWeekday], 0),
+			weekdayStr:   rec[hWeekday],
 			periodStr:    rec[hPeriod],
 			weekStr:      rec[hWeeks],
 			courseSeq:    rec[hCourseSeq],
@@ -108,30 +106,4 @@ func parseRows(data []byte) (rows []jwcRow, err error) {
 		})
 	}
 	return rows, nil
-}
-
-// atoiOr 解析整型，空或非法返回 def。jwc 包不依赖 importer 包，故本地提供。
-func atoiOr(s string, def int) int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return def
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return def
-	}
-	return n
-}
-
-// atofOr 解析浮点，空或非法返回 def。
-func atofOr(s string, def float64) float64 {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return def
-	}
-	n, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return def
-	}
-	return n
 }

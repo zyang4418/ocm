@@ -68,13 +68,19 @@ func parseClassrooms(payload string) (clean []classroomRow, errs []RowError, dat
 		return nil, []RowError{rerr}, 1, fmt.Errorf("%s", rerr.Error)
 	}
 
+	seenName := make(map[string]bool)
 	for i, rec := range rows {
 		rowNum := i + 2
 		dataRows++
+		capacity, msg := parseIntCol(rec[ColClassroomCapacity], ColClassroomCapacity, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
 		in := classroom.ClassroomInput{
 			Name:        rec[ColClassroomName],
 			Building:    rec[ColClassroomBuilding],
-			Capacity:    atoiOr(rec[ColClassroomCapacity], 0),
+			Capacity:    capacity,
 			Type:        rec[ColClassroomType],
 			Floor:       rec[ColClassroomFloor],
 			Campus:      rec[ColClassroomCampus],
@@ -85,6 +91,12 @@ func parseClassrooms(payload string) (clean []classroomRow, errs []RowError, dat
 			errs = append(errs, RowError{Row: rowNum, Error: msg})
 			continue
 		}
+		// Upsert 键是 name：文件内两行同名会让第二行静默覆盖第一行，逐行报错。
+		if seenName[in.Name] {
+			errs = append(errs, RowError{Row: rowNum, Error: "本文件内重复教室：" + in.Name})
+			continue
+		}
+		seenName[in.Name] = true
 		clean = append(clean, classroomRow{ClassroomInput: in, rowNum: rowNum})
 	}
 	return clean, errs, dataRows, nil

@@ -102,9 +102,23 @@ func parseRegimes(payload string) (clean []regimeInsert, errs []RowError, groupC
 			errs = append(errs, RowError{Row: rowNum, Error: "regime_name 为空"})
 			continue
 		}
-		month := atoiOr(rec[ColEffectiveMonth], 0)
-		day := atoiOr(rec[ColEffectiveDay], 0)
-		idx := atoiOr(rec[ColRegimePeriodIndex], 0)
+		// 数值列严格解析：非法值报行错误并跳过该行（其节次不入组），消息带原文。
+		// 空值回退 0，由组级的 NormalizeRegime/NormalizePeriods 范围检查拦截。
+		month, msg := parseIntCol(rec[ColEffectiveMonth], ColEffectiveMonth, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
+		day, msg := parseIntCol(rec[ColEffectiveDay], ColEffectiveDay, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
+		idx, msg := parseIntCol(rec[ColRegimePeriodIndex], ColRegimePeriodIndex, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
 		start := rec[ColStartTime]
 		end := rec[ColEndTime]
 

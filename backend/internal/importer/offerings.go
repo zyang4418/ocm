@@ -163,6 +163,16 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 			continue
 		}
 
+		maxStudents, msg := parseIntCol(rec[ColMaxStudents], ColMaxStudents, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
+		weeklyHours, msg := parseIntCol(rec[ColWeeklyHours], ColWeeklyHours, 0)
+		if msg != "" {
+			errs = append(errs, RowError{Row: rowNum, Error: msg})
+			continue
+		}
 		in := course.OfferingInput{
 			CatalogID:       catalogID,
 			TeachingClassID: teachingClassID,
@@ -171,9 +181,9 @@ func parseOfferings(catalog, teaching map[string]int64, payload string) (clean [
 			TeacherID:       rec[ColTeacherID],
 			TeacherTitle:    rec[ColTeacherTitle],
 			College:         rec[ColCollege],
-			MaxStudents:     atoiOr(rec[ColMaxStudents], 0),
+			MaxStudents:     maxStudents,
 			Requirement:     rec[ColRequirement],
-			WeeklyHours:     atoiOr(rec[ColWeeklyHours], 0),
+			WeeklyHours:     weeklyHours,
 			Semester:        semester,
 			Note:            rec[ColNote],
 		}

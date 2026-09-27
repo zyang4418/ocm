@@ -65,3 +65,34 @@ func TestParseCatalogOverlongFieldsRejected(t *testing.T) {
 		t.Fatalf("超长字段应逐行拒绝：clean=%d errs=%v", len(clean), errs)
 	}
 }
+
+// 严格数值解析：空值回退默认（列可选），非法值逐行拒绝且消息带原文；
+// upsert 键 code 在文件内重复时报行错误（对齐 offerings），不再静默 last-wins。
+func TestParseCatalogStrictNumericsAndDuplicateCode(t *testing.T) {
+	payload := catalogPayload(t, [][]any{
+		{"Sample Course A", "TST301", "", "", "", "", ""},     // 数值空 → 默认 0，通过
+		{"Sample Course B", "TST302", "3学分", 48, "", "", ""},  // credits 非法
+		{"Sample Course C", "TST303", 3.0, "4-8", "", "", ""}, // total_hours 非法
+		{"Sample Course D", "TST304", 3.5, 48, "", "", ""},    // 合法小数
+		{"Sample Course E", "TST304", 2.0, 32, "", "", ""},    // 与 D 同码 → 重复
+	})
+	clean, errs, _, err := parseCatalog(payload)
+	if err != nil {
+		t.Fatalf("parseCatalog: %v", err)
+	}
+	if len(clean) != 2 || len(errs) != 3 {
+		t.Fatalf("2 行通过、3 行拒绝：clean=%d errs=%v", len(clean), errs)
+	}
+	if clean[0].Credits != 0 || clean[0].TotalHours != 0 {
+		t.Fatalf("空数值列应回退 0：credits=%v totalHours=%v", clean[0].Credits, clean[0].TotalHours)
+	}
+	if clean[1].Credits != 3.5 {
+		t.Fatalf("合法小数应原样解析：credits=%v", clean[1].Credits)
+	}
+	joined := errs[0].Error + errs[1].Error + errs[2].Error
+	for _, want := range []string{"3学分", "4-8", "重复课程代码"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("错误消息应包含 %q：%v", want, errs)
+		}
+	}
+}
