@@ -16,6 +16,11 @@ import (
 // still get their final 500 recorded here; with the order inverted a panic
 // unwinds past this middleware before Recover writes the response and the
 // line would show status 0.
+//
+// It also stamps every response with X-Request-ID before the handler runs —
+// operators and end users quote it back to locate the exact request in the
+// logs (the ops-panel error feedback loop), and error responses need it just
+// as much as log lines do.
 func AccessLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Probes would flood the log on every platform restart.
@@ -24,6 +29,7 @@ func AccessLog(next http.Handler) http.Handler {
 			return
 		}
 		ctx, id := logging.NewRequestContext(r.Context())
+		w.Header().Set("X-Request-ID", id)
 		rec := httpx.NewStatusRecorder(w)
 		start := time.Now()
 		next.ServeHTTP(rec, r.WithContext(ctx))

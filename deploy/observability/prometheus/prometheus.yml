@@ -1,0 +1,20 @@
+# Reference scrape config for the OCM compose observability overlay. All
+# targets live on the compose network; none of them are published to the host.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # OCM backend signal layer (METRICS_ADDR=:9091, internal-only listener).
+  - job_name: ocm-backend
+    static_configs:
+      - targets: ["backend:9091"]
+
+  # Host CPU/memory/disk via node_exporter (rootfs passthrough container).
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Prometheus' own health (feeds the standard `up` checks).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

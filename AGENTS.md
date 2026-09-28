@@ -42,6 +42,7 @@ Classroom management system: Go backend + WeChat mini-program (小程序) + web 
 - `net/http` ServeMux(Go 1.22+ 方法路由)。认证在 `backend/internal/auth`。
 - MySQL 幂等迁移:ALTER 忽略 1060/1061/1062(见 importer/store.go 模式)。
 - 权限链:`auth.Middleware`(JWT→username)→ `user.LoadSubject`(每请求重算)→ `authz.RequirePermission`/`RequireAny`。RBAC 数据(`roles`/`user_roles`/`user_permissions`/`user_groups` 等)在 `internal/iam`;**有效权限 = 直接角色授权 ∪ 组角色授权 ∪ 直接权限授权**,授权可带 `expires_at` 过期;`*` 通配仅系统 admin 角色持有,不在权限目录(API 无法授予);授权 admin 角色需操作者持有 `*`。权限目录在代码(`authz.Catalog`),DB 只存权限字符串。handler 检查 permission 字符串,不检查角色名。
+- **可观测性信号层**(指南 `docs/docs/guide/observability.mdx`):`internal/metrics` 提供 RED 中间件(链序 `AccessLog(metrics.Middleware(Recover(Gzip(mux))))`,Metrics 与 AccessLog 同样必须外于 Recover)+ DB 池 gauge + `/metrics` 独立监听(`METRICS_ADDR` 未设即关闭,独立 mux 只挂 /metrics,无鉴权靠内网隔离,**不得发布宿主机端口**);`path` 标签用 ServeMux 路由 pattern(`r.Pattern`,未匹配记 `unmatched`),勿改回原始 URL(基数爆炸)。`AccessLog` 给每个响应打 `X-Request-ID`(与日志 `request_id` 同源,运维反馈错误的定位闭环)。参考监控栈 overlay `docker-compose.observability.yml`(prometheus/grafana/loki/alloy/node-exporter,配置在 `deploy/observability/`,仅 compose 情景;serverless 情景由平台托管监控消费同一信号层)。
 
 ## 定制层扩展点（模块注册表、Renderer 注册与 Web 注入）
 

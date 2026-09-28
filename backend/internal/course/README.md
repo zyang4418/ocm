@@ -143,7 +143,7 @@ CREATE TABLE course_sessions (
 
 ## 4. 关键约束与逻辑外键
 
-- **无数据库级 FOREIGN KEY 约束**。所有跨表引用（`catalog_id`、`teaching_class_id`、`offering_id`、`classroom_id`）均为**逻辑外键**，由应用层校验存在性。这与项目既有约定一致（见 `CLAUDE.md` 的 MySQL 幂等迁移模式）。
+- **无数据库级 FOREIGN KEY 约束**。所有跨表引用（`catalog_id`、`teaching_class_id`、`offering_id`、`classroom_id`）均为**逻辑外键**，由应用层校验存在性。这与项目既有约定一致（见 `AGENTS.md` 的 MySQL 幂等迁移模式）。
 - **存在性校验**：创建/更新开课时，`course.Store` 先 `SELECT 1 FROM teaching_classes WHERE id=?` 校验教学班存在，不存在返回 `ErrTeachingClassNotFound`。
 - **教学班成员冻结（硬化）**：当教学班已被某开课引用（`course_offerings.teaching_class_id`）时，**不允许变更其成员集合**，否则返回 `ErrClassInUse`（HTTP 409）。这避免了一个教学班被排课后，成员变动导致课次归属语义错乱。仍可修改名称、备注。删除教学班同理：被引用时拒绝（`ErrClassInUse`）。
 - **行政班引用保护**：删除行政班时，若已被某教学班引用（`teaching_class_members`），返回 `ErrClassInUse`（HTTP 409），需先从教学班移除。
@@ -166,7 +166,7 @@ CREATE TABLE course_sessions (
 | `TeachingClassRead` | `teaching_class:read` | ✓ | ✓ |
 | `TeachingClassManage` | `teaching_class:manage` | ✓ | — |
 
-`admin` 角色通配放行；`user` 角色仅可读。课程模块沿用 `course:read` / `course:manage`。权限链为 `auth.Middleware → user.LoadSubject → authz.RequirePermission`（见 `CLAUDE.md`）。
+`admin` 角色通配放行；`user` 角色仅可读。课程模块沿用 `course:read` / `course:manage`。权限链为 `auth.Middleware → user.LoadSubject → authz.RequirePermission`（见 `AGENTS.md`）。
 
 ## 6. API 路由
 
