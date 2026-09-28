@@ -157,7 +157,7 @@ jobs:
         run: |
           docker run -d --name iot-mosquitto -p 1883:1883 \
             -v "$GITHUB_WORKSPACE/.github/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" \
-            eclipse-mosquitto:2
+            eclipse-mosquitto:2.1.2-alpine
           up=""
           for i in $(seq 1 30); do
             if (echo > /dev/tcp/127.0.0.1/1883) 2>/dev/null; then up=1; break; fi

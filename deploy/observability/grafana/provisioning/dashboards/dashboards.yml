@@ -1,0 +1,9 @@
+# Provisioned dashboards: scan the json/ subdirectory next to this file.
+apiVersion: 1
+
+providers:
+  - name: OCM
+    folder: OCM
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

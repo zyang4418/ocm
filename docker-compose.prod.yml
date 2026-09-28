@@ -26,8 +26,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: ocm-backend-prod
-    ports:
-      - "8080:8080"
     restart: unless-stopped
     environment:
       - PORT=8080

@@ -1,0 +1,87 @@
+# OCM observability overlay: reference monitoring stack for the Docker
+# Compose scenario, layered on either base compose file (same shape as the
+# IoT overlay):
+#   dev:  docker compose -f docker-compose.yml      -f docker-compose.observability.yml up -d
+#   prod: docker compose -f docker-compose.prod.yml -f docker-compose.observability.yml up -d
+# Services: prometheus (scrape + store), grafana (ops panel, published on
+# :3000), node-exporter (host CPU/mem/disk), loki + alloy (container log
+# collection into queryable streams).
+#
+# Compose-only by design: serverless deployments consume the same backend
+# signal layer (METRICS_ADDR /metrics, stdout JSON logs) via platform-native
+# monitoring instead — see docs/docs/guide/observability.mdx.
+#
+# Security model: ONLY Grafana is published. The backend metrics endpoint,
+# node-exporter, prometheus and loki are reachable solely over the compose
+# network — never publish their ports. Before handing Grafana to external
+# operators, put it behind HTTPS with a strong password (required below) and
+# treat it as read-only tooling; see the guide's security section.
+services:
+  backend:
+    environment:
+      # Internal-only Prometheus text endpoint (:9091 inside the container,
+      # scraped by prometheus over the compose network, never published).
+      METRICS_ADDR: :9091
+
+  prometheus:
+    image: prom/prometheus:v3.13.3
+    restart: unless-stopped
+    volumes:
+      - ./deploy/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+
+  loki:
+    image: grafana/loki:3.7.8
+    restart: unless-stopped
+    volumes:
+      - ./deploy/observability/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  alloy:
+    # Ships container stdout/stderr (Docker JSON logs) into Loki. Alloy is
+    # Loki's supported collector; promtail is EOL since 2026-03.
+    image: grafana/alloy:v1.20.0
+    restart: unless-stopped
+    depends_on:
+      - loki
+    volumes:
+      - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    command:
+      - run
+      - /etc/alloy/config.alloy
+
+  grafana:
+    image: grafana/grafana:13.2.2
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Ops personnel's only door to the panel. The password is required so
+      # a default-credential panel never reaches an external operator.
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  prometheus_data:
+  loki_data:
+  alloy_data:
+  grafana_data:

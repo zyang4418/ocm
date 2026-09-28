@@ -1,0 +1,33 @@
+// Reference Alloy config: ships every container's stdout/stderr (Docker JSON
+// logs) into Loki. Alloy is Loki's supported collector; promtail is EOL.
+//
+// Stream labels: `container` = short container name (e.g. ocm-backend-prod),
+// which the provisioned dashboard's error-log panel queries with
+// {container=~".*backend.*"}.
+
+discovery.docker "containers" {
+  host            = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

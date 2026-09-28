@@ -20,6 +20,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: '运维',
+      items: ['guide/observability'],
+    },
+    {
+      type: 'category',
       label: '开发',
       items: ['guide/miniapp', 'guide/web', 'guide/backend'],
     },

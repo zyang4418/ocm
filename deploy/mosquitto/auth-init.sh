@@ -29,8 +29,12 @@ touch "$CRED_FILE"
   echo "topic readwrite iot/#"
 } > "$AUTH_DIR/acl"
 
-# The password file is rebuilt from scratch on every run.
-: > "$AUTH_DIR/passwd"
+# The password file is rebuilt from scratch on every run. rm -f (not truncate-
+# in-place) so -c always creates a brand-new file — 2.1's secure fopen maps
+# mode "w" to O_TRUNC|O_CREAT|O_EXCL, so mosquitto_passwd -c fails with EEXIST
+# on a pre-existing 0-byte regular file (observed on a 2.1.2 deployment; 2.0
+# had no O_EXCL here).
+rm -f "$AUTH_DIR/passwd"
 mosquitto_passwd -b -c "$AUTH_DIR/passwd" "$BACKEND_USER" "$BACKEND_PASS"
 
 get_pass() {
@@ -66,6 +70,17 @@ for src in $SOURCES; do
   } >> "$AUTH_DIR/acl"
   echo "auth-init: broker credential ready for source '$src' ($user)"
 done
+
+# The broker drops to the mosquitto user (uid 1883 in the image) right after
+# reading the config, before the password-file plugin opens these — root-owned
+# files are unreadable then ("Unable to open pwfile" observed on 2.1.2). 2.0
+# brokers drop the same way; they worked only because the 2.0 image entrypoint
+# chowns all of /mosquitto, while the 2.1 image chowns /mosquitto/data only.
+chown 1883:1883 "$AUTH_DIR/passwd" "$AUTH_DIR/acl"
+# acl/credentials need no world access; mosquitto's secure file loading warns
+# on world-readable files (and on a file owner that is not the broker user)
+# and future versions will refuse to load them.
+chmod 0600 "$AUTH_DIR/acl" "$CRED_FILE"
 
 echo "auth-init: complete (backend=$BACKEND_USER; sources: ${SOURCES:-none})"
 echo "auth-init: source credentials at $CRED_FILE inside the mosquitto_auth volume"

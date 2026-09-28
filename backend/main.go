@@ -30,6 +30,7 @@ import (
 	"ocm-backend/internal/iot/mqtt"
 	"ocm-backend/internal/logging"
 	"ocm-backend/internal/mail"
+	"ocm-backend/internal/metrics"
 	"ocm-backend/internal/middleware"
 	"ocm-backend/internal/modules"
 	"ocm-backend/internal/observation"
@@ -88,17 +89,18 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// Handler stack order matters: AccessLog must stay OUTSIDE Recover so a
-	// recovered panic still gets its final 500 recorded in the access line
-	// (inverted, the panic unwinds past AccessLog first and the line shows
-	// status 0). Recover logs the panic itself; AccessLog logs the completed
-	// request — each event exactly once. Gzip is the innermost layer: a
-	// recovered-panic 500 is written to the StatusRecorder Recover received,
-	// bypassing Gzip, so it stays a clean uncompressed JSON error (see
-	// middleware.Gzip for the SSE/xlsx/204 exclusions).
+	// Handler stack order matters: AccessLog and Metrics must stay OUTSIDE
+	// Recover so a recovered panic still gets its final 500 recorded in the
+	// access line and counted as an error sample (inverted, the panic unwinds
+	// past them first and the line shows status 0). Recover logs the panic
+	// itself; AccessLog logs the completed request — each event exactly once.
+	// Gzip is the innermost layer: a recovered-panic 500 is written to the
+	// StatusRecorder Recover received, bypassing Gzip, so it stays a clean
+	// uncompressed JSON error (see middleware.Gzip for the SSE/xlsx/204
+	// exclusions).
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: middleware.AccessLog(httpx.Recover(middleware.Gzip(mux))),
+		Handler: middleware.AccessLog(metrics.Middleware(httpx.Recover(middleware.Gzip(mux)))),
 	}
 
 	go func() {
@@ -109,10 +111,31 @@ func main() {
 		}
 	}()
 
+	// Metrics endpoint - a standalone internal-only listener exposing RED
+	// request metrics, Go runtime stats and DB pool gauges in Prometheus text
+	// format. Disabled unless METRICS_ADDR is set (the compose observability
+	// overlay sets it to :9091 and scrapes it over the compose network).
+	// Deliberately a separate mux: the metrics listener can never expose a
+	// business route. A bind failure is logged but must not take the API
+	// down — monitoring is a passenger here, not a dependency.
+	var metricsSrv *http.Server
+	if addr := os.Getenv("METRICS_ADDR"); addr != "" {
+		metricsSrv = &http.Server{Addr: addr, Handler: metrics.NewHandler()}
+		go func() {
+			logging.L.Info("metrics endpoint listening", "addr", addr)
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logging.L.Error("metrics server error", "err", err)
+			}
+		}()
+	}
+
 	database, err := openDB(ctx)
 	if err != nil {
 		logging.L.Error("database", "err", err)
 		os.Exit(1)
+	}
+	if metricsSrv != nil {
+		metrics.ObserveSQLDB(database)
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
@@ -377,6 +400,11 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logging.L.Error("graceful shutdown error", "err", err)
+	}
+	if metricsSrv != nil {
+		if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
+			logging.L.Error("metrics shutdown error", "err", err)
+		}
 	}
 	logging.L.Info("server stopped")
 }
