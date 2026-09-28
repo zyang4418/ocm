@@ -6,7 +6,7 @@
 # deploy/mosquitto/README.md; the full guide is docs/docs/guide/iot.mdx.
 services:
   mosquitto-init:
-    image: eclipse-mosquitto:2
+    image: eclipse-mosquitto:2.1.2-alpine
     entrypoint: ["/bin/sh", "/mosquitto-config-src/auth-init.sh"]
     environment:
       IOT_MQTT_USERNAME: ${IOT_MQTT_USERNAME:-ocm-backend}
@@ -19,7 +19,7 @@ services:
       - mosquitto_auth:/mosquitto-config/auth
 
   mosquitto:
-    image: eclipse-mosquitto:2
+    image: eclipse-mosquitto:2.1.2-alpine
     restart: unless-stopped
     depends_on:
       mosquitto-init:
