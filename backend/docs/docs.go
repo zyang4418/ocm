@@ -9531,7 +9531,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "OCM 智慧教室管理平台 API",
+	Title:            "OCM 智慧教室管理系统 API",
 	Description:      "Classroom management backend (Go net/http ServeMux). Auth via JWT Bearer (HS256, 24h); mini-program identity resolved server-side via code2Session.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

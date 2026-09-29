@@ -15,22 +15,13 @@ title: 小程序
 
 - **不在 `app.json` 设全局 `"renderer": "skyline"`**;`rendererOptions.skyline` 只是声明"开 Skyline 时的选项",不等于开启。
 - Skyline 仅在性能关键页按页开启:在该页 `page.json` 加 `"renderer": "skyline"`,**必须用 `scroll-view` 承载滚动内容**(Skyline 无页面级滚动),并保持 `navigationStyle: custom`。
-- 当前 6 个页面**均为 WebView**(静态占位数据,无性能压力)。`index`/`ai` 接入真实大列表后再按页评估开启 Skyline。
+- 当前**所有页面均为 WebView**;接入真实大列表的页面再按页评估开启 Skyline。
 - 低版本微信/PC 端会自动 fallback 到 WebView,按页开启是安全的。
 - TDesign 对 Skyline 支持是部分的(Cascader/Calendar 在 Skyline 下不可用),默认 WebView 可用完整组件库。选型背景见仓库根 `agents/TDesign-Skyline-兼容性调查报告.md`。
 
 ## 页面
 
-`app.json` 声明 6 个页面,tabBar 5 个(首页/控制台/AI助手/消息/我的),`login` 不在 tabBar。
-
-| 页 | 路径 | 用途 | 状态 |
-|----|------|------|------|
-| 首页 | `pages/index/index` | 工作台:扫码、搜索、快捷入口、功能宫格、今日课程 | 静态占位(待接 API) |
-| 登录 | `pages/login/login` | 账号绑定(静默登录→用户名密码绑定表单) | 可用 |
-| 控制台 | `pages/console/console` | 控制台 | 占位(空) |
-| AI 助手 | `pages/ai/ai` | 聊天输入 + 建议提示词 | 占位(仅 toast,无后端) |
-| 消息 | `pages/messages/messages` | 消息列表 | 占位(空) |
-| 我的 | `pages/profile/profile` | 资料/统计/菜单/清缓存/解绑退出 | 可用 |
+页面清单与 tabBar 以 `app.json` 为准,此处不逐页罗列(页面数量与状态会随开发持续变化,逐页描述必然过时)。
 
 ## 通信与传输
 
@@ -96,7 +87,3 @@ title: 小程序
 5. 开发者工具里 `envVersion === 'develop'` 自动走 `http` → `http://localhost:8080`,**无需改任何配置**。
 6. 「详情 → 本地设置 → 不校验合法域名」放行 localhost;真机 Wi-Fi 调试把 `devConfig.baseUrl` 的 `localhost` 换成局域网 IP。
 7. 测云端传输:设 `FORCE_TRANSPORT = 'callContainer'` 并在 `prodConfig` 填真实 `cloudEnv`/`serviceName`。
-
-## 数据状态
-
-无 mock 开关。各页 `data` 内为静态占位值(如 `index.ts` 的 `gridItems`/`todayClasses`、`profile.ts` 的 `stats`、`ai.ts` 的 `suggestions`),带显式 TODO。`index`/`ai` 接入真实 API(尤其大列表)后,再按页评估开启 Skyline。

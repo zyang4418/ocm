@@ -2,7 +2,7 @@ import type {Config} from '@docusaurus/types';
 
 const config: Config = {
   title: 'OCM',
-  tagline: 'OCM is a open-source classroom management system.',
+  tagline: 'OCM is an open-source classroom management system.',
   url: 'https://docs.zyang4418.cn',
   baseUrl: '/',
   trailingSlash: false,
@@ -72,7 +72,7 @@ const config: Config = {
           items: [
             {label: '快速开始', to: '/'},
             {label: '课表导入', to: '/guide/import'},
-            {label: 'API', to: '/api'},
+            {label: '可观测性', to: '/guide/observability'},
           ],
         },
         {

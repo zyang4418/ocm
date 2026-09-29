@@ -63,7 +63,7 @@
     </scroll-view>
 
     <view class="footer">
-      <text class="footer-text">OCM · 智慧教室管理平台</text>
+      <text class="footer-text">OCM · 智慧教室管理系统</text>
     </view>
   </block>
 
