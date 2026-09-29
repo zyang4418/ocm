@@ -2,90 +2,45 @@
 title: 项目结构
 ---
 
-单仓三端 + 文档站。Go 后端、微信小程序、React Web 控制台各自独立,共享一套设计 token(品牌色 `#2B5FF6`)。
+单仓多端 + 文档站:Go 后端、微信小程序、Web 控制台、IoT 设备侧 SDK,共享一套设计 token(品牌色 `#2B5FF6`)。各目录的内部文件清单**以代码为准**,本页只到「目录 = 职责」粒度。
 
 ```
 ocm/
-├─ backend/            Go 后端(module ocm-backend, go 1.26)
-├─ miniapp/            微信小程序(glass-easel + TDesign)
-├─ web/                Web 控制台(React 19 + Vite + Carbon)
+├─ backend/            Go 后端(module ocm-backend;internal/ 按领域分包,职责见各包 doc comment)
+├─ miniapp/            微信小程序(glass-easel + TDesign;页面清单以 app.json 为准)
+├─ web/                Web 控制台(React 19 + Vite + Carbon,TypeScript strict)
+├─ iot/                设备侧 SDK(module ocm-iot:mqttc 连接层、sim 模拟器、spec 契约)——后端刻意不 import 它
 ├─ docs/               Docusaurus 文档站(docs-only,根 / → 快速开始)
-├─ agents/             TDesign-Skyline 兼容性调查报告
-├─ docker-compose.yml          开发栈(mysql + backend air + web vite)
-├─ docker-compose.prod.yml     生产栈(fail-fast 密钥)
-├─ .env.example               环境变量模板
-└─ AGENTS.md                  项目约定
+├─ deploy/             部署配置(mosquitto、observability),配 overlay 使用
+├─ agents/             AI 编程工具共享参考(实战教训、选型调查;唯一入库的 AI 目录,见 agents/README.md)
+├─ docker-compose.yml               开发栈(mysql + backend air + web vite)
+├─ docker-compose.prod.yml          生产栈(fail-fast 密钥,后端不发布宿主机端口)
+├─ docker-compose.iot.yml           IoT overlay(+mosquitto,见[物联网](/guide/iot))
+├─ docker-compose.observability.yml 可观测性 overlay(+监控栈,见[可观测性](/guide/observability))
+├─ .env.example       环境变量模板
+└─ AGENTS.md          工程约定(改代码前必读)
 ```
 
 ## `backend/` — Go 后端
 
-```
-backend/
-├─ main.go             入口:生命周期、迁移、路由注册
-├─ go.mod / go.sum
-├─ Dockerfile / Dockerfile.dev      生产多阶段 / 开发 air
-└─ internal/
-   ├─ auth/            JWT(HS256)、code2Session、绑定、中间件
-   ├─ authz/           权限模型(role→permission,admin 通配)
-   ├─ user/            用户 + 行政班/教学班(组织)
-   ├─ classroom/       教室
-   ├─ schedule/        作息制度 + 节次
-   ├─ course/          课程库 / 开课 / 课次 / 课表
-   ├─ booking/         教室预约 + 冲突检测
-   ├─ importer/        异步导入(job 状态机、preview→commit、jwc_split)
-   ├─ jwc/             教务处聚合课表拆分器
-   ├─ xlsx/            excelize 封装(按列名映射)
-   ├─ db/ dbutil/ httpx/   基础设施(DSN/连接池、1062 helper、panic→500)
-```
-
-`net/http` ServeMux(Go 1.22+ 方法路由),无第三方 web 框架。无独立迁移工具——各 store `Migrate(ctx)` 幂等(`CREATE TABLE IF NOT EXISTS` 完整建表)。详见 [后端](/guide/backend)。
+`net/http` ServeMux(Go 1.22+ 方法路由),无第三方 web 框架。无独立迁移工具——各 store `Migrate(ctx)` 幂等(`CREATE TABLE IF NOT EXISTS`);开发阶段改表结构直接删库重建。架构与约定详见 [后端](/guide/backend) 与 `AGENTS.md`。
 
 ## `miniapp/` — 微信小程序
 
-```
-miniapp/
-├─ app.js / app.json / app.wxss     纯 JS 入口 / 全局配置 / 设计 token
-├─ pages/            index login console ai messages profile(6 页,全 WebView)
-├─ config/api.ts     传输切换(callContainer / http)+ envVersion 自动选
-├─ utils/            request.ts(请求层) auth.ts(身份) storage.ts(token/user)
-├─ package.json      tdesign-miniprogram 依赖
-└─ project.config.json   appid、构建 npm 配置
-```
-
-`componentFramework: glass-easel`,**默认 WebView**(不设全局 skyline);`navigationStyle: custom`。详见 [小程序](/guide/miniapp)。
+TypeScript + glass-easel + TDesign,**默认 WebView** 渲染,`navigationStyle: custom`。详见 [小程序](/guide/miniapp)。
 
 ## `web/` — Web 控制台
 
-```
-web/
-├─ src/
-│  ├─ main.jsx        入口(IBM Plex Sans + 全局 scss)
-│  ├─ App.jsx         BrowserRouter + RequireAuth + 路由表
-│  ├─ auth/           api.js(同源 /api、Bearer) AuthContext.jsx(token/user)
-│  ├─ components/     AppShell.jsx(Carbon UI Shell) ExportButton.jsx
-│  └─ pages/          Login/Dashboard/Bookings/Classrooms/CourseManagement/
-│                    ScheduleConfig/Timetable/Imports/Users/AdminClasses/TeachingClasses
-├─ vite.config.js     /api 代理 → VITE_API_PROXY_TARGET
-├─ edge-functions/ + edgeone.json    EdgeOne Pages 部署(SPA 重写 + /api 边缘反代)
-├─ Dockerfile / Dockerfile.dev       生产 nginx(:80)/ 开发 vite(:5173)
-```
+React 19 + Vite + IBM Carbon,**TypeScript strict 全量**,API 类型走生成的 `src/types/api.d.ts`(由 OpenAPI 生成)。下游定制经 `src/config/*.override.tsx` 文件注入缝,见 `AGENTS.md` 定制层一节。详见 [Web 端](/guide/web)。
 
-React 19 + Vite + IBM Carbon,纯 JSX(无 TS),无状态库(仅 `AuthContext`)。详见 [Web 端](/guide/web)。
+## `iot/` — 设备侧(第二个 Go module)
+
+设备/网关侧的 MQTT SDK 与模拟器,与 backend 的契约一致性靠 `iot/spec/spec.md` + 集成测试保证。详见[物联网](/guide/iot)。
 
 ## `docs/` — 文档站
 
-Docusaurus 3(docs-only 模式,`routeBasePath: '/'`,根 `/` 由 [快速开始](/) 承载)。源在 `docs/docs/`,侧边栏 `docs/sidebars.ts`,自定义品牌色在 `docs/src/css/custom.css`(`--ifm-color-primary: #2B5FF6`)。
+Docusaurus 3(docs-only 模式,`routeBasePath: '/'`,根 `/` 由[快速开始](/)承载)。源在 `docs/docs/`,侧边栏 `docs/sidebars.ts`。
 
 ## 共享设计 token
 
-品牌色 `#2B5FF6` 跨端一致:
-
-- 小程序:`miniapp/app.wxss` 的 `--color-primary` / `--td-brand-color`。
-- Web:Carbon 主题 `g10`(品牌色在组件层映射)。
-- 文档站:`docs/src/css/custom.css` 的 `--ifm-color-primary` 梯度。
-
-## 部署件
-
-- 开发:`docker compose up -d`(mysql + backend air + web vite)。
-- 生产:`docker compose -f docker-compose.prod.yml up -d`(backend alpine non-root :8080,web nginx :80,mysql)。
-- Web 静态站可独立部署到腾讯云 EdgeOne Pages(`edgeone.json` + `edge-functions/`)。
+品牌色 `#2B5FF6` 跨端一致:小程序 `app.wxss` 的 `--color-primary` / `--td-brand-color`;Web Carbon 主题 `g10`;文档站 `docs/src/css/custom.css`。

@@ -3,7 +3,7 @@ title: 快速开始
 slug: /
 ---
 
-OCM = 智慧教室管理平台,三端一体:**Go 后端** + **微信小程序** + **Web 控制台**,外加 MySQL 8。最快的方式是用 `docker compose` 一键起全栈。
+OCM = 智慧教室管理系统,三端一体:**Go 后端** + **微信小程序** + **Web 控制台**,外加 MySQL 8。最快的方式是用 `docker compose` 一键起全栈。
 
 ## 前置
 
@@ -40,6 +40,10 @@ compose 自动加载仓库根 `.env`。关键项:
 | `ADMIN_PASSWORD` | 可空(`admin123`) | **必填** | 种入 admin 的密码 |
 | `WX_APP_ID` / `WX_APP_SECRET` | 仅小程序需要 | 仅小程序需要 | code2Session;web-only 可留空(wx 端点会 502 直到配置) |
 | `MYSQL_ROOT_PASSWORD` / `DB_PASSWORD` | dev 固定 | **必填** | MySQL 密码 |
+| `DB_MAX_OPEN_CONNS` / `DB_MAX_IDLE_CONNS` / `DB_CONN_MAX_LIFETIME` | `25` / `25` / `5m` | 连接池调优 |
+| `IOT_MQTT_PASSWORD` 等 `IOT_*` | 空 | 物联网数据面；用 IoT overlay 时必填,见[物联网](/guide/iot) |
+| `METRICS_ADDR` | 未设即关闭 | `/metrics` 内网监听;用可观测性 overlay 时为 `:9091`,见[可观测性](/guide/observability) |
+| `BRAND_NAME` / `LOG_LEVEL` / `LOG_FORMAT` | `OCM` / `info` / 生产 JSON | 品牌名与日志;详见[可观测性](/guide/observability) |
 | `ICP_NUMBER` | 可空 | 可空 | 登录页底部备案号(构建期注入) |
 | `DOCS_URL` | 可空 | 可空 | 登录页文档链接(设了才显示) |
 
@@ -79,7 +83,7 @@ cd web && npm install && npm run dev     # http://localhost:5173
 docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
-- 后端 `:8080`(`Dockerfile`,non-root alpine),web `:80`(nginx,`/api` 代理到 `backend:8080`,SPA fallback),mysql 自带。
+- Web `:80`(nginx 单入口,`/api` 代理到内网 `backend:8080`,SPA fallback;后端**不发布宿主机端口**),mysql 自带。可选叠加监控栈,见[可观测性](/guide/observability)。
 - Web 静态站可单独部署到腾讯云 EdgeOne Pages:`web/edgeone.json`(SPA 重写)+ `web/edge-functions/api/` 边缘函数反代 `/api` 到后端(设 `API_ORIGIN`)。详见 [Web 端](/guide/web#edgeone-部署)。
 
 ## 健康检查
@@ -90,8 +94,8 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d
 ## 下一步
 
 - [项目结构](/guide/structure) —— 仓库布局。
-- [后端](/guide/backend) —— 路由、鉴权、迁移、并发控制。
+- [后端](/guide/backend) —— 鉴权、权限模型、横切约定。
 - [小程序](/guide/miniapp) —— 传输切换、请求层、身份流程。
 - [Web 端](/guide/web) —— 技术栈、鉴权、EdgeOne。
 - [课表导入](/guide/import) —— xlsx 契约与异步导入流程。
-- [API 概述](/api) —— 完整路由表。
+- [物联网](/guide/iot) / [可观测性](/guide/observability) —— 两个可选 overlay。

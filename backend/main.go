@@ -40,7 +40,7 @@ import (
 	"ocm-backend/internal/user"
 )
 
-// @title          OCM 智慧教室管理平台 API
+// @title          OCM 智慧教室管理系统 API
 // @version        1.0
 // @description    Classroom management backend (Go net/http ServeMux). Auth via JWT Bearer (HS256, 24h); mini-program identity resolved server-side via code2Session.
 // @tag.attendance 考勤

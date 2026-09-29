@@ -2,7 +2,7 @@
 title: 课表导入
 ---
 
-OCM 支持批量导入(**xlsx**)。导入是**异步**的:上传一个 `.xlsx` → 后端解析生成**预览(preview)** → 你**确认提交**后写库 → 前端轮询状态。本页说明 xlsx 契约、用法、8 种导入类型与教务处拆分流程。路由与权限见 [API 概述](/api#导入apiimports异步)。
+OCM 支持批量导入(**xlsx**)。导入是**异步**的:上传一个 `.xlsx` → 后端解析生成**预览(preview)** → 你**确认提交**后写库 → 前端轮询状态。本页说明 xlsx 契约、用法、8 种导入类型与教务处拆分流程。路由与权限起测试服务器看(开发环境挂 `/swagger/`),上传/提交/查询端点见下方「用法」。
 
 ## 通用规则(所有类型)
 
@@ -13,10 +13,11 @@ OCM 支持批量导入(**xlsx**)。导入是**异步**的:上传一个 `.xlsx` �
 
 ## 前置条件
 
-导入按**名称**引用已存在的数据,任一名称对不上,该行失败并在错误报告中指出:
+导入按**名称或代码**引用已存在的数据,对不上该行失败并在错误报告中指出:
 
 - **教室**(`classrooms`)—— `classroom` 列须与某 `classrooms.name` 完全一致。
-- **开课**(`course_offerings`)—— 由 `(course, teaching_class, semester)` 三元组定位一条开课。
+- **课程库**(`course_catalog`)—— `code`(课程代码)是**身份键**:课程按 code upsert/引用,`name` 可重名;`course` 名称列须与该 code 在课程库中的记录**一致**(码名交叉校验,不一致该行失败)。
+- **开课**(`course_offerings`)—— 由 `(code, teaching_class, semester)` 定位一条开课。
 - **作息制度**(`schedule_regimes`/`schedule_periods`)—— `period_index` 须在该日期生效的制度中存在。
 
 ## 课次(sessions)xlsx 契约
@@ -28,9 +29,9 @@ OCM 支持批量导入(**xlsx**)。导入是**异步**的:上传一个 `.xlsx` �
 | `date` | 上课日期 | `YYYY-MM-DD` |
 | `period_start` | 起始节次(作息制度节号) | 正整数;须在该日期生效制度中存在 |
 | `period_end` | 结束节次,可选 | 正整数,须 ≥ `period_start`;留空等于 `period_start`(单节) |
+| `code` | 课程代码 | 与 `teaching_class`+`semester` 一起定位开课;须与课程库一致 |
 | `classroom` | 教室名 | 须与 `classrooms.name` 一致 |
-| `course` | 课程名 | 须与 `course_catalog.name` 一致 |
-| `teaching_class` | 教学班名 | 与 course+semester 组合须匹配一条开课 |
+| `course` | 课程名 | 须与 code 指向的课程库记录一致(码名交叉校验) |
 | `semester` | 学期 | 该开课的学期 |
 | `note` | 备注,可选 | 可为空 |
 
@@ -61,16 +62,18 @@ job 状态:`pending → processing → preview →(commit)→ succeeded/failed`;
 
 ## 八种导入类型
 
-| type | 权限 | 必需列(其余可选) |
-|------|------|------|
-| `sessions` | CourseManage | `date, period_start, classroom, course, teaching_class, semester`(+ `period_end, note`) |
-| `classrooms` | ClassroomManage | `name`(+ `building, capacity, type, floor, campus, status, description`) |
-| `admin_classes` | AdminClassManage | `name`(+ `grade, note`) |
-| `teaching_classes` | TeachingClassManage | `name, admin_grade, admin_name`(+ `note`) |
-| `catalog` | CourseManage | `name`(+ `code, credits, total_hours, category, exam_type, description`) |
-| `offerings` | CourseManage | `course, teaching_class, semester, teacher, note`(+ 教务元数据) |
-| `regimes` | CourseManage | `regime_name, effective_month, effective_day, period_index, start_time, end_time` |
-| `bookings` | BookingApprove(admin) | `classroom, username, date, period_start, period_end, status, purpose` |
+| type | 权限 | 必需列(其余可选) | 文件内重复键 |
+|------|------|------|------|
+| `sessions` | CourseManage | `date, period_start, code, classroom, course, teaching_class, semester`(+ `period_end, note`) | — |
+| `classrooms` | ClassroomManage | `name`(+ `building, capacity, type, floor, campus, status, description`) | 重名拒绝 |
+| `admin_classes` | AdminClassManage | `grade, name`(+ `note`;grade 为 4 位入学年份 `^20\d{2}$`,**必填**) | 重复(年级,名称)拒绝 |
+| `teaching_classes` | TeachingClassManage | `name, admin_grade, admin_name`(+ `note`) | — |
+| `catalog` | CourseManage | `code, name`(+ `credits, total_hours, category, exam_type, description`) | 重码拒绝 |
+| `offerings` | CourseManage | `code, course, teaching_class, semester, teacher`(+ 教务元数据) | — |
+| `regimes` | CourseManage | `regime_name, effective_month, effective_day, period_index, start_time, end_time` | — |
+| `bookings` | BookingApprove(admin) | `classroom, username, date, period_start, period_end, status, purpose` | — |
+
+其他校验:数值列(学分/学时/节次等)须为合法数字;`sessions.note`、`bookings.purpose` 上限 255 字符。
 
 每个资源的 `GET /api/{resource}/export` 导出的 xlsx 表头与对应 importer 必需列对齐——**导出再改再回导**是准备文件的最快方式。
 
@@ -80,7 +83,7 @@ job 状态:`pending → processing → preview →(commit)→ succeeded/failed`;
 
 - 上传聚合 xlsx + `semester` + `week1_monday`(`YYYY-MM-DD`)→ `POST /api/imports/jwc_split`(`CourseManage`)。
 - 后端拆成 **6 个 job**,按依赖顺序:**教室 → 课程库 → 行政班 → 教学班 → 开课 → 课次**。
-- 致命拆分错误返回 400,不创建任何 job;拆分成功后逐个 job 走上面的 preview→commit 流程。
+- 致命拆分错误返回 400,不创建任何 job;拆分成功后逐个 job 走上面的 preview→commit 流程。**务必按依赖顺序确认**:开课/课次引用课程库与教学班,依赖未提交时其预览会报「课程/教学班不存在」——这是信息性提示,按序确认后 commit 重校即通过。
 
 ## 从学校课表准备 xlsx
 
@@ -91,7 +94,8 @@ job 状态:`pending → processing → preview →(commit)→ succeeded/failed`;
 - **只收 xlsx**:`.csv`/`.xls` 不接受(后端 `excelize`,非 `encoding/csv`)。
 - **列名逐字一致**:小写,如 `teaching_class`(不是 `class`/`班级`);表头会被小写化 + 去空格后匹配。
 - **节次不是钟点**:`period_start`/`period_end` 是作息制度节号(1 起),不是 `08:00`;原始表用钟点须先映射成节号。
-- **名称须完全一致**:教室、课程、教学班、学期须与系统记录逐字一致,否则该行失败。
+- **名称须完全一致**:教室、教学班、学期须与系统记录逐字一致,否则该行失败;课程按 code 引用且**码名交叉校验**(见前置条件)。
+- **文件内重复键**:教室重名、行政班重复(年级,名称)、课程库重码在文件内即拒绝,不静默覆盖。
 - **合并单元格**:表头和跨节课常见,转换时须向合并范围填充左上角值。
 - **冲突**:导入按「教室+日期+节次区间」检查重叠——与已有课次区间重叠、或与 `pending`/`approved` 教室预约区间重叠的行失败;文件内相互重叠的行同样报错。
 - **必须 commit**:`preview` 态不写库;不点「确认导入」job 会停在 preview。

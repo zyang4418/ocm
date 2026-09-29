@@ -1,4 +1,4 @@
-# OCM - 智慧教室管理平台
+# OCM - 智慧教室管理系统
 
 Classroom management system: Go backend + WeChat mini-program (小程序) + web console.
 
@@ -9,7 +9,7 @@ Classroom management system: Go backend + WeChat mini-program (小程序) + web 
 - 开 Skyline 的页面**必须用 `scroll-view` 承载滚动内容**(Skyline 无页面级滚动),并保持 `navigationStyle: custom`。
 - 低版本微信/PC 端会自动 fallback 到 WebView,按页开启是安全的。
 - **当前所有页面均为 WebView**(mock 数据,无性能压力)。index/ai 接入真实大列表后,再按页评估开启 Skyline。
-- 选型背景见 `TDesign-Skyline-兼容性调查报告.md`:TDesign 对 Skyline 支持是部分的,Cascader/Calendar 在 Skyline 下不可用,故默认 WebView 以获得完整组件库。
+- 选型背景见 `agents/TDesign-Skyline-兼容性调查报告.md`:TDesign 对 Skyline 支持是部分的,Cascader/Calendar 在 Skyline 下不可用,故默认 WebView 以获得完整组件库。
 
 ## TDesign 组件库
 
@@ -50,6 +50,11 @@ Classroom management system: Go backend + WeChat mini-program (小程序) + web 
 - **observation 文档后端（Renderer）注册**：注册代码必须位于**会被编入二进制的包**——惯用位置是 `backend/internal/modules/` 下新增的下游文件（package modules，可不调 `Register`），其 `init()` 调 `observation.RegisterRendererFactory(func(db) (Renderer, error))`（`backend/internal/observation/renderer_registry.go`），工厂内 `schedule.NewStore(db)` + 下游 `renderer.New(store)` 构造实现；**不得**把注册文件放进 `internal/observation/` 包内——实现方为拿到 `Renderer` 契约与 `*observation.Observation` 必然 import observation，同包引入即成 import 环。`main.go` 接线听课评课时经 `observation.ResolveRenderer` 构建注入；未注册即开源默认（CRUD/提交可用，模板/导出端点报 `ErrRendererMissing`）。时序：ResolveRenderer 在内置迁移之后、**modules 迁移循环之前**执行——工厂需要自己的表就自行迁移（`CREATE TABLE IF NOT EXISTS` 惯例）。
 - **Web 文件注入**：`src/config/appRoutes.override.tsx`（导出 `overrideRoutes: AppRoute[]`）与 `src/config/navigation.override.ts`（导出 `overrideEntries: NavEntry[]`）经 `import.meta.glob` 构建期并入，**新增文件即加页面/菜单**；整文件覆盖这两个数据文件的老方式继续兼容。
 - **物联网**：后端模块 `backend/internal/iot`（数据面 `internal/iot/mqtt`，`IOT_*` env 未配置即惰性、命令下发 503）；契约规范 `iot/spec/spec.md`（topic 无版本前缀、载荷带 `"v":1`、命令必须带 `expires_at`）；设备侧 SDK/模拟器在顶层第二个 Go module `iot/`（module ocm-iot，backend 刻意不 import 它，契约一致性靠 `go test -tags=integration` e2e）；部署 overlay `docker-compose.iot.yml`。权限 `iot:read/manage/control`，`iot:control` 单独门控物理命令。
+
+## AI 编程工具参考（agents/）
+
+- `agents/` 是**唯一被 git 跟踪**的 AI 编程辅助资料目录（各工具私有目录如 `.zcode/`、`.claude/` 不入库）：项目级实战教训在 `agents/lessons.md`（bug 根因/依赖行为变化/环境坑，一条一个根因），选型调查在 `agents/TDesign-Skyline-兼容性调查报告.md`，章程与维护规则见 `agents/README.md`。
+- AI 生成的分析/评审报告默认**不入库**；确有沉淀价值的蒸馏成条目写进 `agents/lessons.md`，原文件丢弃。踩坑核实后回写一条教训，过时条目删除。
 
 ## OpenAPI 契约(swaggo)
 

@@ -28,11 +28,6 @@ const sidebars: SidebarsConfig = {
       label: '开发',
       items: ['guide/miniapp', 'guide/web', 'guide/backend'],
     },
-    {
-      type: 'category',
-      label: 'API',
-      items: ['api/index'],
-    },
   ],
 };
 
